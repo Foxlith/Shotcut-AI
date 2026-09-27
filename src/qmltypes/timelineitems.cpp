@@ -71,7 +71,12 @@ private:
 class TimelinePlayhead : public QQuickPaintedItem
 {
 public:
-    TimelinePlayhead() { setAntialiasing(true); }
+    TimelinePlayhead()
+    {
+        setAntialiasing(true);
+        // Repaint with the new accent color at once.
+        connect(&Settings, &ShotcutSettings::accentColorChanged, this, [this]() { update(); });
+    }
 
     void paint(QPainter *painter)
     {

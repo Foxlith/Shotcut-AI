@@ -24,6 +24,7 @@
 #include "qmltypes/qmlfilter.h"
 #include "qmltypes/qmlmetadata.h"
 #include "qmltypes/thumbnailprovider.h"
+#include "settings.h"
 #include "shotcut_mlt_properties.h"
 #include "util.h"
 #include "widgets/toggleswitch.h"
@@ -267,9 +268,9 @@ void InspectorFilterRow::paintEvent(QPaintEvent *)
     QPainterPath shape;
     shape.addRoundedRect(bounds, 6, 6);
 
-    // Row: #1D2027 surface, #262A33 on hover, #1F2229 pressed, 6 px radius. Light
-    // themes take the colors from the palette.
-    const bool dark = palette().color(QPalette::Window).lightnessF() < 0.5;
+    // Row: #1D2027 surface, #262A33 on hover, #1F2229 pressed, 6 px radius. The
+    // classic themes take the colors from the palette.
+    const bool dark = Settings.isGrafito();
     QColor surface = dark ? kSurface : palette().color(QPalette::AlternateBase);
     if (m_pressed)
         surface = dark ? kSurfacePressed : palette().color(QPalette::Mid);

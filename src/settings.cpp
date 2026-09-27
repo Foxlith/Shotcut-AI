@@ -30,6 +30,7 @@
 #include <QFile>
 #include <QLocale>
 #include <QMediaDevices>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <qdesktopservices.h>
 
@@ -271,14 +272,30 @@ void ShotcutSettings::setTheme(const QString &s)
     settings.setValue("theme", s);
 }
 
+static const QString kDefaultAccentColor = QStringLiteral("#FF7A45");
+
+static bool isValidAccentColor(const QString &s)
+{
+    static const QRegularExpression re(QStringLiteral("^#[0-9A-Fa-f]{6}$"));
+    return re.match(s).hasMatch();
+}
+
 QString ShotcutSettings::accentColor() const
 {
-    return settings.value("accentColor", "#FF7A45").toString();
+    const auto color = settings.value("accentColor", kDefaultAccentColor).toString();
+    // A broken value (edited registry or config file) falls back to the default.
+    return isValidAccentColor(color) ? color.toUpper() : kDefaultAccentColor;
 }
 
 void ShotcutSettings::setAccentColor(const QString &s)
 {
-    settings.setValue("accentColor", s);
+    if (!isValidAccentColor(s))
+        return;
+    const auto color = s.toUpper();
+    if (color == accentColor())
+        return;
+    settings.setValue("accentColor", color);
+    emit accentColorChanged();
 }
 
 QThread::Priority ShotcutSettings::jobPriority() const

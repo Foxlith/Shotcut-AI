@@ -223,8 +223,8 @@ class TestPhase6Media(CodeTestCase):
     # M2 -----------------------------------------------------------------
     def test_m2_card_mode_is_the_default_icons_view(self):
         self.assertIn("m_iconsView->setCardMode(true);", self.dock)
-        self.assertIn("return m_cardMode && palette().color(QPalette::Window).lightnessF() < 0.5;",
-                      self.view)
+        # Cards with the Grafito theme (Phase 7: one switch instead of the palette lightness).
+        self.assertIn("return m_cardMode && Settings.isGrafito();", self.view)
         # Icons is the default view mode (Settings.viewMode() empty).
         self.assertIn("} else { /* if (Settings.viewMode() == kIconsMode) */", self.dock)
         header = read(ICONVIEW_H)

@@ -186,6 +186,7 @@
      <addaction name="actionSystemTheme"/>
      <addaction name="actionSystemFusion"/>
      <addaction name="actionFusionDark"/>
+     <addaction name="actionClassicFusionDark"/>
      <addaction name="actionFusionLight"/>
     </widget>
     <widget class="QMenu" name="menuDrawingMethod">
@@ -800,7 +801,21 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fusion Dark</string>
+    <string>Grafito Modern</string>
+   </property>
+   <property name="toolTip">
+    <string>The dark Grafito theme with the accent color of your choice.</string>
+   </property>
+  </action>
+  <action name="actionClassicFusionDark">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Classic Fusion Dark</string>
+   </property>
+   <property name="toolTip">
+    <string>The dark theme of Shotcut before the Grafito redesign.</string>
    </property>
   </action>
   <action name="actionFusionLight">

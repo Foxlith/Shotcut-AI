@@ -342,6 +342,7 @@ PlaylistDock::PlaylistDock(QWidget *parent)
 {
     LOG_DEBUG() << "begin";
     ui->setupUi(this);
+    Util::followAccentColor(ui->dropZoneCard);
     ui->dropZoneCard->installEventFilter(this);
     ui->page->installEventFilter(this);
     ui->dropZoneIconBtn->installEventFilter(this);
@@ -520,6 +521,7 @@ PlaylistDock::PlaylistDock(QWidget *parent)
         "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: "
         "transparent; }");
     toolbar2->setStyleSheet(styleSheet);
+    Util::followAccentColor(toolbar2);
     // No minimum width: the four type chips must fit in the 300 px Media panel.
     ui->filtersLayout->addItem(new QSpacerItem(0, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     toolbar2->addActions({Actions["playlistFiltersVideo"],

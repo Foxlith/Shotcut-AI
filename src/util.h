@@ -46,6 +46,12 @@ public:
     static QString baseName(const QString &filePath, bool trimQuery = false);
     static void setColorsToHighlight(QWidget *widget, QPalette::ColorRole role = QPalette::Window);
     static void repolish(QWidget *widget);
+    /// Returns \a styleSheet with the orange accent of Grafito (#FF7A45, its hover and
+    /// pressed shades and rgba(255, 122, 69, a)) replaced by the current accent color.
+    static QString accentStyleSheet(const QString &styleSheet);
+    /// Applies accentStyleSheet() to the style sheet of \a widget now and whenever the
+    /// accent color changes.
+    static void followAccentColor(QWidget *widget);
     static void showInFolder(const QString &path);
     static bool warnIfNotWritable(const QString &filePath, QWidget *parent, const QString &caption);
     static QString producerTitle(const Mlt::Producer &producer);

@@ -138,7 +138,7 @@ def fallback_stylesheet():
     cpp = read(MAINWINDOW_CPP)
     marker = cpp.index("// Phase 4: Grafito viewer")
     start = cpp.rindex("qss = QStringLiteral(", 0, marker)
-    block = cpp[start:cpp.index("));", marker)]
+    block = cpp[start:cpp.index("// clang-format on", marker)]
     lines = [line for line in block.splitlines() if not line.strip().startswith("//")]
     literals = re.findall(r'"((?:[^"\\]|\\.)*)"', "\n".join(lines))
     return "".join(literal.replace('\\"', '"').replace("\\\\", "\\") for literal in literals)

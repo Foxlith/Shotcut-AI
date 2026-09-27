@@ -4999,6 +4999,10 @@ void TimelineDock::load(bool force)
             m_model.reload();
         if (saveCurrentTrack != -1)
             setCurrentTrack(saveCurrentTrack);
+        // The new view read an empty selection while it was loading (there was no root
+        // object yet); show the current selection again, for example after a palette change.
+        if (force)
+            emit selectionChanged();
     } else if (Settings.timelineShowWaveforms()) {
         m_model.reload();
     }

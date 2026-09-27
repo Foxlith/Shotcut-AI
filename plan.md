@@ -481,6 +481,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - `capcut_theme.qss`
 - **Riesgos:** Persistencia errónea de claves de acento en el registro de Windows (`HKCU\Software\Meltytech\Shotcut`).
 - **Criterios de Aceptación:** El cambio de acento actualiza instantáneamente botones, sliders, cabezal de línea de tiempo y chips sin reiniciar la aplicación.
+- **Estado:** ✅ Completada. Selector en *Ajustes > Tema > Color de acento* (4 muestras; se aplica al instante, sin reiniciar, a la paleta, al QSS de la app, a las hojas de estilo propias de barras, chips y zona de soltar, al QML y al cabezal) y tema *Classic Fusion Dark* (el tema oscuro de Shotcut anterior al rediseño) junto a *Grafito Modern* y los demás temas, que se conservan. El acento se guarda como `#RRGGBB` y un valor roto vuelve al naranja. Verificada en la app real (Qt 6.10 + MLT 7.36) cambiando entre los 4 acentos en vivo, reiniciando con ámbar y con el tema clásico. Detalle en `agent.md` (Fase 7).
 
 ---
 
@@ -573,10 +574,10 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Configurar pestañas del Inspector (Inspector, Tareas, Historial) con subrayado de 2 px.
   - [x] Incorporar controles numéricos y sliders de precisión en sección Transformar (deshacibles, vía los filtros *Size, Position & Rotate* y *Opacity*).
   - [x] Estilizar filas de filtros con toggles interactivos (30 tests en `tests/test_phase6_media_inspector_verification.py`; 715/715 en `--fast`).
-- [ ] **Fase 7: Ajustes y Retrocompatibilidad**
-  - [ ] Añadir selector de color de acento (#FF7A45, #5B8CFF, #F5B83D, #B08CFF).
-  - [ ] Implementar opción para alternar entre tema Grafito y tema clásico.
-  - [ ] Validar que 624/624 pruebas E2E continúan pasando satisfactoriamente.
+- [x] **Fase 7: Ajustes y Retrocompatibilidad**
+  - [x] Añadir selector de color de acento (#FF7A45, #5B8CFF, #F5B83D, #B08CFF) en *Ajustes > Tema > Color de acento*, con cambio instantáneo sin reiniciar.
+  - [x] Implementar opción para alternar entre tema Grafito y tema clásico (*Grafito Modern* / *Classic Fusion Dark*).
+  - [x] Validar que las pruebas E2E continúan pasando (20 tests nuevos en `tests/test_phase7_accent_theme_verification.py`; 735/735 en `--fast`).
 
 ---
 

@@ -127,6 +127,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     print("   6. tests.test_phase4_viewer_verification (Phase 4 Grafito viewer & transport)")
     print("   7. tests.test_phase5_timeline_verification (Phase 5 Grafito multitrack timeline)")
     print("   8. tests.test_phase6_media_inspector_verification (Phase 6 Grafito Media panel & Inspector)")
+    print("   9. tests.test_phase7_accent_theme_verification (Phase 7 accent colors & theme switch)")
     print("=" * 78)
 
     import tests.test_adversarial_branding_m1_dark
@@ -137,6 +138,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     import tests.test_phase4_viewer_verification
     import tests.test_phase5_timeline_verification
     import tests.test_phase6_media_inspector_verification
+    import tests.test_phase7_accent_theme_verification
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -161,6 +163,9 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
 
     # 7. Phase 6 Grafito Media panel & Inspector verification (30 tests)
     suite.addTests(loader.loadTestsFromModule(tests.test_phase6_media_inspector_verification))
+
+    # 8. Phase 7 accent colors & theme switch verification (20 tests)
+    suite.addTests(loader.loadTestsFromModule(tests.test_phase7_accent_theme_verification))
 
     # 3. Runtime UI & stress recovery
     if no_gui:
