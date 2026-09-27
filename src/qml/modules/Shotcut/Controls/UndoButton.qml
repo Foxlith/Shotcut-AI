@@ -20,7 +20,7 @@ import Shotcut.Controls as Shotcut
 
 Shotcut.Button {
     icon.name: 'edit-undo'
-    icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-undo.png'
+    icon.source: 'qrc:///icons/dark/32x32/edit-undo.png'
     implicitWidth: 20
     implicitHeight: 20
 

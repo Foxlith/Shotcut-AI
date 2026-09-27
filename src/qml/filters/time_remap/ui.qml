@@ -333,7 +333,7 @@ Item {
             Shotcut.Button {
                 anchors.verticalCenter: parent.verticalCenter
                 icon.name: 'format-indent-less'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-less.png'
+                icon.source: 'qrc:///icons/dark/32x32/format-indent-less.png'
                 implicitWidth: 20
                 implicitHeight: 20
                 onClicked: {
@@ -349,7 +349,7 @@ Item {
             Shotcut.Button {
                 anchors.verticalCenter: parent.verticalCenter
                 icon.name: 'format-indent-more'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-more.png'
+                icon.source: 'qrc:///icons/dark/32x32/format-indent-more.png'
                 implicitWidth: 20
                 implicitHeight: 20
                 onClicked: {

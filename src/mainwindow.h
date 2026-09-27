@@ -418,6 +418,9 @@ private slots:
     void on_actionPauseAfterSeek_triggered(bool checked);
     void on_actionWhatsThis_triggered();
     void on_actionLeaveSafeMode_triggered();
+
+private:
+    class AIAgentServer *m_aiAgentServer;
 };
 
 #define MAIN MainWindow::singleton()

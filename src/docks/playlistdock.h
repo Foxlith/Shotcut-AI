@@ -101,6 +101,7 @@ public slots:
     void onPlaylistCleared();
     void onPlaylistClosed();
     void refreshTimelineSmartBins();
+    void onAddFilesActionTriggered();
 
 private slots:
 
@@ -119,6 +120,7 @@ private slots:
 protected:
     void keyPressEvent(QKeyEvent *event);
     void keyReleaseEvent(QKeyEvent *event);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void setupActions();
@@ -126,7 +128,6 @@ private:
     void emitDataChanged(const QVector<int> &roles);
     void setPlaylistIndex(Mlt::Producer *producer, int row);
     void updateViewMode();
-    void onAddFilesActionTriggered();
     void onUpdateThumbnailsActionTriggered();
     void onAddToTimelineActionTriggered();
     void onAddToSlideshowActionTriggered();

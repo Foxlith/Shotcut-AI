@@ -157,14 +157,14 @@ VideoZoomScopeWidget::VideoZoomScopeWidget()
     QToolButton *pickButton = new QToolButton(this);
     pickButton->setToolTip(tr("Pick a pixel from the source player"));
     pickButton->setIcon(
-        QIcon::fromTheme("zoom-select", QIcon(":/icons/oxygen/32x32/actions/zoom-select")));
+        QIcon::fromTheme("zoom-select", QIcon(":/icons/dark/32x32/zoom-select.png")));
     toolLayout->addWidget(pickButton);
     connect(pickButton, SIGNAL(clicked()), this, SLOT(onScreenSelectStarted()));
 
     // Add pixel lock button
     m_lockButton->setToolTip(tr("Lock/Unlock the selected pixel"));
     m_lockButton->setIcon(
-        QIcon::fromTheme("object-unlocked", QIcon(":/icons/oxygen/32x32/status/object-unlocked")));
+        QIcon::fromTheme("object-unlocked", QIcon(":/icons/dark/32x32/object-unlocked.png")));
     m_lockButton->setCheckable(true);
     m_lockButton->setChecked(false);
     toolLayout->addWidget(m_lockButton);
@@ -239,11 +239,11 @@ void VideoZoomScopeWidget::onLockToggled(bool enabled)
     m_zoomWidget->lock(enabled);
     if (enabled) {
         m_lockButton->setIcon(
-            QIcon::fromTheme("object-locked", QIcon(":/icons/oxygen/32x32/status/object-locked")));
+            QIcon::fromTheme("object-locked", QIcon(":/icons/dark/32x32/object-locked.png")));
     } else {
         m_lockButton->setIcon(
             QIcon::fromTheme("object-unlocked",
-                             QIcon(":/icons/oxygen/32x32/status/object-unlocked")));
+                             QIcon(":/icons/dark/32x32/object-unlocked.png")));
     }
 }
 

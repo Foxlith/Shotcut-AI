@@ -31,7 +31,7 @@ ToolButton {
     hoverEnabled: true
     palette.buttonText: activePalette.buttonText
     icon.name: 'chronometer'
-    icon.source: 'qrc:///icons/oxygen/32x32/actions/chronometer.png'
+    icon.source: 'qrc:///icons/dark/32x32/chronometer.png'
     onClicked: {
         if (!checked) {
             checked = true;

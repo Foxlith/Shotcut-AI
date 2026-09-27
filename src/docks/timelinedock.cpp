@@ -332,6 +332,9 @@ TimelineDock::TimelineDock(QWidget *parent)
     vboxLayout->setContentsMargins(0, 0, 0, 0);
 
     DockToolBar *toolbar = new DockToolBar(tr("Timeline Controls"));
+    toolbar->setObjectName("timelineToolbar");
+    toolbar->setProperty("compact", true);
+    toolbar->updateStyle();
     QToolButton *menuButton = new QToolButton();
     menuButton->setIcon(
         QIcon::fromTheme("show-menu", QIcon(":/icons/oxygen/32x32/actions/show-menu.png")));

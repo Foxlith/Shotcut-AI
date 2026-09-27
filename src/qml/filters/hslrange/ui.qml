@@ -232,7 +232,7 @@ Shotcut.KeyframableFilter {
             id: pickerButton
 
             icon.name: 'color-picker'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/color-picker.png'
+            icon.source: 'qrc:///icons/dark/32x32/color-picker.png'
             implicitWidth: 20
             implicitHeight: 20
             checkable: true

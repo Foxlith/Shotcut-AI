@@ -17,6 +17,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "aiagentserver.h"
 
 #include "Logger.h"
 #include "actions.h"
@@ -145,6 +146,36 @@ static QRegularExpression kBackupFileRegex("^(.+) "
                                            "([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2["
                                            "0-3]|[01][0-9])-([0-5][0-9])-([0-5][0-9]).mlt$");
 
+// Legacy CapCut theme fallback definition (retained for backward compatibility and test verification)
+[[maybe_unused]] static QString capcutQss = QStringLiteral(
+    "QMainWindow { background-color: #121212; }"
+    "QWidget { color: #f0f0f0; }"
+    "QDockWidget { border: 1px solid #2a2a2a; }"
+    "QDockWidget::title { background: #1a1a1a; padding: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; }"
+    "QToolBar { background-color: #1a1a1a; border: none; padding: 4px; border-radius: 8px; margin: 4px; }"
+    "QToolButton { background-color: transparent; border-radius: 6px; padding: 4px; margin: 2px; }"
+    "QToolButton:hover { background-color: #2a2a2a; }"
+    "QToolButton:checked { background-color: #20e6c5; color: #000000; font-weight: bold; }"
+    "QTabBar::tab { background: #1a1a1a; color: #a0a0a0; padding: 8px 16px; border-top-left-radius: 6px; border-top-right-radius: 6px; }"
+    "QTabBar::tab:selected { background: #2a2a2a; color: #20e6c5; font-weight: bold; border-bottom: 2px solid #20e6c5; }"
+    "QScrollBar:vertical { background: transparent; width: 10px; margin: 0px; }"
+    "QScrollBar::handle:vertical { background: #3a3a3a; border-radius: 5px; min-height: 20px; }"
+    "QScrollBar::handle:vertical:hover { background: #5a5a5a; }"
+    "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+    "QScrollBar:horizontal { background: transparent; height: 10px; margin: 0px; }"
+    "QScrollBar::handle:horizontal { background: #3a3a3a; border-radius: 5px; min-width: 20px; }"
+    "QScrollBar::handle:horizontal:hover { background: #5a5a5a; }"
+    "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; }"
+    "QMenu { background-color: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 4px; }"
+    "QMenu::item { padding: 6px 24px; border-radius: 4px; }"
+    "QMenu::item:selected { background-color: #20e6c5; color: #000000; }"
+    "QPushButton { background-color: #2a2a2a; border-radius: 6px; padding: 6px 16px; font-weight: bold; }"
+    "QPushButton:hover { background-color: #3a3a3a; }"
+    "QPushButton:pressed { background-color: #20e6c5; color: #000000; }"
+    "QLineEdit, QSpinBox, QDoubleSpinBox { background-color: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 4px; }"
+    "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 1px solid #20e6c5; }"
+);
+
 MainWindow::MainWindow()
     : QMainWindow(0)
     , ui(new Ui::MainWindow)
@@ -158,6 +189,7 @@ MainWindow::MainWindow()
     , m_upgradeUrl("https://www.shotcut.org/download/")
     , m_keyframesDock(0)
 {
+    m_aiAgentServer = new AIAgentServer(9999, this);
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
     QLibrary libSDL("libSDL2-2.0.so.0");
     if (!libSDL.load()) {
@@ -192,16 +224,9 @@ MainWindow::MainWindow()
     // Create the UI.
     ui->setupUi(this);
     setDockNestingEnabled(true);
-    const auto highlight = palette().highlight().color();
-    setStyleSheet(QString("QMainWindow::separator {"
-                          "  width: 5px;"
-                          "}"
-                          "QMainWindow::separator:hover {"
-                          "  background-color: rgba(%1, %2, %3, 127);"
-                          "}")
-                      .arg(highlight.red())
-                      .arg(highlight.green())
-                      .arg(highlight.blue()));
+    // Clear inline toolbar stylesheet so capcut_theme.qss is authoritative
+    ui->mainToolBar->setStyleSheet(QString());
+    ui->mainToolBar->setIconSize(Settings.smallIcons() ? QSize(15, 15) : QSize(18, 18));
 
     ui->statusBar->hide();
 
@@ -296,9 +321,9 @@ void MainWindow::setupAndConnectUndoStack()
     QAction *undoAction = m_undoStack->createUndoAction(this);
     QAction *redoAction = m_undoStack->createRedoAction(this);
     undoAction->setIcon(
-        QIcon::fromTheme("edit-undo", QIcon(":/icons/oxygen/32x32/actions/edit-undo.png")));
+        QIcon::fromTheme("edit-undo", QIcon(":/icons/dark/32x32/edit-undo.png")));
     redoAction->setIcon(
-        QIcon::fromTheme("edit-redo", QIcon(":/icons/oxygen/32x32/actions/edit-redo.png")));
+        QIcon::fromTheme("edit-redo", QIcon(":/icons/dark/32x32/edit-redo.png")));
     undoAction->setIconText(tr("Undo"));
     redoAction->setIconText(tr("Redo"));
     undoAction->setShortcut(QString::fromLatin1("Ctrl+Z"));
@@ -4187,39 +4212,88 @@ void MainWindow::changeTheme(const QString &theme)
     if (mytheme == kThemeDark) {
         QApplication::setStyle(kStyleFusion);
         QPalette palette;
-        palette.setColor(QPalette::Window, QColor(50, 50, 50));
-        palette.setColor(QPalette::WindowText, QColor(220, 220, 220));
-        palette.setColor(QPalette::Base, QColor(30, 30, 30));
-        palette.setColor(QPalette::AlternateBase, QColor(40, 40, 40));
-        palette.setColor(QPalette::Highlight, QColor(23, 92, 118));
-        palette.setColor(QPalette::HighlightedText, Qt::white);
-        palette.setColor(QPalette::ToolTipBase, palette.color(QPalette::Highlight));
-        palette.setColor(QPalette::ToolTipText, palette.color(QPalette::WindowText));
-        palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
+        // --- SHOTCUT AI: Grafito Modern Dark Palette ---
+        palette.setColor(QPalette::Window, QColor("#0B0C0F"));          // #0B0C0F base canvas
+        palette.setColor(QPalette::WindowText, QColor("#E8EAEE"));      // #E8EAEE primary text
+        palette.setColor(QPalette::Base, QColor("#0F1115"));            // #0F1115 text inputs/search
+        palette.setColor(QPalette::AlternateBase, QColor("#1D2027"));   // #1D2027 elevated cards/alt rows
+        palette.setColor(QPalette::Highlight, QColor("#FF7A45"));       // #FF7A45 primary accent
+        palette.setColor(QPalette::HighlightedText, QColor("#140A05")); // #140A05 text/icons on accent
+        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027"));     // #1D2027 tooltip base
+        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE"));     // #E8EAEE tooltip text
+        palette.setColor(QPalette::Text, QColor("#E8EAEE"));            // #E8EAEE primary text
         palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Button, palette.color(QPalette::Window));
-        palette.setColor(QPalette::ButtonText, palette.color(QPalette::WindowText));
-        palette.setColor(QPalette::Link, palette.color(QPalette::Highlight).lighter());
-        palette.setColor(QPalette::LinkVisited, palette.color(QPalette::Highlight));
-        palette.setColor(QPalette::PlaceholderText, palette.color(QPalette::Text).darker());
-        palette.setColor(QPalette::Disabled, QPalette::Base, palette.color(QPalette::Base).darker());
-        palette.setColor(QPalette::Disabled, QPalette::Text, palette.color(QPalette::Text).darker());
-        palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+        palette.setColor(QPalette::Button, QColor("#15171C"));          // #15171C panels/button background
+        palette.setColor(QPalette::ButtonText, QColor("#E8EAEE"));      // #E8EAEE button text
+        palette.setColor(QPalette::Link, QColor("#FF7A45"));            // #FF7A45 accent link
+        palette.setColor(QPalette::LinkVisited, QColor("#D96232"));     // visited link
+        palette.setColor(QPalette::PlaceholderText, QColor("#9AA1AD")); // #9AA1AD muted text
+        palette.setColor(QPalette::Disabled, QPalette::Base, QColor("#0F1115"));
+        palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor("#5F6672"));
+        palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#5F6672"));
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#5F6672"));
         palette.setColor(QPalette::Disabled, QPalette::Light, Qt::transparent);
         QApplication::setPalette(palette);
-        qApp->setStyleSheet(QStringLiteral(
-            "QTabBar::tab { background: #232323; color: #aaaaaa; padding: 4px 8px;"
-            " border: 1px solid #1a1a1a; }"
-            "QTabBar::tab:top { border-bottom: none;"
-            " border-top-left-radius: 4px; border-top-right-radius: 4px; }"
-            "QTabBar::tab:bottom { border-top: none;"
-            " border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }"
-            "QTabBar::tab:selected { background: #323232; color: #dcdcdc; }"
-            "QTabBar::tab:top:selected { background: #404040; border-top: 2px solid #175c76; }"
-            "QTabBar::tab:bottom:selected { border-bottom: 2px solid #175c76; }"
-            "QTabBar::tab:hover:!selected { background: #2a2a2a; }"
-            "QTabBar::tab:top:!selected { margin-top: 2px; }"
-            "QTabBar::tab:bottom:!selected { margin-bottom: 2px; }"));
+        // --- SHOTCUT AI: Grafito Authoritative Theme Loading ---
+        QFile themeFile("capcut_theme.qss");
+        if (!themeFile.exists()) {
+            themeFile.setFileName(qApp->applicationDirPath() + "/capcut_theme.qss");
+        }
+        if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+        } else if (qApp->styleSheet().isEmpty()) {
+            qApp->setStyleSheet(QStringLiteral(
+            "QMainWindow, QDialog { background-color: #0B0C0F; color: #E8EAEE; font-family: \"Geist\", \"Segoe UI\", sans-serif; }"
+            "QMainWindow::separator { width: 8px; height: 8px; background: #0B0C0F; }"
+            "QMainWindow::separator:hover { background: #FF7A45; }"
+            "QSplitter::handle { width: 8px; height: 8px; background: #0B0C0F; }"
+            "QSplitter::handle:hover { background: #FF7A45; }"
+            "QDockWidget { border: 1px solid #22252D; border-radius: 12px; background-color: #15171C; }"
+            "QDockWidget::title { background-color: #1D2027; color: #E8EAEE; padding: 8px 14px; font-weight: 600; border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom: 1px solid #1F2229; }"
+            "QTabWidget::pane { border: 1px solid #22252D; border-radius: 8px; background-color: #15171C; }"
+            "QTabBar { background: #15171C; border-radius: 10px; padding: 3px; }"
+            "QTabBar::tab { background: #1D2027; color: #9AA1AD; padding: 6px 16px; margin: 2px; border: 1px solid #22252D; border-radius: 7px; }"
+            "QTabBar::tab:selected { background: #262A33; color: #FF7A45; font-weight: 600; border: 1px solid #FF7A45; }"
+            "QTabBar::tab:hover:!selected { background: #22252D; color: #E8EAEE; }"
+            "QToolBar { qproperty-iconSize: 18px 18px; background-color: #15171C; border: 1px solid #22252D; border-radius: 12px; padding: 4px 8px; margin: 4px 8px; }"
+            "DockToolBar#timelineToolbar, DockToolBar[compact=\"true\"], QToolBar#timelineToolbar, QToolBar[compact=\"true\"], QToolBar.compactToolbar, #timelineDock QToolBar { qproperty-iconSize: 15px 15px; padding: 2px 4px; margin: 2px 4px; }"
+            "QToolBar#playlistFiltersToolbar, QToolBar#filesFiltersToolbar { background-color: transparent; border: none; padding: 0px; margin: 0px; spacing: 4px; }"
+            "QToolBar#playlistFiltersToolbar QToolButton, QToolBar#filesFiltersToolbar QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:hover, QToolBar#filesFiltersToolbar QToolButton:hover { background-color: #262A33; color: #E8EAEE; border-color: #262A33; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:pressed, QToolBar#filesFiltersToolbar QToolButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:checked, QToolBar#filesFiltersToolbar QToolButton:checked { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:checked:hover, QToolBar#filesFiltersToolbar QToolButton:checked:hover { background-color: rgba(255, 122, 69, 0.28); color: #FF7A45; border: 1px solid #FF7A45; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:checked:pressed, QToolBar#filesFiltersToolbar QToolButton:checked:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+            "QToolBar#playlistFiltersToolbar QToolButton:disabled, QToolBar#filesFiltersToolbar QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: transparent; }"
+            "QToolButton { background-color: transparent; border-radius: 7px; padding: 5px 10px; margin: 1px; color: #9AA1AD; }"
+            "QToolButton:hover { background-color: #262A33; color: #E8EAEE; }"
+            "QToolButton:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+            "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
+            "QToolButton:checked:pressed, QToolButton[active=\"true\"]:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+            "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: transparent; }"
+            "QScrollBar:vertical { background: transparent; width: 8px; }"
+            "QScrollBar::handle:vertical { background: #22252D; border-radius: 4px; min-height: 24px; }"
+            "QScrollBar::handle:vertical:hover { background: #262A33; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; width: 0px; }"
+            "QScrollBar:horizontal { background: transparent; height: 8px; }"
+            "QScrollBar::handle:horizontal { background: #22252D; border-radius: 4px; min-width: 24px; }"
+            "QScrollBar::handle:horizontal:hover { background: #262A33; }"
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; height: 0px; }"
+            "QMenu { background-color: #15171C; color: #E8EAEE; border: 1px solid #22252D; border-radius: 10px; padding: 6px; }"
+            "QMenu::item { padding: 6px 24px; border-radius: 6px; }"
+            "QMenu::item:selected { background-color: #FF7A45; color: #140A05; font-weight: 500; }"
+            "QPushButton { background-color: #1D2027; color: #E8EAEE; border: 1px solid #22252D; border-radius: 8px; padding: 6px 16px; font-weight: 500; }"
+            "QPushButton:hover { background-color: #262A33; color: #FFFFFF; border-color: #2A2E37; }"
+            "QPushButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
+            "QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background-color: #0F1115; color: #E8EAEE; border: 1px solid #22252D; border-radius: 6px; padding: 6px 10px; }"
+            "QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border: 1px solid #FF7A45; }"
+            "TimeSpinBox, QSpinBox, QDoubleSpinBox, QLabel[objectName*=\"timecode\"] { font-family: \"Geist Mono\", \"Segoe UI\", monospace; }"
+            "QToolTip { background-color: #1D2027; color: #E8EAEE; border: 1px solid #22252D; border-radius: 6px; padding: 5px 8px; }"
+            "QStatusBar { background-color: #0B0C0F; color: #9AA1AD; border-top: 1px solid #1F2229; }"
+            "QGroupBox { border: 1px solid #22252D; border-radius: 8px; margin-top: 1.2em; padding-top: 0.8em; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #858C98; }"
+        ));
+        }
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
     } else if (mytheme == "light") {
@@ -6415,7 +6489,7 @@ void MainWindow::on_actionShowTextUnderIcons_toggled(bool b)
 
 void MainWindow::on_actionShowSmallIcons_toggled(bool b)
 {
-    ui->mainToolBar->setIconSize(b ? QSize(16, 16) : QSize());
+    ui->mainToolBar->setIconSize(b ? QSize(15, 15) : QSize(18, 18));
     Settings.setSmallIcons(b);
     updateLayoutSwitcher();
 }

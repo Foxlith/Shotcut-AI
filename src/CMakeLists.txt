@@ -86,6 +86,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   jobs/screencapturejob.cpp jobs/screencapturejob.h
   jobs/videoqualityjob.cpp jobs/videoqualityjob.h
   jobs/whisperjob.cpp jobs/whisperjob.h
+  aiagentserver.cpp aiagentserver.h
   main.cpp
   mainwindow.cpp mainwindow.h
   mainwindow.ui

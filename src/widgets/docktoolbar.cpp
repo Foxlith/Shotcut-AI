@@ -61,31 +61,65 @@ void DockToolBar::paintEvent(QPaintEvent *event)
     }
 }
 
+bool DockToolBar::event(QEvent *event)
+{
+    if (event->type() == QEvent::DynamicPropertyChange) {
+        updateStyle();
+    }
+    return QToolBar::event(event);
+}
+
 void DockToolBar::updateStyle()
 {
-    int height = 33;
-    if (Settings.smallIcons()) {
-        height = 25;
-    }
-    setFixedHeight(height);
-    setIconSize(QSize(height - 9, height - 9));
+    bool isTimeline = (objectName() == "timelineToolbar") || property("compact").toBool();
+    int iconDim = isTimeline ? 15 : (Settings.smallIcons() ? 15 : 18);
+    int barHeight = isTimeline ? 26 : (Settings.smallIcons() ? 26 : 30);
+    setFixedHeight(barHeight);
+    setIconSize(QSize(iconDim, iconDim));
     QString styleSheet = QString::fromUtf8("   \
          QToolButton {                          \
            width:%1px;                          \
            height:%1px;                         \
+           color:#9AA1AD;                       \
+         }                                      \
+         QToolButton:hover {                    \
+           color:#E8EAEE;                       \
+           background-color:#262A33;            \
+         }                                      \
+         QToolButton:pressed {                  \
+           background-color:#FF7A45;            \
+           color:#140A05;                       \
+           border:1px solid #FF7A45;            \
          }                                      \
          QToolButton[popupMode=\"1\"] {         \
            padding-right: 12px;                 \
          }                                      \
-         QToolButton:checked {                  \
-           color:palette(highlighted-text);     \
-           background-color:palette(highlight); \
+         QToolButton:checked,                   \
+         QToolButton[active=\"true\"] {         \
+           color:#FF7A45;                       \
+           background-color:rgba(255, 122, 69, 0.18); \
+           border:1px solid #FF7A45;            \
+         }                                      \
+         QToolButton:checked:hover,             \
+         QToolButton[active=\"true\"]:hover {   \
+           background-color:rgba(255, 122, 69, 0.28); \
+           color:#FF7A45;                       \
+           border:1px solid #FF7A45;            \
+         }                                      \
+         QToolButton:checked:pressed,           \
+         QToolButton[active=\"true\"]:pressed { \
+           background-color:#FF7A45;            \
+           color:#140A05;                       \
+           border:1px solid #FF7A45;            \
+         }                                      \
+         QToolButton:disabled {                 \
+           color:#5F6672;                       \
          }                                      \
          QToolBar {                             \
            spacing:3px;                         \
            padding:1px;                         \
          }                                      \
         ")
-                             .arg(height - 9);
+                             .arg(iconDim + 6);
     setStyleSheet(styleSheet);
 }

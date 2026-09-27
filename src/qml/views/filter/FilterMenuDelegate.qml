@@ -46,7 +46,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: favorite ? 1 : 0.3
                 icon.name: 'bookmarks'
-                icon.source: 'qrc:///icons/oxygen/32x32/places/bookmarks.png'
+                icon.source: 'qrc:///icons/dark/32x32/bookmarks.png'
                 onClicked: favorite = !favorite
             }
         }
@@ -69,7 +69,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 enabled: false
                 icon.name: needsGpu ? 'cpu' : isAudio ? 'speaker' : pluginType === Shotcut.Metadata.Link ? 'chronometer' : pluginType === Shotcut.Metadata.FilterSet ? 'server-database' : 'video-television'
-                icon.source: needsGpu ? 'qrc:///icons/oxygen/32x32/devices/cpu.png' : isAudio ? 'qrc:///icons/oxygen/32x32/actions/speaker.png' : pluginType === Shotcut.Metadata.Link ? 'qrc:///icons/oxygen/32x32/actions/chronometer.png' : pluginType === Shotcut.Metadata.FilterSet ? 'qrc:///icons/oxygen/32x32/places/server-database.png' : 'qrc:///icons/oxygen/32x32/devices/video-television.png'
+                icon.source: needsGpu ? 'qrc:///icons/dark/32x32/cpu.png' : isAudio ? 'qrc:///icons/dark/32x32/speaker.png' : pluginType === Shotcut.Metadata.Link ? 'qrc:///icons/dark/32x32/chronometer.png' : pluginType === Shotcut.Metadata.FilterSet ? 'qrc:///icons/dark/32x32/server-database.png' : 'qrc:///icons/dark/32x32/video-television.png'
             }
 
             Label {

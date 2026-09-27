@@ -133,7 +133,7 @@ Rectangle {
                 id: previousButton
 
                 icon.name: 'media-skip-backward'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/media-skip-backward.png'
+                icon.source: 'qrc:///icons/dark/32x32/media-skip-backward.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -157,7 +157,7 @@ Rectangle {
 
                 visible: delegateIndex >= 0
                 icon.name: 'chronometer'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/chronometer.png'
+                icon.source: 'qrc:///icons/dark/32x32/chronometer.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -187,7 +187,7 @@ Rectangle {
                 icon.height: 16
                 padding: 1
                 icon.name: 'edit-delete'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-delete.png'
+                icon.source: 'qrc:///icons/dark/32x32/edit-delete.png'
                 opacity: enabled ? 1 : 0.5
                 focusPolicy: Qt.NoFocus
                 onClicked: {
@@ -210,7 +210,7 @@ Rectangle {
                 id: nextButton
 
                 icon.name: 'media-skip-forward'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/media-skip-forward.png'
+                icon.source: 'qrc:///icons/dark/32x32/media-skip-forward.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -234,7 +234,7 @@ Rectangle {
 
                 visible: false && delegateIndex >= 0
                 icon.name: isLocked ? 'object-locked' : 'object-unlocked'
-                icon.source: isLocked ? 'qrc:///icons/oxygen/32x32/status/object-locked.png' : 'qrc:///icons/oxygen/32x32/status/object-unlocked.png'
+                icon.source: isLocked ? 'qrc:///icons/dark/32x32/object-locked.png' : 'qrc:///icons/dark/32x32/object-unlocked.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -260,7 +260,7 @@ Rectangle {
                     id: zoomFitKeyframeAction
 
                     icon.name: 'zoom-fit-best'
-                    icon.source: 'qrc:///icons/oxygen/32x32/actions/zoom-fit-best.png'
+                    icon.source: 'qrc:///icons/dark/32x32/zoom-fit-best.png'
                     onTriggered: {
                         zoomHeight = !zoomHeight;
                         root.paramRepeater.itemAt(delegateIndex).setMinMax(zoomHeight);

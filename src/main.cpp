@@ -545,6 +545,13 @@ int main(int argc, char **argv)
 #ifdef QT_DEBUG
     ::qputenv(kWatchdogEnvVar, "1");
 #endif
+    bool showSplash = !::qEnvironmentVariableIsSet("SHOTCUT_NO_SPLASH");
+    for (int i = 1; i < argc; i++) {
+        if (!::qstrcmp("--nosplash", argv[i])) {
+            showSplash = false;
+            break;
+        }
+    }
     if (::qEnvironmentVariableIsSet(kWatchdogEnvVar)) {
         QSplashScreen splash(QPixmap(":/icons/shotcut-logo-320x320.png"));
 
@@ -592,8 +599,10 @@ int main(int argc, char **argv)
         }
         Settings.log();
 
-        splash.show();
-        a.processEvents();
+        if (showSplash) {
+            splash.show();
+            a.processEvents();
+        }
 
         // Expire old items from the qmlcache
         auto dir = QDir(
@@ -632,7 +641,8 @@ int main(int argc, char **argv)
         a.mainWindow->show();
         a.processEvents();
         a.mainWindow->setFullScreen(a.isFullScreen);
-        splash.finish(a.mainWindow);
+        if (showSplash)
+            splash.finish(a.mainWindow);
 
         // Set up a local IPC server so the watchdog parent can forward
         // QFileOpenEvent file paths (e.g. files opened from Finder on macOS)

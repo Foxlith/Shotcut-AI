@@ -19,7 +19,7 @@ import Shotcut.Controls as Shotcut
 
 Shotcut.Button {
     icon.name: 'document-save'
-    icon.source: 'qrc:///icons/oxygen/32x32/actions/document-save.png'
+    icon.source: 'qrc:///icons/dark/32x32/document-save.png'
     implicitWidth: 20
     implicitHeight: 20
 

@@ -27,11 +27,12 @@ public:
     explicit DockToolBar(const QString &title, QWidget *parent = nullptr);
     void setAreaHint(Qt::ToolBarArea area);
 
+public slots:
+    void updateStyle();
+
 protected:
     void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
-
-private slots:
-    void updateStyle();
+    bool event(QEvent *event) Q_DECL_OVERRIDE;
 
 private:
     Qt::ToolBarArea m_area;

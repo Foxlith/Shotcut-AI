@@ -381,7 +381,7 @@ Item {
 
         Shotcut.Button {
             icon.name: 'document-open'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/document-open.png'
+            icon.source: 'qrc:///icons/dark/32x32/document-open.png'
             implicitWidth: 20
             implicitHeight: 20
             onClicked: selectAnalysisFile.open()

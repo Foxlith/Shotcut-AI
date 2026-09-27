@@ -56,3 +56,7 @@ CuteLogger/libCuteLogger.dll
 docs/qml-api/
 shotcut.code-workspace
 .qtcreator/
+.agents/
+__pycache__/
+*.pyc
+

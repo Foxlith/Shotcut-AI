@@ -121,7 +121,7 @@ Rectangle {
                 implicitWidth: 20
                 implicitHeight: 20
                 icon.name: 'edit-clear'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-clear.png'
+                icon.source: 'qrc:///icons/dark/32x32/edit-clear.png'
                 hoverEnabled: true
                 onClicked: searchField.text = ''
 
@@ -138,7 +138,7 @@ Rectangle {
                 id: closeButton
 
                 icon.name: 'window-close'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/window-close.png'
+                icon.source: 'qrc:///icons/dark/32x32/window-close.png'
                 padding: 2
                 implicitWidth: 20
                 implicitHeight: 20
@@ -170,7 +170,7 @@ Rectangle {
                 implicitWidth: 24
                 implicitHeight: 24
                 icon.name: 'run-build'
-                icon.source: 'qrc:///icons/oxygen/32x32/run-build.png'
+                icon.source: 'qrc:///icons/dark/32x32/run-build.png'
                 onClicked: application.showAddOnFiltersDialog()
 
                 Shotcut.HoverTip {
@@ -184,7 +184,7 @@ Rectangle {
                 checked: true
                 implicitWidth: 80
                 icon.name: 'bookmarks'
-                icon.source: 'qrc:///icons/oxygen/32x32/places/bookmarks.png'
+                icon.source: 'qrc:///icons/dark/32x32/bookmarks.png'
                 text: qsTr('Favorite')
                 display: AbstractButton.TextBesideIcon
                 ButtonGroup.group: typeGroup
@@ -212,7 +212,7 @@ Rectangle {
 
                     implicitWidth: 80
                     icon.name: 'video-television'
-                    icon.source: 'qrc:///icons/oxygen/32x32/devices/video-television.png'
+                    icon.source: 'qrc:///icons/dark/32x32/video-television.png'
                     text: qsTr('Video')
                     ButtonGroup.group: typeGroup
                     background: Rectangle {
@@ -347,7 +347,7 @@ Rectangle {
 
                 implicitWidth: 80
                 icon.name: 'speaker'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/speaker.png'
+                icon.source: 'qrc:///icons/dark/32x32/speaker.png'
                 text: qsTr('Audio')
                 ButtonGroup.group: typeGroup
                 onClicked: {
@@ -370,7 +370,7 @@ Rectangle {
                 implicitWidth: 80
                 visible: attachedfiltersmodel.supportsLinks
                 icon.name: 'chronometer'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/chronometer.png'
+                icon.source: 'qrc:///icons/dark/32x32/chronometer.png'
                 text: qsTr('Time')
                 ButtonGroup.group: typeGroup
                 onClicked: {
@@ -392,7 +392,7 @@ Rectangle {
 
                 implicitWidth: 80
                 icon.name: 'server-database'
-                icon.source: 'qrc:///icons/oxygen/32x32/places/server-database.png'
+                icon.source: 'qrc:///icons/dark/32x32/server-database.png'
                 text: qsTr('Sets')
                 ButtonGroup.group: typeGroup
                 onClicked: {
@@ -477,7 +477,7 @@ Rectangle {
 
                 property var current: metadatamodel.get(menuListView.currentIndex)
 
-                source: current ? (current.icon.toString().length ? current.icon : current.isAudio ? 'qrc:///icons/oxygen/32x32/actions/speaker.png' : current.type === Shotcut.Metadata.Link ? 'qrc:///icons/oxygen/32x32/actions/chronometer.png' : '') : ''
+                source: current ? (current.icon.toString().length ? current.icon : current.isAudio ? 'qrc:///icons/dark/32x32/speaker.png' : current.type === Shotcut.Metadata.Link ? 'qrc:///icons/dark/32x32/chronometer.png' : '') : ''
                 asynchronous: true
                 Layout.preferredWidth: parent.Layout.preferredHeight * sourceSize.width / sourceSize.height
                 Layout.preferredHeight: parent.Layout.preferredHeight

@@ -43,6 +43,9 @@
 #include <QClipboard>
 #include <QDebug>
 #include <QDir>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -50,6 +53,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
 #include <QSortFilterProxyModel>
@@ -335,6 +339,9 @@ PlaylistDock::PlaylistDock(QWidget *parent)
 {
     LOG_DEBUG() << "begin";
     ui->setupUi(this);
+    ui->dropZoneCard->installEventFilter(this);
+    ui->page->installEventFilter(this);
+    ui->dropZoneIconBtn->installEventFilter(this);
     QIcon icon = QIcon::fromTheme("view-media-playlist",
                                   QIcon(":/icons/oxygen/32x32/actions/view-media-playlist.png"));
     toggleViewAction()->setIcon(icon);
@@ -485,19 +492,16 @@ PlaylistDock::PlaylistDock(QWidget *parent)
     ui->filtersLayout->addWidget(toolbar);
 
     auto toolbar2 = new QToolBar(tr("Playlist Filters"));
-    QString styleSheet = QStringLiteral("QToolButton {"
-                                        "    background-color: palette(background);"
-                                        "    border-style: solid;"
-                                        "    border-width: 1px;"
-                                        "    border-radius: 3px;"
-                                        "    border-color: palette(shadow);"
-                                        "    color: palette(button-text);"
-                                        "}"
-                                        "QToolButton:checked {"
-                                        "    color:palette(highlighted-text);"
-                                        "    background-color:palette(highlight);"
-                                        "    border-color: palette(highlight);"
-                                        "}");
+    toolbar2->setObjectName("playlistFiltersToolbar");
+    QString styleSheet = QStringLiteral(
+        "QToolBar { background-color: transparent; border: none; padding: 0px; margin: 0px; spacing: 4px; }"
+        "QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
+        "QToolButton:hover { background-color: #262A33; color: #E8EAEE; border-color: #262A33; }"
+        "QToolButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
+        "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
+        "QToolButton:checked:hover, QToolButton[active=\"true\"]:hover { background-color: rgba(255, 122, 69, 0.28); color: #FF7A45; border: 1px solid #FF7A45; }"
+        "QToolButton:checked:pressed, QToolButton[active=\"true\"]:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+        "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: transparent; }");
     toolbar2->setStyleSheet(styleSheet);
     ui->filtersLayout->addItem(
         new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
@@ -1787,17 +1791,24 @@ void PlaylistDock::onPlaylistLoaded()
     bool nonEmptyModel = m_model.rowCount() > 0;
     Actions["playlistRemoveAllAction"]->setEnabled(nonEmptyModel);
     Actions["playlistSelectAllAction"]->setEnabled(nonEmptyModel);
+    if (!nonEmptyModel)
+        ui->stackedWidget->setCurrentIndex(0);
 }
 
 void PlaylistDock::onPlaylistModified()
 {
-    if (!m_blockResizeColumnsToContents) {
-        ui->tableView->resizeColumnsToContents();
-        m_blockResizeColumnsToContents = true;
-    }
     bool nonEmptyModel = m_model.rowCount() > 0;
+    if (nonEmptyModel) {
+        if (!m_blockResizeColumnsToContents) {
+            ui->tableView->resizeColumnsToContents();
+            m_blockResizeColumnsToContents = true;
+        }
+    } else {
+        m_blockResizeColumnsToContents = false;
+    }
     Actions["playlistRemoveAllAction"]->setEnabled(nonEmptyModel);
     Actions["playlistSelectAllAction"]->setEnabled(nonEmptyModel);
+    ui->stackedWidget->setCurrentIndex(nonEmptyModel ? 1 : 0);
 }
 
 void PlaylistDock::onPlaylistCleared()
@@ -1807,10 +1818,13 @@ void PlaylistDock::onPlaylistCleared()
     bool nonEmptyModel = m_model.rowCount() > 0;
     Actions["playlistRemoveAllAction"]->setEnabled(nonEmptyModel);
     Actions["playlistSelectAllAction"]->setEnabled(nonEmptyModel);
+    if (!nonEmptyModel)
+        ui->stackedWidget->setCurrentIndex(0);
 }
 
 void PlaylistDock::onPlaylistClosed()
 {
+    ui->stackedWidget->setCurrentIndex(0);
     QList<QTreeWidgetItem *> smartBins;
     for (int i = 0; i < SmartBinCount; ++i) {
         smartBins << ui->treeWidget->takeTopLevelItem(0);
@@ -1883,7 +1897,7 @@ void PlaylistDock::onMoveClip(int from, int to)
 
 void PlaylistDock::onPlayerDragStarted()
 {
-    if (isVisible())
+    if (isVisible() && m_model.rowCount() > 0)
         ui->stackedWidget->setCurrentIndex(1);
 }
 
@@ -2081,6 +2095,66 @@ void PlaylistDock::keyReleaseEvent(QKeyEvent *event)
     QDockWidget::keyReleaseEvent(event);
     if (!event->isAccepted())
         MAIN.keyReleaseEvent(event);
+}
+
+bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->dropZoneCard || watched == ui->page) {
+        if (event->type() == QEvent::DragEnter) {
+            auto dragEvent = static_cast<QDragEnterEvent *>(event);
+            if (dragEvent->mimeData() && (dragEvent->mimeData()->hasUrls() || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+                dragEvent->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::DragMove) {
+            auto dragEvent = static_cast<QDragMoveEvent *>(event);
+            if (dragEvent->mimeData() && (dragEvent->mimeData()->hasUrls() || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+                dragEvent->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::Drop) {
+            auto dropEvent = static_cast<QDropEvent *>(event);
+            if (dropEvent->mimeData() && (dropEvent->mimeData()->hasUrls() || dropEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+                onDropped(dropEvent->mimeData(), -1);
+                dropEvent->acceptProposedAction();
+                return true;
+            }
+        }
+    }
+
+    if (watched == ui->dropZoneCard) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                event->accept();
+                return true;
+            }
+        } else if (event->type() == QEvent::MouseButtonRelease) {
+            auto mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                if (ui->dropZoneCard->rect().contains(mouseEvent->pos())) {
+                    onAddFilesActionTriggered();
+                }
+                return true;
+            }
+        } else if (event->type() == QEvent::KeyPress) {
+            auto keyEvent = static_cast<QKeyEvent *>(event);
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Space) {
+                onAddFilesActionTriggered();
+                return true;
+            }
+        }
+    } else if (watched == ui->dropZoneIconBtn) {
+        if (event->type() == QEvent::KeyPress) {
+            auto keyEvent = static_cast<QKeyEvent *>(event);
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+                onAddFilesActionTriggered();
+                return true;
+            }
+        }
+    }
+
+    return QDockWidget::eventFilter(watched, event);
 }
 
 void PlaylistDock::onCopyActionTriggered()

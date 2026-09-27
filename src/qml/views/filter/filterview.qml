@@ -185,7 +185,7 @@ Rectangle {
 
             implicitWidth: height
             icon.name: 'list-add'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-add.png'
+            icon.source: 'qrc:///icons/dark/32x32/list-add.png'
             enabled: attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1 : 0.5
             onClicked: {
@@ -203,7 +203,7 @@ Rectangle {
 
             implicitWidth: height
             icon.name: 'list-remove'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-remove.png'
+            icon.source: 'qrc:///icons/dark/32x32/list-remove.png'
             enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1 : 0.5
             onClicked: {
@@ -227,7 +227,7 @@ Rectangle {
 
             implicitWidth: height
             icon.name: 'edit-copy'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-copy.png'
+            icon.source: 'qrc:///icons/dark/32x32/edit-copy.png'
             enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1 : 0.5
             onClicked: root.copyFilterRequested()
@@ -244,7 +244,7 @@ Rectangle {
             enabled: attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1 : 0.5
             icon.name: 'edit-paste'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-paste.png'
+            icon.source: 'qrc:///icons/dark/32x32/edit-paste.png'
             onClicked: attachedfiltersmodel.pasteFilters()
 
             Shotcut.HoverTip {
@@ -257,7 +257,7 @@ Rectangle {
 
             implicitWidth: height
             icon.name: 'server-database'
-            icon.source: 'qrc:///icons/oxygen/32x32/places/server-database.png'
+            icon.source: 'qrc:///icons/dark/32x32/server-database.png'
             enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1 : 0.5
             onClicked: copyFiltersDialog.show()
@@ -282,7 +282,7 @@ Rectangle {
                      && !attachedfiltersmodel.isTrackVolumeFilter(selectedIndex)
             opacity: enabled ? 1 : 0.5
             icon.name: 'lift'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/lift.png'
+            icon.source: 'qrc:///icons/dark/32x32/lift.png'
             onClicked: {
                 const newIndex = selectedIndex - 1;
                 attachedfiltersmodel.move(selectedIndex, newIndex);
@@ -303,7 +303,7 @@ Rectangle {
                      && !attachedfiltersmodel.isTrackVolumeFilter(selectedIndex)
             opacity: enabled ? 1 : 0.5
             icon.name: 'overwrite'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/overwrite.png'
+            icon.source: 'qrc:///icons/dark/32x32/overwrite.png'
             onClicked: {
                 const newIndex = selectedIndex + 1;
                 attachedfiltersmodel.move(selectedIndex, newIndex);
@@ -328,7 +328,7 @@ Rectangle {
 
             implicitWidth: height
             icon.name: 'window-close'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/window-close.png'
+            icon.source: 'qrc:///icons/dark/32x32/window-close.png'
             enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1 : 0.5
             onClicked: {

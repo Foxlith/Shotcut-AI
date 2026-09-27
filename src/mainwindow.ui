@@ -339,14 +339,17 @@
    <property name="windowTitle">
     <string>Toolbar</string>
    </property>
-   <property name="styleSheet">
-    <string notr="true">QToolButton:checked { color: palette(highlighted-text); background-color: palette(highlight); border: none; padding: 2px }</string>
-   </property>
    <property name="movable">
     <bool>false</bool>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonStyle::ToolButtonFollowStyle</enum>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>18</width>
+     <height>18</height>
+    </size>
    </property>
    <property name="floatable">
     <bool>false</bool>
@@ -360,26 +363,39 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <!-- Grupo 1: Archivo -->
    <addaction name="actionOpen"/>
    <addaction name="actionOpenOther2"/>
    <addaction name="actionSave"/>
+   <addaction name="separator"/>
+   <!-- Grupo 2: Deshacer/Rehacer -->
    <addaction name="undoStartSeparator"/>
    <addaction name="undoEndSeparator"/>
-   <addaction name="actionAudioMeter"/>
-   <addaction name="actionProperties"/>
-   <addaction name="actionRecent"/>
-   <addaction name="actionNotes"/>
-   <addaction name="actionPlaylist"/>
-   <addaction name="actionFiles"/>
+   <addaction name="separator"/>
+   <!-- Grupo 3: Paneles de Trabajo -->
    <addaction name="actionTimeline"/>
+   <addaction name="actionPlaylist"/>
    <addaction name="actionFilters"/>
-   <addaction name="actionMarkers"/>
    <addaction name="actionKeyframes"/>
-   <addaction name="actionHistory"/>
+   <addaction name="separator"/>
+   <!-- Grupo 4: Paneles Secundarios -->
+   <addaction name="actionProperties"/>
+   <addaction name="actionFiles"/>
+   <addaction name="actionMarkers"/>
+   <addaction name="actionSubtitles"/>
+   <addaction name="actionNotes"/>
+   <addaction name="separator"/>
+   <!-- Grupo 5: Monitoreo & Exportacion -->
+   <addaction name="actionAudioMeter"/>
    <addaction name="actionEncode"/>
    <addaction name="actionJobs"/>
-   <addaction name="actionSubtitles"/>
+   <addaction name="separator"/>
+   <!-- Grupo 6: Utilidades -->
+   <addaction name="actionRecent"/>
+   <addaction name="actionHistory"/>
    <addaction name="actionWhatsThis"/>
+   <addaction name="separator"/>
+   <!-- Grupo 7: Layouts -->
    <addaction name="dummyAction"/>
    <addaction name="actionLayoutLogging"/>
    <addaction name="actionLayoutEditing"/>
@@ -392,7 +408,7 @@
   <action name="actionOpen">
    <property name="icon">
     <iconset theme="document-open" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/document-open.png</normaloff>:/icons/oxygen/32x32/actions/document-open.png</iconset>
+     <normaloff>:/icons/dark/32x32/document-open.png</normaloff>:/icons/dark/32x32/document-open.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Open File...</string>
@@ -451,7 +467,7 @@
   <action name="actionSave">
    <property name="icon">
     <iconset theme="document-save" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/document-save.png</normaloff>:/icons/oxygen/32x32/actions/document-save.png</iconset>
+     <normaloff>:/icons/dark/32x32/document-save.png</normaloff>:/icons/dark/32x32/document-save.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Save</string>
@@ -486,7 +502,7 @@
   <action name="actionEncode">
    <property name="icon">
     <iconset theme="media-record" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/media-record.png</normaloff>:/icons/oxygen/32x32/actions/media-record.png</iconset>
+     <normaloff>:/icons/dark/32x32/media-record.png</normaloff>:/icons/dark/32x32/media-record.png</iconset>
    </property>
    <property name="text">
     <string>Export</string>
@@ -511,7 +527,7 @@
   <action name="actionEnterFullScreen">
    <property name="icon">
     <iconset theme="view-fullscreen" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/view-fullscreen.png</normaloff>:/icons/oxygen/32x32/actions/view-fullscreen.png</iconset>
+     <normaloff>:/icons/dark/32x32/view-fullscreen.png</normaloff>:/icons/dark/32x32/view-fullscreen.png</iconset>
    </property>
    <property name="text">
     <string>Enter Full Screen</string>
@@ -523,7 +539,7 @@
   <action name="actionAudioMeter">
    <property name="icon">
     <iconset theme="audio-meter" resource="../icons/resources.qrc">
-     <normaloff>:/icons/light/32x32/audio-meter.png</normaloff>:/icons/light/32x32/audio-meter.png</iconset>
+     <normaloff>:/icons/dark/32x32/audio-meter.png</normaloff>:/icons/dark/32x32/audio-meter.png</iconset>
    </property>
    <property name="text">
     <string>Peak Meter</string>
@@ -538,7 +554,7 @@
   <action name="actionProperties">
    <property name="icon">
     <iconset theme="dialog-information" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/status/dialog-information.png</normaloff>:/icons/oxygen/32x32/status/dialog-information.png</iconset>
+     <normaloff>:/icons/dark/32x32/dialog-information.png</normaloff>:/icons/dark/32x32/dialog-information.png</iconset>
    </property>
    <property name="text">
     <string>Properties</string>
@@ -550,7 +566,7 @@
   <action name="actionRecent">
    <property name="icon">
     <iconset theme="document-open-recent" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/document-open-recent.png</normaloff>:/icons/oxygen/32x32/actions/document-open-recent.png</iconset>
+     <normaloff>:/icons/dark/32x32/document-open-recent.png</normaloff>:/icons/dark/32x32/document-open-recent.png</iconset>
    </property>
    <property name="text">
     <string>Recent</string>
@@ -562,7 +578,7 @@
   <action name="actionPlaylist">
    <property name="icon">
     <iconset theme="view-media-playlist" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/view-media-playlist.png</normaloff>:/icons/oxygen/32x32/actions/view-media-playlist.png</iconset>
+     <normaloff>:/icons/dark/32x32/view-media-playlist.png</normaloff>:/icons/dark/32x32/view-media-playlist.png</iconset>
    </property>
    <property name="text">
     <string>Playlist</string>
@@ -574,7 +590,7 @@
   <action name="actionHistory">
    <property name="icon">
     <iconset theme="view-history" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/view-history.png</normaloff>:/icons/oxygen/32x32/actions/view-history.png</iconset>
+     <normaloff>:/icons/dark/32x32/view-history.png</normaloff>:/icons/dark/32x32/view-history.png</iconset>
    </property>
    <property name="text">
     <string>History</string>
@@ -772,7 +788,7 @@
   <action name="actionFilters">
    <property name="icon">
     <iconset theme="view-filter" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/view-filter.png</normaloff>:/icons/oxygen/32x32/actions/view-filter.png</iconset>
+     <normaloff>:/icons/dark/32x32/view-filter.png</normaloff>:/icons/dark/32x32/view-filter.png</iconset>
    </property>
    <property name="text">
     <string>Filters</string>
@@ -832,7 +848,7 @@
   <action name="actionTimeline">
    <property name="icon">
     <iconset theme="view-time-schedule" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/view-time-schedule.png</normaloff>:/icons/oxygen/32x32/actions/view-time-schedule.png</iconset>
+     <normaloff>:/icons/dark/32x32/view-time-schedule.png</normaloff>:/icons/dark/32x32/view-time-schedule.png</iconset>
    </property>
    <property name="text">
     <string>Timeline</string>
@@ -957,7 +973,8 @@
   </action>
   <action name="actionClose">
    <property name="icon">
-    <iconset theme="window-close"/>
+    <iconset theme="window-close" resource="../icons/resources.qrc">
+     <normaloff>:/icons/dark/32x32/window-close.png</normaloff>:/icons/dark/32x32/window-close.png</iconset>
    </property>
    <property name="text">
     <string>Close</string>
@@ -1024,7 +1041,7 @@
   <action name="actionKeyframes">
    <property name="icon">
     <iconset theme="chronometer" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/chronometer.png</normaloff>:/icons/oxygen/32x32/actions/chronometer.png</iconset>
+     <normaloff>:/icons/dark/32x32/chronometer.png</normaloff>:/icons/dark/32x32/chronometer.png</iconset>
    </property>
    <property name="text">
     <string>Keyframes</string>
@@ -1151,7 +1168,7 @@
   <action name="actionOpenOther2">
    <property name="icon">
     <iconset theme="document-new" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/document-new.png</normaloff>:/icons/oxygen/32x32/actions/document-new.png</iconset>
+     <normaloff>:/icons/dark/32x32/document-new.png</normaloff>:/icons/dark/32x32/document-new.png</iconset>
    </property>
    <property name="text">
     <string>Generate</string>
@@ -1190,7 +1207,7 @@
   <action name="actionJobs">
    <property name="icon">
     <iconset theme="run-build" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/run-build.png</normaloff>:/icons/oxygen/32x32/actions/run-build.png</iconset>
+     <normaloff>:/icons/dark/32x32/run-build.png</normaloff>:/icons/dark/32x32/run-build.png</iconset>
    </property>
    <property name="text">
     <string>Jobs</string>
@@ -1202,7 +1219,7 @@
   <action name="actionMarkers">
    <property name="icon">
     <iconset theme="marker" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/marker.png</normaloff>:/icons/oxygen/32x32/actions/marker.png</iconset>
+     <normaloff>:/icons/dark/32x32/marker.png</normaloff>:/icons/dark/32x32/marker.png</iconset>
    </property>
    <property name="text">
     <string>Markers</string>
@@ -1214,7 +1231,7 @@
   <action name="actionNotes">
    <property name="icon">
     <iconset theme="document-edit" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/document-edit.png</normaloff>:/icons/oxygen/32x32/actions/document-edit.png</iconset>
+     <normaloff>:/icons/dark/32x32/document-edit.png</normaloff>:/icons/dark/32x32/document-edit.png</iconset>
    </property>
    <property name="text">
     <string>Notes</string>
@@ -1226,7 +1243,7 @@
   <action name="actionSubtitles">
    <property name="icon">
     <iconset theme="subtitle" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/subtitle.png</normaloff>:/icons/oxygen/32x32/actions/subtitle.png</iconset>
+     <normaloff>:/icons/dark/32x32/subtitle.png</normaloff>:/icons/dark/32x32/subtitle.png</iconset>
    </property>
    <property name="text">
     <string>Subtitles</string>
@@ -1539,7 +1556,7 @@
   <action name="actionFiles">
    <property name="icon">
     <iconset theme="system-file-manager" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/apps/system-file-manager.png</normaloff>:/icons/oxygen/32x32/apps/system-file-manager.png</iconset>
+     <normaloff>:/icons/dark/32x32/system-file-manager.png</normaloff>:/icons/dark/32x32/system-file-manager.png</iconset>
    </property>
    <property name="text">
     <string>Files</string>
@@ -1548,7 +1565,7 @@
   <action name="actionWhatsThis">
    <property name="icon">
     <iconset theme="help-contextual" resource="../icons/resources.qrc">
-     <normaloff>:/icons/oxygen/32x32/actions/help-contextual.png</normaloff>:/icons/oxygen/32x32/actions/help-contextual.png</iconset>
+     <normaloff>:/icons/dark/32x32/help-contextual.png</normaloff>:/icons/dark/32x32/help-contextual.png</iconset>
    </property>
    <property name="text">
     <string>What's This?</string>

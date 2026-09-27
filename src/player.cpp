@@ -241,68 +241,68 @@ Player::Player(QWidget *parent)
     m_zoomMenu = new QMenu(this);
     m_zoomMenu
         ->addAction(QIcon::fromTheme("zoom-fit-best",
-                                     QIcon(":/icons/oxygen/32x32/actions/zoom-fit-best")),
+                                     QIcon(":/icons/dark/32x32/zoom-fit-best.png")),
                     tr("Zoom Fit"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(0.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/oxygen/32x32/actions/zoom-out")),
+        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/dark/32x32/zoom-out.png")),
                     tr("Zoom 10%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(0.1f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/oxygen/32x32/actions/zoom-out")),
+        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/dark/32x32/zoom-out.png")),
                     tr("Zoom 25%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(0.25f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/oxygen/32x32/actions/zoom-out")),
+        ->addAction(QIcon::fromTheme("zoom-out", QIcon(":/icons/dark/32x32/zoom-out.png")),
                     tr("Zoom 50%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(0.5f);
     m_zoomMenu
         ->addAction(QIcon::fromTheme("zoom-original",
-                                     QIcon(":/icons/oxygen/32x32/actions/zoom-original")),
+                                     QIcon(":/icons/dark/32x32/zoom-original.png")),
                     tr("Zoom 100%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(1.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 200%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(2.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 300%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(3.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 400%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(4.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 500%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(5.0f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 750%"),
                     this,
                     SLOT(onZoomTriggered()))
         ->setData(7.5f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/oxygen/32x32/actions/zoom-in")),
+        ->addAction(QIcon::fromTheme("zoom-in", QIcon(":/icons/dark/32x32/zoom-in.png")),
                     tr("Zoom 1000%"),
                     this,
                     SLOT(onZoomTriggered()))
@@ -375,7 +375,7 @@ Player::Player(QWidget *parent)
     connect(m_gridButton, SIGNAL(toggled(bool)), SLOT(toggleGrid(bool)));
     m_gridButton->setMenu(gridMenu);
     m_gridButton->setIcon(
-        QIcon::fromTheme("view-grid", QIcon(":/icons/oxygen/32x32/actions/view-grid")));
+        QIcon::fromTheme("view-grid", QIcon(":/icons/dark/32x32/view-grid.png")));
     m_gridButton->setPopupMode(QToolButton::MenuButtonPopup);
     m_gridButton->setCheckable(true);
     m_gridButton->setToolTip(tr("Toggle grid display on the player"));
@@ -1225,22 +1225,8 @@ void Player::setLoopRange(int start, int end)
 
 void Player::layoutToolbars()
 {
-    int totalWidth = m_currentDurationToolBar->sizeHint().width()
-                     + m_controlsToolBar->sizeHint().width() + m_optionsToolBar->sizeHint().width()
-                     + m_inSelectedToolBar->sizeHint().width() + 20;
-    bool twoRowsInUse = m_toolRow2->count() > 0;
-
-    if (m_toolRow1->count() > 0) {
-        if (totalWidth <= this->width() && !twoRowsInUse) {
-            // Everything still fits in one toolbar. Nothing to change.
-            return;
-        } else if (totalWidth > this->width() && twoRowsInUse) {
-            // Two toolbars still needed. Nothing to change.
-            return;
-        }
-    }
-
-    // Remove all the widgets from the tool bar area
+    // --- SHOTCUT AI: Always use single-row transport bar for clean CapCut-like UX ---
+    // Remove all existing widgets from both rows
     QLayoutItem *child;
     while ((child = m_toolRow1->takeAt(0)) != nullptr) {
         QWidget *widget = child->widget();
@@ -1257,40 +1243,20 @@ void Player::layoutToolbars()
         delete child;
     }
 
+    // Always use one compact row
     QWidget *spacer;
-    if (totalWidth <= this->width()) {
-        // Use one row
-        m_toolRow1->addWidget(m_currentDurationToolBar);
-        spacer = new QWidget(this);
-        spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        spacer->setObjectName("spacerLeft");
-        m_toolRow1->addWidget(spacer);
-        m_toolRow1->addWidget(m_controlsToolBar);
-        m_toolRow1->addWidget(m_optionsToolBar);
-        spacer = new QWidget(this);
-        spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        spacer->setObjectName("spacerRight");
-        m_toolRow1->addWidget(spacer);
-        m_toolRow1->addWidget(m_inSelectedToolBar);
-    } else {
-        // Use two rows
-        spacer = new QWidget(this);
-        spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        spacer->setObjectName("spacerLeft");
-        m_toolRow1->addWidget(spacer);
-        m_toolRow1->addWidget(m_controlsToolBar);
-        m_toolRow1->addWidget(m_optionsToolBar);
-        spacer = new QWidget(this);
-        spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        spacer->setObjectName("spacerRight");
-        m_toolRow1->addWidget(spacer);
-        m_toolRow2->addWidget(m_currentDurationToolBar);
-        spacer = new QWidget(this);
-        spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        spacer->setObjectName("spacerMiddle");
-        m_toolRow2->addWidget(spacer);
-        m_toolRow2->addWidget(m_inSelectedToolBar);
-    }
+    m_toolRow1->addWidget(m_currentDurationToolBar);
+    spacer = new QWidget(this);
+    spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+    spacer->setObjectName("spacerLeft");
+    m_toolRow1->addWidget(spacer);
+    m_toolRow1->addWidget(m_controlsToolBar);
+    m_toolRow1->addWidget(m_optionsToolBar);
+    spacer = new QWidget(this);
+    spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+    spacer->setObjectName("spacerRight");
+    m_toolRow1->addWidget(spacer);
+    m_toolRow1->addWidget(m_inSelectedToolBar);
 }
 
 void Player::seekBy(int frames)

@@ -608,7 +608,7 @@ Shotcut.KeyframableFilter {
             }
 
             Shotcut.Button {
-                icon.source: 'qrc:///icons/dark/32x32/media-playback-pause'
+                icon.source: 'qrc:///icons/dark/32x32/media-playback-pause.png'
                 implicitWidth: 20
                 implicitHeight: 20
                 onClicked: {

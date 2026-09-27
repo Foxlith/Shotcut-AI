@@ -252,7 +252,7 @@ Shotcut.VuiBase {
                         visible: false
 
                         action: Action {
-                            icon.source: 'qrc:///icons/oxygen/32x32/actions/show-menu.png'
+                            icon.source: 'qrc:///icons/dark/32x32/show-menu.png'
                         }
                     }
 
@@ -268,7 +268,7 @@ Shotcut.VuiBase {
 
                         action: Action {
                             icon.name: 'show-menu'
-                            icon.source: 'qrc:///icons/oxygen/32x32/actions/show-menu.png'
+                            icon.source: 'qrc:///icons/dark/32x32/show-menu.png'
                             onTriggered: menu.popup()
                         }
                     }
@@ -329,7 +329,7 @@ Shotcut.VuiBase {
 
                         action: Action {
                             icon.name: 'font'
-                            icon.source: 'qrc:///icons/oxygen/32x32/actions/font.png'
+                            icon.source: 'qrc:///icons/dark/32x32/font.png'
                             onTriggered: {
                                 fontDialog.selectedFont.family = document.fontFamily;
                                 fontDialog.selectedFont.styleName = document.fontStyleName;
@@ -488,7 +488,7 @@ Shotcut.VuiBase {
 
                         action: Action {
                             icon.name: toolbar.expanded ? 'media-seek-backward' : 'media-seek-forward'
-                            icon.source: toolbar.expanded ? 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png' : 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png'
+                            icon.source: toolbar.expanded ? 'qrc:///icons/dark/32x32/media-seek-backward.png' : 'qrc:///icons/dark/32x32/media-seek-backward.png'
                             onTriggered: {
                                 toolbar.expanded = !toolbar.expanded;
                                 filter.set('_shotcut:toolbarCollapsed', !toolbar.expanded);
@@ -594,7 +594,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Left')
         icon.name: 'format-justify-left'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-left.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-justify-left.png'
         onTriggered: document.alignment = Qt.AlignLeft
         checkable: true
         checked: document.alignment == Qt.AlignLeft
@@ -605,7 +605,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Center')
         icon.name: 'format-justify-center'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-center.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-justify-center.png'
         onTriggered: document.alignment = Qt.AlignHCenter
         checkable: true
         checked: document.alignment == Qt.AlignHCenter
@@ -616,7 +616,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Right')
         icon.name: 'format-justify-right'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-right.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-justify-right.png'
         onTriggered: document.alignment = Qt.AlignRight
         checkable: true
         checked: document.alignment == Qt.AlignRight
@@ -627,7 +627,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Justify')
         icon.name: 'format-justify-fill'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-fill.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-justify-fill.png'
         onTriggered: document.alignment = Qt.AlignJustify
         checkable: true
         checked: document.alignment == Qt.AlignJustify
@@ -638,7 +638,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Bold')
         icon.name: 'format-text-bold'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-text-bold.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-text-bold.png'
         onTriggered: document.bold = !document.bold
         checkable: true
         checked: document.bold
@@ -649,7 +649,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Italic')
         icon.name: 'format-text-italic'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-text-italic.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-text-italic.png'
         onTriggered: document.italic = !document.italic
         checkable: true
         checked: document.italic
@@ -660,7 +660,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Underline')
         icon.name: 'format-text-underline'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-text-underline.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-text-underline.png'
         onTriggered: document.underline = !document.underline
         checkable: true
         checked: document.underline
@@ -671,7 +671,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Font')
         icon.name: 'font'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/font.png'
+        icon.source: 'qrc:///icons/dark/32x32/font.png'
         onTriggered: {
             fontDialog.selectedFont.family = document.fontFamily;
             fontDialog.selectedFont.styleName = document.fontStyleName;
@@ -687,7 +687,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Decrease Indent')
         icon.name: 'format-indent-less'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-less.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-indent-less.png'
         onTriggered: document.indentLess()
     }
 
@@ -696,7 +696,7 @@ Shotcut.VuiBase {
 
         text: qsTr('Insert Indent')
         icon.name: 'format-indent-more'
-        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-more.png'
+        icon.source: 'qrc:///icons/dark/32x32/format-indent-more.png'
         onTriggered: document.indentMore()
     }
 

@@ -256,7 +256,7 @@ Shotcut.KeyframableFilter {
 
             Shotcut.Button {
                 icon.name: 'insert'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/insert.png'
+                icon.source: 'qrc:///icons/dark/32x32/insert.png'
                 implicitWidth: 20
                 implicitHeight: 20
                 onClicked: startSpinner.setValueSeconds((producer.position - (filter.in - producer.in)) / profile.fps)
@@ -293,7 +293,7 @@ Shotcut.KeyframableFilter {
 
             Shotcut.Button {
                 icon.name: 'insert'
-                icon.source: 'qrc:///icons/oxygen/32x32/actions/insert.png'
+                icon.source: 'qrc:///icons/dark/32x32/insert.png'
                 implicitWidth: 20
                 implicitHeight: 20
                 onClicked: {

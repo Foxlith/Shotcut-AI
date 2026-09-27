@@ -28,10 +28,10 @@ Rectangle {
     id: root
 
     property int headerWidth: multitrack.trackHeaderWidth
-    property color selectedTrackColor: Qt.rgba(0.8, 0.8, 0, 0.3)
+    property color selectedTrackColor: Qt.rgba(32/255, 230/255, 197/255, 0.2)
     property alias trackCount: tracksRepeater.count
     property bool stopScrolling: false
-    property color shotcutBlue: Qt.rgba(23 / 255, 92 / 255, 118 / 255, 1)
+    property color shotcutBlue: Qt.rgba(32 / 255, 230 / 255, 197 / 255, 1)
     property color adjustmentClipColor: Qt.rgba(92 / 255, 72 / 255, 23 / 255, 1)
     property var dragDelta
     property int inlineAudioControlsThreshold: 60
@@ -269,7 +269,7 @@ Rectangle {
 
                     action: Action {
                         icon.name: 'view-filter'
-                        icon.source: 'qrc:///icons/oxygen/32x32/status/view-filter.png'
+                        icon.source: 'qrc:///icons/dark/32x32/view-filter.png'
                     }
                 }
             }

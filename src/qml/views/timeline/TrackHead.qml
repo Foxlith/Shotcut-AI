@@ -416,7 +416,7 @@ Rectangle {
                 id: lockButton
 
                 icon.name: isLocked ? 'object-locked' : 'object-unlocked'
-                icon.source: isLocked ? 'qrc:///icons/oxygen/32x32/status/object-locked.png' : 'qrc:///icons/oxygen/32x32/status/object-unlocked.png'
+                icon.source: isLocked ? 'qrc:///icons/dark/32x32/object-locked.png' : 'qrc:///icons/dark/32x32/object-unlocked.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -453,7 +453,7 @@ Rectangle {
                 id: volumeButton
 
                 icon.name: isMute ? 'audio-volume-muted' : 'player-volume'
-                icon.source: isMute ? 'qrc:///icons/oxygen/32x32/status/audio-volume-muted.png' : 'qrc:///icons/oxygen/32x32/actions/player-volume.png'
+                icon.source: isMute ? 'qrc:///icons/dark/32x32/audio-volume-muted.png' : 'qrc:///icons/dark/32x32/player-volume.png'
                 icon.width: 16
                 icon.height: 16
                 padding: 1
@@ -503,7 +503,7 @@ Rectangle {
 
                             Layout.alignment: Qt.AlignVCenter
                             icon.name: isMute ? 'audio-volume-muted' : 'audio-volume-high'
-                            icon.source: isMute ? 'qrc:///icons/oxygen/32x32/status/audio-volume-muted.png' : 'qrc:///icons/oxygen/32x32/status/audio-volume-high.png'
+                            icon.source: isMute ? 'qrc:///icons/dark/32x32/audio-volume-muted.png' : 'qrc:///icons/dark/32x32/audio-volume-high.png'
                             icon.width: 16
                             icon.height: 16
                             width: volumeButton.width
@@ -603,7 +603,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: isVideo
                     icon.name: isHidden ? 'layer-visible-off' : 'layer-visible-on'
-                    icon.source: isHidden ? 'qrc:///icons/oxygen/32x32/actions/layer-visible-off.png' : 'qrc:///icons/oxygen/32x32/actions/layer-visible-on.png'
+                    icon.source: isHidden ? 'qrc:///icons/dark/32x32/layer-visible-off.png' : 'qrc:///icons/dark/32x32/layer-visible-on.png'
                     icon.width: 16
                     icon.height: 16
                     padding: 1
@@ -636,7 +636,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: isFiltered
                     icon.name: 'view-filter'
-                    icon.source: 'qrc:///icons/oxygen/32x32/status/view-filter.png'
+                    icon.source: 'qrc:///icons/dark/32x32/view-filter.png'
                     icon.width: 16
                     icon.height: 16
                     padding: 1

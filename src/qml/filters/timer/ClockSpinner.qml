@@ -113,7 +113,7 @@ Item {
             id: decrementButton
 
             icon.name: 'list-remove'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-remove.png'
+            icon.source: 'qrc:///icons/dark/32x32/list-remove.png'
             implicitWidth: 20
             implicitHeight: 20
 
@@ -142,7 +142,7 @@ Item {
             id: incrementButton
 
             icon.name: 'list-add'
-            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-add.png'
+            icon.source: 'qrc:///icons/dark/32x32/list-add.png'
             implicitWidth: 20
             implicitHeight: 20
 

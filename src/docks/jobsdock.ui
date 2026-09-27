@@ -104,7 +104,7 @@
         </property>
         <property name="icon">
          <iconset theme="show-menu" resource="../../icons/resources.qrc">
-          <normaloff>:/icons/light/32x32/show-menu.png</normaloff>:/icons/light/32x32/show-menu.png</iconset>
+          <normaloff>:/icons/dark/32x32/show-menu.png</normaloff>:/icons/dark/32x32/show-menu.png</iconset>
         </property>
        </widget>
       </item>

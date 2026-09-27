@@ -30,7 +30,7 @@ JobsDock::JobsDock(QWidget *parent)
 {
     LOG_DEBUG() << "begin";
     ui->setupUi(this);
-    QIcon icon = QIcon::fromTheme("run-build", QIcon(":/icons/oxygen/32x32/actions/run-builld.png"));
+    QIcon icon = QIcon::fromTheme("run-build", QIcon(":/icons/dark/32x32/run-build.png"));
     toggleViewAction()->setIcon(icon);
     ui->treeView->setModel(&JOBS);
     QHeaderView *header = ui->treeView->header();

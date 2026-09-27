@@ -9,7 +9,7 @@ Metadata {
     objectName: "audioGain"
     keywords: qsTr('loudness', 'search keywords for the Gain/Volume audio filter') + ' gain volume'
     qml: "ui.qml"
-    icon: 'qrc:///icons/oxygen/32x32/status/audio-volume-high.png'
+    icon: 'qrc:///icons/dark/32x32/audio-volume-high.png'
     isFavorite: true
     help: 'https://forum.shotcut.org/t/gain-volume-audio-filter/12906/1'
 

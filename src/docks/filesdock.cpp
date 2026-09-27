@@ -660,19 +660,16 @@ FilesDock::FilesDock(QWidget *parent)
     ui->locationsLayout->insertWidget(1, toolbar);
 
     auto toolbar2 = new QToolBar(tr("Files Filters"));
-    QString styleSheet = QStringLiteral("QToolButton {"
-                                        "    background-color: palette(background);"
-                                        "    border-style: solid;"
-                                        "    border-width: 1px;"
-                                        "    border-radius: 3px;"
-                                        "    border-color: palette(shadow);"
-                                        "    color: palette(button-text);"
-                                        "}"
-                                        "QToolButton:checked {"
-                                        "    color:palette(highlighted-text);"
-                                        "    background-color:palette(highlight);"
-                                        "    border-color: palette(highlight);"
-                                        "}");
+    toolbar2->setObjectName("filesFiltersToolbar");
+    QString styleSheet = QStringLiteral(
+        "QToolBar { background-color: transparent; border: none; padding: 0px; margin: 0px; spacing: 4px; }"
+        "QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
+        "QToolButton:hover { background-color: #262A33; color: #E8EAEE; border-color: #262A33; }"
+        "QToolButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
+        "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
+        "QToolButton:checked:hover, QToolButton[active=\"true\"]:hover { background-color: rgba(255, 122, 69, 0.28); color: #FF7A45; border: 1px solid #FF7A45; }"
+        "QToolButton:checked:pressed, QToolButton[active=\"true\"]:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+        "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: transparent; }");
     toolbar2->setStyleSheet(styleSheet);
     ui->filtersLayout->addItem(
         new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));

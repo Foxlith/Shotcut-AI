@@ -409,7 +409,7 @@ Item {
 
             visible: fileLabel.text.length > 0
             icon.name: 'bookmarks'
-            icon.source: 'qrc:///icons/oxygen/32x32/places/bookmarks.png'
+            icon.source: 'qrc:///icons/dark/32x32/bookmarks.png'
             implicitWidth: 32
             Layout.alignment: Qt.AlignRight
             onClicked: {
