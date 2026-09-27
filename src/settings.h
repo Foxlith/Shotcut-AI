@@ -110,6 +110,10 @@ public:
     /// Whether the Grafito theme is active (set by MainWindow::changeTheme()).
     bool isGrafito() const { return m_isGrafito; }
     void setGrafito(bool grafito) { m_isGrafito = grafito; }
+    /// The AI agent server (MCP and WebSocket) on this computer; takes effect after a restart.
+    bool aiServerEnabled() const;
+    void setAiServerEnabled(bool);
+    int aiServerPort() const;
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;

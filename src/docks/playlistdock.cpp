@@ -1407,6 +1407,14 @@ void PlaylistDock::moveClipDown()
     }
 }
 
+void PlaylistDock::appendFiles(const QStringList &paths)
+{
+    QList<QUrl> urls;
+    for (const auto &path : paths)
+        urls << QUrl::fromLocalFile(path);
+    addFiles(-1, urls);
+}
+
 void PlaylistDock::addFiles(int row, const QList<QUrl> &urls)
 {
     auto resetIndex = true;

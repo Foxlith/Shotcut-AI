@@ -72,6 +72,12 @@ public:
     void setSelection(QList<QPoint> selection = QList<QPoint>(),
                       int trackIndex = -1,
                       bool isMultitrack = false);
+    /// Emits the selection now instead of after the short delay that groups selection
+    /// changes, so that the filters of a clip selected by code are ready at once.
+    void flushSelection();
+    /// Appends the clip in \a xml (MLT XML) to the end of \a trackIndex, adding the first
+    /// tracks to an empty timeline like append() (used by the AI tools).
+    void appendXml(int trackIndex, const QString &xml);
     QVariantList selectionForJS() const;
     const QList<QPoint> selection() const;
     const QVector<QUuid> selectionUuids();

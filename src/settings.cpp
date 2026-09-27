@@ -298,6 +298,22 @@ void ShotcutSettings::setAccentColor(const QString &s)
     emit accentColorChanged();
 }
 
+bool ShotcutSettings::aiServerEnabled() const
+{
+    return settings.value("aiServer/enabled", true).toBool();
+}
+
+void ShotcutSettings::setAiServerEnabled(bool enabled)
+{
+    settings.setValue("aiServer/enabled", enabled);
+}
+
+int ShotcutSettings::aiServerPort() const
+{
+    const int port = settings.value("aiServer/port", 9999).toInt();
+    return (port > 0 && port < 65536) ? port : 9999;
+}
+
 QThread::Priority ShotcutSettings::jobPriority() const
 {
     const auto priority = settings.value("jobPriority", "low").toString();

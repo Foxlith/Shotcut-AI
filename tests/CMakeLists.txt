@@ -18,3 +18,11 @@ add_executable(test_mix_transition_order
 target_include_directories(test_mix_transition_order PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(test_mix_transition_order PRIVATE Qt6::Core Qt6::Test PkgConfig::mlt++)
 add_test(NAME mix_transition_order COMMAND test_mix_transition_order)
+
+add_executable(test_mcp_protocol
+  test_mcp_protocol.cpp
+  ${CMAKE_SOURCE_DIR}/src/ai/mcpprotocol.cpp
+)
+target_include_directories(test_mcp_protocol PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_mcp_protocol PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME mcp_protocol COMMAND test_mcp_protocol)

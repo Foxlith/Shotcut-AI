@@ -447,7 +447,7 @@ private slots:
     void on_actionLeaveSafeMode_triggered();
 
 private:
-    class AIAgentServer *m_aiAgentServer;
+    class AIAgentServer *m_aiAgentServer{nullptr};
 };
 
 #define MAIN MainWindow::singleton()

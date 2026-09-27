@@ -3227,6 +3227,29 @@ void TimelineDock::copy(int trackIndex, int clipIndex)
     }
 }
 
+void TimelineDock::flushSelection()
+{
+    if (m_selectionSignalTimer.isActive()) {
+        m_selectionSignalTimer.stop();
+        emit selectionChanged();
+        emitSelectedFromSelection();
+    }
+}
+
+void TimelineDock::appendXml(int trackIndex, const QString &xml)
+{
+    if (m_model.trackList().size() == 0) {
+        if (Settings.timelineAutoAddTracks())
+            addAudioTrack();
+        addVideoTrack();
+    }
+    MAIN.undoStack()->push(new Timeline::AppendCommand(m_model, trackIndex, xml));
+    if (m_position < 0) {
+        // This happens when appending in a new session.
+        MAIN.openCut(new Mlt::Producer(m_model.tractor()));
+    }
+}
+
 void TimelineDock::emitSelectedFromSelection()
 {
     if (!m_model.trackList().count()) {
