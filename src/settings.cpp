@@ -305,6 +305,16 @@ void ShotcutSettings::setShowToolBar(bool b)
     settings.setValue("toolBar", b);
 }
 
+bool ShotcutSettings::showMenuBar() const
+{
+    return settings.value("menuBar", false).toBool();
+}
+
+void ShotcutSettings::setShowMenuBar(bool b)
+{
+    settings.setValue("menuBar", b);
+}
+
 bool ShotcutSettings::textUnderIcons() const
 {
     return settings.value("textUnderIcons", true).toBool();

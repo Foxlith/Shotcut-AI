@@ -1,10 +1,10 @@
 #ifndef AIAGENTSERVER_H
 #define AIAGENTSERVER_H
 
-#include <QObject>
-#include <QtWebSockets/QWebSocketServer>
-#include <QtWebSockets/QWebSocket>
 #include <QList>
+#include <QObject>
+#include <QtWebSockets/QWebSocket>
+#include <QtWebSockets/QWebSocketServer>
 
 class AIAgentServer : public QObject
 {

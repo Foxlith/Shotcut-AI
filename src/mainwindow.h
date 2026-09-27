@@ -57,6 +57,9 @@ class NotesDock;
 class SubtitlesDock;
 class ScreenCapture;
 class HdrPreviewWindow;
+class QLabel;
+class QMenu;
+class QToolButton;
 
 class MainWindow : public QMainWindow
 {
@@ -138,6 +141,7 @@ protected:
     void showEvent(QShowEvent *);
     void hideEvent(QHideEvent *event);
     void resizeEvent(QResizeEvent *event);
+    void changeEvent(QEvent *event);
 
 private:
     void connectFocusSignals();
@@ -148,6 +152,15 @@ private:
     void setupLayoutSwitcher();
     void centerLayoutInRemainingToolbarSpace();
     void setupAndConnectDocks();
+    void setupTopBar();
+    void setupMainMenu();
+    void setupSideBar();
+    void registerMenuShortcuts(QMenu *menu);
+    void updateMenuBarVisibility();
+    void updateProjectInfo();
+    void updateJobsButton();
+    void applyTopBarButtonStyles();
+    void showMainMenu();
     void setupMenuFile();
     void setupMenuView();
     void connectVideoWidgetSignals();
@@ -231,6 +244,11 @@ private:
     ElementsDock *m_elementsDock;
     ScreenCapture *m_screenCapture;
     HdrPreviewWindow *m_hdrPreviewWindow{nullptr};
+    QMenu *m_mainMenu{nullptr};
+    QDockWidget *m_sideBarDock{nullptr};
+    QToolButton *m_projectButton{nullptr};
+    QLabel *m_projectMetaLabel{nullptr};
+    bool m_altKeyAlone{false};
 
 public slots:
     bool isCompatibleWithProcessingMode(MltXmlChecker &checker, QString &fileName, bool &converted);
@@ -336,6 +354,7 @@ private slots:
     void on_actionRestoreLayout_triggered();
     void on_actionShowTitleBars_triggered(bool checked);
     void on_actionShowToolbar_triggered(bool checked);
+    void on_actionShowMenuBar_triggered(bool checked);
     void onToolbarVisibilityChanged(bool visible);
     void on_menuExternal_aboutToShow();
     void on_actionUpgrade_triggered();

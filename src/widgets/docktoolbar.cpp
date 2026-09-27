@@ -19,6 +19,7 @@
 
 #include "settings.h"
 
+#include <QEvent>
 #include <QPainter>
 #include <QStyle>
 #include <QStyleOptionToolBar>

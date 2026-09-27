@@ -240,8 +240,7 @@ Player::Player(QWidget *parent)
     m_zoomButton = new QToolButton;
     m_zoomMenu = new QMenu(this);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-fit-best",
-                                     QIcon(":/icons/dark/32x32/zoom-fit-best.png")),
+        ->addAction(QIcon::fromTheme("zoom-fit-best", QIcon(":/icons/dark/32x32/zoom-fit-best.png")),
                     tr("Zoom Fit"),
                     this,
                     SLOT(onZoomTriggered()))
@@ -265,8 +264,7 @@ Player::Player(QWidget *parent)
                     SLOT(onZoomTriggered()))
         ->setData(0.5f);
     m_zoomMenu
-        ->addAction(QIcon::fromTheme("zoom-original",
-                                     QIcon(":/icons/dark/32x32/zoom-original.png")),
+        ->addAction(QIcon::fromTheme("zoom-original", QIcon(":/icons/dark/32x32/zoom-original.png")),
                     tr("Zoom 100%"),
                     this,
                     SLOT(onZoomTriggered()))
@@ -374,8 +372,7 @@ Player::Player(QWidget *parent)
     connect(action, SIGNAL(toggled(bool)), MLT.videoWidget(), SLOT(setSnapToGrid(bool)));
     connect(m_gridButton, SIGNAL(toggled(bool)), SLOT(toggleGrid(bool)));
     m_gridButton->setMenu(gridMenu);
-    m_gridButton->setIcon(
-        QIcon::fromTheme("view-grid", QIcon(":/icons/dark/32x32/view-grid.png")));
+    m_gridButton->setIcon(QIcon::fromTheme("view-grid", QIcon(":/icons/dark/32x32/view-grid.png")));
     m_gridButton->setPopupMode(QToolButton::MenuButtonPopup);
     m_gridButton->setCheckable(true);
     m_gridButton->setToolTip(tr("Toggle grid display on the player"));

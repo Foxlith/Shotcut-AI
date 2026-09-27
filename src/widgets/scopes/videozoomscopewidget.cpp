@@ -242,8 +242,7 @@ void VideoZoomScopeWidget::onLockToggled(bool enabled)
             QIcon::fromTheme("object-locked", QIcon(":/icons/dark/32x32/object-locked.png")));
     } else {
         m_lockButton->setIcon(
-            QIcon::fromTheme("object-unlocked",
-                             QIcon(":/icons/dark/32x32/object-unlocked.png")));
+            QIcon::fromTheme("object-unlocked", QIcon(":/icons/dark/32x32/object-unlocked.png")));
     }
 }
 

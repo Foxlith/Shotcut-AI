@@ -110,6 +110,8 @@ public:
     void setShowTitleBars(bool);
     bool showToolBar() const;
     void setShowToolBar(bool);
+    bool showMenuBar() const;
+    void setShowMenuBar(bool);
     bool textUnderIcons() const;
     void setTextUnderIcons(bool);
     bool smallIcons() const;

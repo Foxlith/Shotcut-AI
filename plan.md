@@ -364,7 +364,8 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 
 ---
 
-### FASE 3: Estructura de Docks y Layout Superior (52 px + 500 px)
+### FASE 3: Estructura de Docks y Layout Superior (52 px + 500 px) [COMPLETADO — COMPILA EN CI LINUX; PENDIENTE DE VALIDACIÓN VISUAL EN WINDOWS]
+- **Estado:** ✅ Implementado en `src/mainwindow.ui`, `src/mainwindow.cpp/.h`, `src/defaultlayouts.h` (6 estados regenerados), `src/settings.cpp/.h`, `capcut_theme.qss`; geometría verificada a 1440×900 (`8 | 52 | 8 | 300 | 8 | 748 | 8 | 300 | 8`, barra 52 + 8, fila 500, timeline 324). Detalle completo en `agent.md`.
 - **Objetivo:** Configurar la cuadrícula superior de 4 columnas y transformar la barra de herramientas principal.
 - **Tareas Técnicas:**
   1. Ocultar la barra de menús tradicional (`menuBar()->setVisible(false)` en `src/mainwindow.cpp`, línea ~195) y vincular su llamada a un botón hamburguesa en la barra superior.
@@ -549,11 +550,11 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Establecer tamaños estándar de 18 px y 15 px compactos en `capcut_theme.qss`, `src/mainwindow.ui`, `src/mainwindow.cpp`, `src/widgets/docktoolbar.cpp`, `src/widgets/docktoolbar.h` y `src/docks/timelinedock.cpp`, con especificidad QSS blindada contra sobreescrituras en barras de acoplamiento estándar (Playlist, Keyframes, Player, etc.).
   - [x] Verificar estados de color en reposo (`#9AA1AD`), hover (`#E8EAEE`), activo/checked (`#FF7A45` / `#FF7A452E`), presionado (`#FF7A45` / `:checked:pressed`) y deshabilitado (`#5F6672`).
   - [x] Blindar regresión e invariancia con suite E2E completa pasando al 100% y 10/10 tests específicos en `test_phase2_icon_and_theme_verification.py` con validación real de estilos QSS aplicados en runtime.
-- [ ] **Fase 3: Estructura de Docks**
-  - [ ] Ocultar barra de menú clásica y cablear botón hamburguesa.
-  - [ ] Configurar barra superior en 52 px con layout segmentado y botón Exportar.
-  - [ ] Implementar barra lateral de 52 px con accesos rápidos.
-  - [ ] Organizar layout de 4 columnas respetando alturas de 500 px.
+- [x] **Fase 3: Estructura de Docks**
+  - [x] Ocultar barra de menú clásica y cablear botón hamburguesa (mismos menús, atajos preservados, tecla Alt, opción `View > Show Menu Bar`).
+  - [x] Configurar barra superior en 52 px con layout segmentado y botón Exportar (logo 28 px, proyecto + metadatos, Deshacer/Rehacer, Tareas con contador).
+  - [x] Implementar barra lateral de 52 px con accesos rápidos (Medios, Filtros, Fotogramas clave, Subtítulos, Notas, Reciente + Ayuda).
+  - [x] Organizar layout de 4 columnas respetando alturas de 500 px (6 espacios de trabajo regenerados con `scripts/generate_grafito_layout.py`; 23 tests en `tests/test_phase3_layout_verification.py`).
 - [ ] **Fase 4: Visor y Transporte**
   - [ ] Configurar escenario de video en `#08090B`.
   - [ ] Incrustar medidor de audio de 6 px en el lateral derecho del visor.

@@ -16,8 +16,8 @@
  */
 
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "aiagentserver.h"
+#include "ui_mainwindow.h"
 
 #include "Logger.h"
 #include "actions.h"
@@ -139,14 +139,23 @@ static bool eventDebugCallback(void **data)
 static constexpr int AUTOSAVE_TIMEOUT_MS = 60000;
 // Bump kDockLayoutVersion whenever a new dock is added to setupAndConnectDocks().
 // This triggers a one-time re-tabification for users upgrading from an older saved state.
-static constexpr int kDockLayoutVersion = 1;
+// Version 2 introduced the Grafito 4-column layout and the icon sidebar dock.
+static constexpr int kDockLayoutVersion = 2;
 static constexpr char kReservedLayoutPrefix[] = "__%1";
-static constexpr char kLayoutSwitcherName[] = "layoutSwitcherGrid";
+static constexpr char kLayoutSwitcherName[] = "workspaceSwitcher";
+// Grafito layout metrics (see plan.md, section 3).
+static constexpr int kTopBarHeight = 52;
+static constexpr int kPanelGap = 8;
+static constexpr int kTopBarLogoSize = 28;
+static constexpr int kSideBarWidth = 52;
+static constexpr int kSideBarButtonSize = 40;
 static QRegularExpression kBackupFileRegex("^(.+) "
                                            "([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2["
                                            "0-3]|[01][0-9])-([0-5][0-9])-([0-5][0-9]).mlt$");
 
 // Legacy CapCut theme fallback definition (retained for backward compatibility and test verification)
+// Keep each style sheet rule on a single line.
+// clang-format off
 [[maybe_unused]] static QString capcutQss = QStringLiteral(
     "QMainWindow { background-color: #121212; }"
     "QWidget { color: #f0f0f0; }"
@@ -175,6 +184,7 @@ static QRegularExpression kBackupFileRegex("^(.+) "
     "QLineEdit, QSpinBox, QDoubleSpinBox { background-color: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 4px; }"
     "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 1px solid #20e6c5; }"
 );
+// clang-format on
 
 MainWindow::MainWindow()
     : QMainWindow(0)
@@ -224,9 +234,16 @@ MainWindow::MainWindow()
     // Create the UI.
     ui->setupUi(this);
     setDockNestingEnabled(true);
+    // Tabs on top of the panels, e.g. [ Properties | Filters | Jobs | History ] in the Inspector.
+    setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
+    // Grafito layout: 8 px outer margin around the floating panels.
+    setContentsMargins(kPanelGap, 0, kPanelGap, kPanelGap);
     // Clear inline toolbar stylesheet so capcut_theme.qss is authoritative
     ui->mainToolBar->setStyleSheet(QString());
     ui->mainToolBar->setIconSize(Settings.smallIcons() ? QSize(15, 15) : QSize(18, 18));
+    // The classic menu bar is replaced by the main menu button in the top bar.
+    ui->actionShowMenuBar->setChecked(Settings.showMenuBar());
+    updateMenuBarVisibility();
 
     ui->statusBar->hide();
 
@@ -247,6 +264,7 @@ MainWindow::MainWindow()
     // Restore custom colors from settings
     Settings.restoreCustomColors();
 
+    setupTopBar();
     centerLayoutInRemainingToolbarSpace();
 
 #ifndef SHOTCUT_NOUPGRADE
@@ -279,6 +297,14 @@ MainWindow::MainWindow()
     for (auto &child : findChildren<QWidget *>()) {
         if (child->whatsThis().isEmpty() && !child->toolTip().isEmpty())
             child->setWhatsThis(child->toolTip());
+    }
+
+    // Keep every menu shortcut working while the classic menu bar is hidden.
+    if (!menuBar()->isNativeMenuBar()) {
+        for (auto action : menuBar()->actions()) {
+            if (action->menu())
+                registerMenuShortcuts(action->menu());
+        }
     }
 
     LOG_DEBUG() << "end";
@@ -320,10 +346,8 @@ void MainWindow::setupAndConnectUndoStack()
     m_undoStack->setUndoLimit(Settings.undoLimit());
     QAction *undoAction = m_undoStack->createUndoAction(this);
     QAction *redoAction = m_undoStack->createRedoAction(this);
-    undoAction->setIcon(
-        QIcon::fromTheme("edit-undo", QIcon(":/icons/dark/32x32/edit-undo.png")));
-    redoAction->setIcon(
-        QIcon::fromTheme("edit-redo", QIcon(":/icons/dark/32x32/edit-redo.png")));
+    undoAction->setIcon(QIcon::fromTheme("edit-undo", QIcon(":/icons/dark/32x32/edit-undo.png")));
+    redoAction->setIcon(QIcon::fromTheme("edit-redo", QIcon(":/icons/dark/32x32/edit-redo.png")));
     undoAction->setIconText(tr("Undo"));
     redoAction->setIconText(tr("Redo"));
     undoAction->setShortcut(QString::fromLatin1("Ctrl+Z"));
@@ -434,13 +458,194 @@ void MainWindow::setupLayoutSwitcher()
 
 void MainWindow::centerLayoutInRemainingToolbarSpace()
 {
+    // [menu][logo][project] <spacer> [workspaces] <spacer> [undo][redo] | [jobs][export]
     auto spacer = new QWidget;
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->mainToolBar->insertWidget(ui->dummyAction, spacer);
+    updateLayoutSwitcher();
     spacer = new QWidget;
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    ui->mainToolBar->addWidget(spacer);
-    updateLayoutSwitcher();
+    ui->mainToolBar->insertWidget(ui->undoStartSeparator, spacer);
+}
+
+void MainWindow::setupTopBar()
+{
+    // 52 px bar plus the 8 px gap to the panels below: the contents margin keeps the
+    // buttons centered in the bar and the theme paints the gap as margin.
+    // Polish first: the style sheet engine resets the minimum size when it polishes.
+    ui->mainToolBar->ensurePolished();
+    ui->mainToolBar->setFixedHeight(kTopBarHeight + kPanelGap);
+    ui->mainToolBar->setContentsMargins(0, 0, 0, kPanelGap);
+    setupMainMenu();
+
+    auto logo = new QLabel;
+    logo->setObjectName("topBarLogo");
+    logo->setFixedSize(kTopBarLogoSize, kTopBarLogoSize);
+    logo->setAlignment(Qt::AlignCenter);
+    logo->setPixmap(QIcon(":/icons/shotcut-logo-64.svg").pixmap(QSize(20, 20)));
+    logo->setToolTip(qApp->applicationName());
+    logo->setAccessibleName(qApp->applicationName());
+    ui->mainToolBar->insertWidget(ui->dummyAction, logo);
+
+    auto projectInfo = new QWidget;
+    projectInfo->setObjectName("projectInfo");
+    auto projectLayout = new QVBoxLayout(projectInfo);
+    projectLayout->setContentsMargins(4, 0, 4, 0);
+    projectLayout->setSpacing(0);
+    m_projectButton = new QToolButton;
+    m_projectButton->setObjectName("projectButton");
+    m_projectButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_projectButton->setPopupMode(QToolButton::InstantPopup);
+    m_projectButton->setAutoRaise(true);
+    auto projectMenu = new QMenu(m_projectButton);
+    projectMenu->setObjectName("projectMenu");
+    connect(projectMenu, &QMenu::aboutToShow, this, [=]() {
+        projectMenu->clear();
+        int count = 0;
+        for (const auto &path : Settings.recent()) {
+            if (!path.endsWith(QStringLiteral(".mlt"), Qt::CaseInsensitive))
+                continue;
+            auto action = projectMenu->addAction(QFileInfo(path).completeBaseName());
+            action->setStatusTip(QDir::toNativeSeparators(path));
+            connect(action, &QAction::triggered, this, [=]() { open(path); });
+            if (++count >= 10)
+                break;
+        }
+        if (count == 0)
+            projectMenu->addAction(tr("No recent projects"))->setEnabled(false);
+        projectMenu->addSeparator();
+        projectMenu->addAction(ui->actionOpen);
+        projectMenu->addAction(ui->actionSave);
+        projectMenu->addAction(ui->actionSave_As);
+        projectMenu->addAction(ui->actionShowProjectFolder);
+    });
+    m_projectButton->setMenu(projectMenu);
+    m_projectMetaLabel = new QLabel;
+    m_projectMetaLabel->setObjectName("projectMeta");
+    projectLayout->addWidget(m_projectButton, 0, Qt::AlignLeft | Qt::AlignVCenter);
+    projectLayout->addWidget(m_projectMetaLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
+    ui->mainToolBar->insertWidget(ui->dummyAction, projectInfo);
+
+    // Only the separator between undo/redo and the jobs/export buttons is shown.
+    ui->undoStartSeparator->setVisible(false);
+    applyTopBarButtonStyles();
+
+    connect(&JOBS, &JobQueue::jobAdded, this, &MainWindow::updateJobsButton);
+    connect(&JOBS, &QAbstractItemModel::dataChanged, this, &MainWindow::updateJobsButton);
+    connect(&JOBS, &QAbstractItemModel::rowsRemoved, this, &MainWindow::updateJobsButton);
+    updateJobsButton();
+    updateProjectInfo();
+}
+
+void MainWindow::setupMainMenu()
+{
+    // The main menu button replaces the classic menu bar. It reuses the very same
+    // menus, so every command, check state and shortcut is preserved.
+    m_mainMenu = new QMenu(this);
+    m_mainMenu->setObjectName("mainMenu");
+    connect(m_mainMenu, &QMenu::aboutToShow, this, [this]() {
+        m_mainMenu->clear();
+        m_mainMenu->addAction(ui->actionOpen);
+        m_mainMenu->addAction(ui->actionOpenOther2);
+        m_mainMenu->addSeparator();
+        m_mainMenu->addActions(menuBar()->actions());
+    });
+    ui->actionMainMenu->setMenu(m_mainMenu);
+}
+
+void MainWindow::showMainMenu()
+{
+    auto button = qobject_cast<QToolButton *>(ui->mainToolBar->widgetForAction(ui->actionMainMenu));
+    if (button && button->isVisible())
+        button->showMenu();
+    else
+        m_mainMenu->popup(mapToGlobal(QPoint(kPanelGap, kPanelGap)));
+}
+
+void MainWindow::registerMenuShortcuts(QMenu *menu)
+{
+    for (auto action : menu->actions()) {
+        if (action->menu())
+            registerMenuShortcuts(action->menu());
+        else if (!action->isSeparator())
+            addAction(action);
+    }
+}
+
+void MainWindow::updateMenuBarVisibility()
+{
+    if (menuBar()->isNativeMenuBar())
+        return;
+    // Never hide both the menu bar and the top bar that holds the main menu button.
+    menuBar()->setVisible(Settings.showMenuBar() || !Settings.showToolBar());
+}
+
+void MainWindow::applyTopBarButtonStyles()
+{
+    // QToolBar pushes its toolButtonStyle to every action button; these keep a fixed style.
+    if (auto button = qobject_cast<QToolButton *>(
+            ui->mainToolBar->widgetForAction(ui->actionMainMenu))) {
+        button->setObjectName("mainMenuButton");
+        button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        button->setPopupMode(QToolButton::InstantPopup);
+    }
+    if (auto button = qobject_cast<QToolButton *>(
+            ui->mainToolBar->widgetForAction(ui->actionJobs))) {
+        button->setObjectName("jobsButton");
+        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
+    if (auto button = qobject_cast<QToolButton *>(
+            ui->mainToolBar->widgetForAction(ui->actionEncode))) {
+        button->setObjectName("exportButton");
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    }
+}
+
+void MainWindow::updateJobsButton()
+{
+    int pending = 0;
+    const auto jobs = JOBS.jobs();
+    for (const auto job : jobs) {
+        if (!job->isFinished())
+            ++pending;
+    }
+    ui->actionJobs->setIconText(pending > 0 ? tr("Jobs (%1)").arg(pending) : tr("Jobs"));
+}
+
+void MainWindow::updateProjectInfo()
+{
+    if (!m_projectButton || !m_projectMetaLabel)
+        return;
+    const auto name = m_currentFile.isEmpty() ? tr("Untitled")
+                                              : QFileInfo(m_currentFile).completeBaseName();
+    m_projectButton->setText(m_projectButton->fontMetrics().elidedText(name, Qt::ElideMiddle, 240));
+    m_projectButton->setToolTip(m_currentFile.isEmpty() ? name
+                                                        : QDir::toNativeSeparators(m_currentFile));
+
+    QStringList meta;
+    if (MLT.profile().is_explicit()) {
+        meta << QString::number(MLT.profile().width()) + QChar(0x00D7)
+                    + QString::number(MLT.profile().height());
+        meta << tr("%1 fps").arg(QString::number(MLT.profile().fps(), 'g', 4));
+    } else {
+        meta << tr("Automatic");
+    }
+    switch (Settings.playerAudioChannels()) {
+    case 1:
+        meta << tr("Mono");
+        break;
+    case 2:
+        meta << tr("Stereo");
+        break;
+    default:
+        meta << tr("%1 channels").arg(Settings.playerAudioChannels());
+        break;
+    }
+    if (isWindowModified())
+        meta << tr("Modified");
+    else if (!m_currentFile.isEmpty())
+        meta << tr("Saved");
+    m_projectMetaLabel->setText(meta.join(QStringLiteral(" %1 ").arg(QChar(0x00B7))));
 }
 void MainWindow::setupAndConnectDocks()
 {
@@ -637,7 +842,8 @@ void MainWindow::setupAndConnectDocks()
                                     m_filterController->motionTrackerModel(),
                                     m_timelineDock->subtitlesModel(),
                                     this);
-    m_filtersDock->setMinimumSize(400, 300);
+    // The Inspector column is 300 px wide in the Grafito layout.
+    m_filtersDock->setMinimumSize(300, 300);
     m_filtersDock->hide();
     m_filtersDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_6));
     ui->menuView->addAction(m_filtersDock->toggleViewAction());
@@ -933,37 +1139,101 @@ void MainWindow::setupAndConnectDocks()
             &MainWindow::onCreateOrEditFilterOnOutput);
     connect(m_timelineDock->subtitlesModel(), SIGNAL(modified()), this, SLOT(onSubtitleModified()));
 
-    // Left area
-    addDockWidget(Qt::LeftDockWidgetArea, m_propertiesDock);
+    setupSideBar();
+
+    // Grafito layout: four columns on top and the timeline across the bottom.
+    // Column 1 (52 px): icon sidebar.
+    addDockWidget(Qt::LeftDockWidgetArea, m_sideBarDock);
+    // Column 2 (300 px): Media - Playlist, Files and Recent, plus the panels
+    // opened from the sidebar (Notes, Subtitles) and Elements.
     addDockWidget(Qt::LeftDockWidgetArea, m_playlistDock);
-    addDockWidget(Qt::LeftDockWidgetArea, m_filtersDock);
-    addDockWidget(Qt::LeftDockWidgetArea, m_encodeDock);
+    splitDockWidget(m_sideBarDock, m_playlistDock, Qt::Horizontal);
+    addDockWidget(Qt::LeftDockWidgetArea, m_filesDock);
+    addDockWidget(Qt::LeftDockWidgetArea, m_recentDock);
     addDockWidget(Qt::LeftDockWidgetArea, m_notesDock);
     addDockWidget(Qt::LeftDockWidgetArea, m_subtitlesDock);
-    tabifyDockWidget(m_propertiesDock, m_playlistDock);
-    tabifyDockWidget(m_playlistDock, m_filtersDock);
-    tabifyDockWidget(m_filtersDock, m_encodeDock);
-    tabifyDockWidget(m_encodeDock, m_notesDock);
+    addDockWidget(Qt::LeftDockWidgetArea, m_elementsDock);
+    tabifyDockWidget(m_playlistDock, m_filesDock);
+    tabifyDockWidget(m_filesDock, m_recentDock);
+    tabifyDockWidget(m_recentDock, m_notesDock);
     tabifyDockWidget(m_notesDock, m_subtitlesDock);
-    // Right area
-    addDockWidget(Qt::RightDockWidgetArea, m_recentDock);
-    addDockWidget(Qt::RightDockWidgetArea, m_historyDock);
+    tabifyDockWidget(m_subtitlesDock, m_elementsDock);
+    // Column 3 (flexible): the player is the central widget.
+    // Column 4 (300 px): Inspector - Properties, Filters, Jobs, History and Export.
+    addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_filtersDock);
     addDockWidget(Qt::RightDockWidgetArea, m_jobsDock);
-    addDockWidget(Qt::RightDockWidgetArea, m_filesDock);
-    addDockWidget(Qt::RightDockWidgetArea, m_elementsDock);
-    splitDockWidget(m_recentDock, findChild<QDockWidget *>("AudioWaveformDock"), Qt::Vertical);
-    splitDockWidget(audioMeterDock, m_recentDock, Qt::Horizontal);
-    tabifyDockWidget(m_recentDock, m_filesDock);
-    tabifyDockWidget(m_filesDock, m_historyDock);
-    tabifyDockWidget(m_historyDock, m_jobsDock);
-    tabifyDockWidget(m_jobsDock, m_elementsDock);
-    // Bottom area
+    addDockWidget(Qt::RightDockWidgetArea, m_historyDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_encodeDock);
+    tabifyDockWidget(m_propertiesDock, m_filtersDock);
+    tabifyDockWidget(m_filtersDock, m_jobsDock);
+    tabifyDockWidget(m_jobsDock, m_historyDock);
+    tabifyDockWidget(m_historyDock, m_encodeDock);
+    // Scopes (created by ScopeController in the right area) stack below the Inspector.
+    if (audioMeterDock)
+        splitDockWidget(m_propertiesDock, audioMeterDock, Qt::Vertical);
+    // Bottom (full width): Timeline, Keyframes and Markers.
     addDockWidget(Qt::BottomDockWidgetArea, m_timelineDock);
     addDockWidget(Qt::BottomDockWidgetArea, m_keyframesDock);
-    splitDockWidget(m_timelineDock, m_markersDock, Qt::Horizontal);
-    tabifyDockWidget(m_keyframesDock, m_timelineDock);
-    m_recentDock->raise();
+    addDockWidget(Qt::BottomDockWidgetArea, m_markersDock);
+    tabifyDockWidget(m_timelineDock, m_keyframesDock);
+    tabifyDockWidget(m_keyframesDock, m_markersDock);
+    m_playlistDock->raise();
+    m_propertiesDock->raise();
+    m_timelineDock->raise();
+    // Let the theme paint every dock as a floating panel (12 px radius in capcut_theme.qss).
+    for (auto dock : findChildren<QDockWidget *>())
+        dock->setAttribute(Qt::WA_StyledBackground);
     resetDockCorners();
+}
+
+void MainWindow::setupSideBar()
+{
+    m_sideBarDock = new QDockWidget(tr("Sidebar"), this);
+    m_sideBarDock->setObjectName("sideBarDock");
+    // Closable only, so View > Sidebar can toggle it; it has no title bar to drag or float it.
+    m_sideBarDock->setFeatures(QDockWidget::DockWidgetClosable);
+    m_sideBarDock->setTitleBarWidget(new QWidget);
+    m_sideBarDock->setFixedWidth(kSideBarWidth);
+    ui->menuView->addAction(m_sideBarDock->toggleViewAction());
+
+    auto toolbar = new QToolBar(tr("Sidebar"), m_sideBarDock);
+    toolbar->setObjectName("sidebarToolBar");
+    toolbar->setOrientation(Qt::Vertical);
+    toolbar->setMovable(false);
+    toolbar->setFloatable(false);
+    toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    toolbar->setIconSize(Settings.smallIcons() ? QSize(15, 15) : QSize(18, 18));
+    toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
+
+    const QList<QPair<QAction *, QDockWidget *>> entries{
+        {ui->actionPlaylist, m_playlistDock},
+        {ui->actionFilters, m_filtersDock},
+        {ui->actionKeyframes, m_keyframesDock},
+        {ui->actionSubtitles, m_subtitlesDock},
+        {ui->actionNotes, m_notesDock},
+        {ui->actionRecent, m_recentDock},
+    };
+    for (const auto &entry : entries) {
+        toolbar->addAction(entry.first);
+        auto button = toolbar->widgetForAction(entry.first);
+        button->setFixedSize(kSideBarButtonSize, kSideBarButtonSize);
+        button->setAccessibleName(entry.first->text());
+        // Highlight the entry while its panel is the visible tab.
+        connect(entry.second, &QDockWidget::visibilityChanged, button, [button](bool visible) {
+            button->setProperty("active", visible);
+            button->style()->unpolish(button);
+            button->style()->polish(button);
+        });
+    }
+    auto spacer = new QWidget;
+    spacer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    toolbar->addWidget(spacer);
+    toolbar->addAction(ui->actionWhatsThis);
+    auto helpButton = toolbar->widgetForAction(ui->actionWhatsThis);
+    helpButton->setFixedSize(kSideBarButtonSize, kSideBarButtonSize);
+    helpButton->setAccessibleName(ui->actionWhatsThis->text());
+    m_sideBarDock->setWidget(toolbar);
 }
 
 void MainWindow::setupMenuFile()
@@ -2759,12 +3029,19 @@ void MainWindow::readWindowSettings()
         restoreGeometry(Settings.windowGeometry());
         // Re-tabify docks that were added after the user's saved layout version.
         if (Settings.dockLayoutVersion() < kDockLayoutVersion) {
-            tabifyDockWidget(m_recentDock, m_filesDock);
-            tabifyDockWidget(m_filesDock, m_elementsDock);
+            // Version 2 (Grafito): move to the 4-column layout with the icon sidebar
+            // once, and drop the saved per-workspace states that predate it.
+            for (int mode = LayoutMode::Logging; mode <= LayoutMode::PlayerOnly; ++mode)
+                Settings.setLayout(QString(kReservedLayoutPrefix).arg(mode),
+                                   QByteArray(),
+                                   QByteArray());
+            Settings.setLayoutMode(LayoutMode::Editing);
+            restoreState(kLayoutEditingDefault);
             Settings.setDockLayoutVersion(kDockLayoutVersion);
         }
     } else {
         restoreState(kLayoutEditingDefault);
+        Settings.setDockLayoutVersion(kDockLayoutVersion);
     }
     LOG_DEBUG() << "end";
 }
@@ -3112,6 +3389,7 @@ void MainWindow::updateWindowTitle()
                        .arg(profileText)
                        .arg(qApp->applicationName()));
 #endif
+    updateProjectInfo();
 }
 
 void MainWindow::on_actionAbout_Shotcut_triggered()
@@ -3372,6 +3650,25 @@ void MainWindow::removeCustomProfiles(const QStringList &profiles,
 
 bool MainWindow::eventFilter(QObject *target, QEvent *event)
 {
+    // Pressing and releasing Alt alone opens the main menu while the menu bar is hidden.
+    if (event->type() == QEvent::KeyPress) {
+        auto keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() != Qt::Key_Alt)
+            m_altKeyAlone = false;
+        else if (!keyEvent->isAutoRepeat())
+            m_altKeyAlone = !(keyEvent->modifiers() & ~(Qt::AltModifier | Qt::KeypadModifier));
+    } else if (event->type() == QEvent::KeyRelease) {
+        auto keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Alt && m_altKeyAlone) {
+            m_altKeyAlone = false;
+            if (!menuBar()->isVisible() && !menuBar()->isNativeMenuBar() && isActiveWindow()
+                && !QApplication::activePopupWidget())
+                QTimer::singleShot(0, this, &MainWindow::showMainMenu);
+        }
+    } else if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::Wheel) {
+        m_altKeyAlone = false;
+    }
+
     if (event->type() == QEvent::DragEnter && target == MLT.videoWidget()) {
         dragEnterEvent(static_cast<QDragEnterEvent *>(event));
         return true;
@@ -3541,6 +3838,14 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
     adjustMainToolbar();
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    // Keep the "Saved" / "Modified" state in the top bar in sync.
+    if (event->type() == QEvent::ModifiedChange)
+        updateProjectInfo();
 }
 
 void MainWindow::on_actionOpenOther_triggered()
@@ -4213,17 +4518,19 @@ void MainWindow::changeTheme(const QString &theme)
         QApplication::setStyle(kStyleFusion);
         QPalette palette;
         // --- SHOTCUT AI: Grafito Modern Dark Palette ---
-        palette.setColor(QPalette::Window, QColor("#0B0C0F"));          // #0B0C0F base canvas
-        palette.setColor(QPalette::WindowText, QColor("#E8EAEE"));      // #E8EAEE primary text
-        palette.setColor(QPalette::Base, QColor("#0F1115"));            // #0F1115 text inputs/search
-        palette.setColor(QPalette::AlternateBase, QColor("#1D2027"));   // #1D2027 elevated cards/alt rows
-        palette.setColor(QPalette::Highlight, QColor("#FF7A45"));       // #FF7A45 primary accent
-        palette.setColor(QPalette::HighlightedText, QColor("#140A05")); // #140A05 text/icons on accent
-        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027"));     // #1D2027 tooltip base
-        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE"));     // #E8EAEE tooltip text
-        palette.setColor(QPalette::Text, QColor("#E8EAEE"));            // #E8EAEE primary text
+        palette.setColor(QPalette::Window, QColor("#0B0C0F"));     // #0B0C0F base canvas
+        palette.setColor(QPalette::WindowText, QColor("#E8EAEE")); // #E8EAEE primary text
+        palette.setColor(QPalette::Base, QColor("#0F1115"));       // #0F1115 text inputs/search
+        palette.setColor(QPalette::AlternateBase,
+                         QColor("#1D2027"));                      // #1D2027 elevated cards/alt rows
+        palette.setColor(QPalette::Highlight, QColor("#FF7A45")); // #FF7A45 primary accent
+        palette.setColor(QPalette::HighlightedText,
+                         QColor("#140A05"));                        // #140A05 text/icons on accent
+        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027")); // #1D2027 tooltip base
+        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE")); // #E8EAEE tooltip text
+        palette.setColor(QPalette::Text, QColor("#E8EAEE"));        // #E8EAEE primary text
         palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Button, QColor("#15171C"));          // #15171C panels/button background
+        palette.setColor(QPalette::Button, QColor("#15171C")); // #15171C panels/button background
         palette.setColor(QPalette::ButtonText, QColor("#E8EAEE"));      // #E8EAEE button text
         palette.setColor(QPalette::Link, QColor("#FF7A45"));            // #FF7A45 accent link
         palette.setColor(QPalette::LinkVisited, QColor("#D96232"));     // visited link
@@ -4242,6 +4549,8 @@ void MainWindow::changeTheme(const QString &theme)
         if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
         } else if (qApp->styleSheet().isEmpty()) {
+            // Keep each style sheet rule on a single line.
+            // clang-format off
             qApp->setStyleSheet(QStringLiteral(
             "QMainWindow, QDialog { background-color: #0B0C0F; color: #E8EAEE; font-family: \"Geist\", \"Segoe UI\", sans-serif; }"
             "QMainWindow::separator { width: 8px; height: 8px; background: #0B0C0F; }"
@@ -4292,7 +4601,38 @@ void MainWindow::changeTheme(const QString &theme)
             "QStatusBar { background-color: #0B0C0F; color: #9AA1AD; border-top: 1px solid #1F2229; }"
             "QGroupBox { border: 1px solid #22252D; border-radius: 8px; margin-top: 1.2em; padding-top: 0.8em; }"
             "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #858C98; }"
+            // Phase 3: Grafito top bar (52 px), workspace switcher and icon sidebar (52 px)
+            "QToolBar#mainToolBar { background-color: #0B0C0F; border: none; border-bottom: 1px solid #1F2229; border-radius: 0px; margin: 0px 0px 8px 0px; padding: 0px 4px; spacing: 8px; }"
+            "QToolBar#mainToolBar::separator { width: 1px; background-color: #1F2229; margin: 12px 4px; }"
+            "QToolButton#mainMenuButton::menu-indicator { image: none; width: 0px; }"
+            "QLabel#topBarLogo { background-color: #FF7A45; border: none; border-radius: 7px; min-width: 28px; max-width: 28px; min-height: 28px; max-height: 28px; }"
+            "QToolButton#projectButton { background-color: transparent; color: #E8EAEE; border: none; padding: 0px 16px 0px 2px; margin: 0px; font-size: 13px; font-weight: 600; }"
+            "QToolButton#projectButton:hover, QToolButton#projectButton:pressed { background-color: transparent; color: #FFFFFF; border: none; }"
+            "QToolButton#projectButton::menu-indicator { subcontrol-origin: padding; subcontrol-position: right center; }"
+            "QLabel#projectMeta { color: #858C98; font-size: 11px; font-weight: 400; padding-left: 2px; }"
+            "QWidget#workspaceSwitcher { background-color: #0F1115; border: 1px solid #22252D; border-radius: 10px; }"
+            "QWidget#workspaceSwitcher QToolButton { background-color: transparent; color: #9AA1AD; border: 1px solid transparent; border-radius: 7px; padding: 5px 12px; margin: 0px; font-size: 12px; font-weight: 500; }"
+            "QWidget#workspaceSwitcher QToolButton:hover { background-color: transparent; color: #C9CED6; border-color: transparent; }"
+            "QWidget#workspaceSwitcher QToolButton:pressed { background-color: #1D2027; color: #C9CED6; }"
+            "QWidget#workspaceSwitcher QToolButton:checked { background-color: #262A33; color: #E8EAEE; border-color: #262A33; font-weight: 600; }"
+            "QWidget#workspaceSwitcher QToolButton:focus { border: 1px solid #FF7A45; }"
+            "QWidget#workspaceSwitcher QToolButton:disabled { color: #5F6672; }"
+            "QToolButton#jobsButton { background-color: transparent; color: #E8EAEE; border: 1px solid #2A2E37; border-radius: 8px; padding: 5px 12px; }"
+            "QToolButton#jobsButton:hover { background-color: #262A33; border-color: #343944; }"
+            "QToolButton#jobsButton:pressed { background-color: #1F2229; color: #E8EAEE; }"
+            "QToolButton#jobsButton:disabled { border-color: #1F2229; color: #5F6672; }"
+            "QToolButton#exportButton { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; border-radius: 8px; padding: 6px 16px; font-weight: 600; }"
+            "QToolButton#exportButton:hover { background-color: #FF8F61; border-color: #FF8F61; color: #140A05; }"
+            "QToolButton#exportButton:pressed { background-color: #E66835; border-color: #E66835; color: #140A05; }"
+            "QToolButton#exportButton:disabled { background-color: #262A33; border-color: #262A33; color: #5F6672; }"
+            "QDockWidget#sideBarDock { border: none; background-color: transparent; }"
+            "QToolBar#sidebarToolBar { background-color: #15171C; border: 1px solid #22252D; border-radius: 12px; padding: 5px; margin: 0px; spacing: 4px; }"
+            "QToolBar#sidebarToolBar QToolButton { border-radius: 9px; padding: 10px; margin: 0px; color: #9AA1AD; }"
+            "QToolBar#sidebarToolBar QToolButton:hover { color: #E8EAEE; background-color: #262A33; }"
+            "QToolBar#sidebarToolBar QToolButton:pressed { background-color: #1F2229; color: #E8EAEE; }"
+            "QToolBar#sidebarToolBar QToolButton:checked, QToolBar#sidebarToolBar QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; }"
         ));
+            // clang-format on
         }
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
@@ -5433,6 +5773,9 @@ void MainWindow::on_actionShowTitleBars_triggered(bool checked)
     QList<QDockWidget *> docks = findChildren<QDockWidget *>();
     for (int i = 0; i < docks.count(); i++) {
         QDockWidget *dock = docks.at(i);
+        // The icon sidebar never shows a title bar.
+        if (dock == m_sideBarDock)
+            continue;
         if (checked) {
             dock->setTitleBarWidget(0);
         } else {
@@ -5453,6 +5796,13 @@ void MainWindow::onToolbarVisibilityChanged(bool visible)
 {
     ui->actionShowToolbar->setChecked(visible);
     Settings.setShowToolBar(visible);
+    updateMenuBarVisibility();
+}
+
+void MainWindow::on_actionShowMenuBar_triggered(bool checked)
+{
+    Settings.setShowMenuBar(checked);
+    updateMenuBarVisibility();
 }
 
 void MainWindow::on_menuExternal_aboutToShow()
@@ -6286,8 +6636,12 @@ void MainWindow::on_actionLayoutRemove_triggered()
 
 void MainWindow::on_actionOpenOther2_triggered()
 {
+    // The Generate menu now lives in the main menu; fall back to the cursor position.
     const auto widget = ui->mainToolBar->widgetForAction(ui->actionOpenOther2);
-    ui->actionOpenOther2->menu()->popup(widget->mapToGlobal(QPoint(0, widget->height())));
+    if (widget && widget->isVisible())
+        ui->actionOpenOther2->menu()->popup(widget->mapToGlobal(QPoint(0, widget->height())));
+    else
+        ui->actionOpenOther2->menu()->popup(QCursor::pos());
 }
 
 void MainWindow::onOpenOtherTriggered(QWidget *widget)
@@ -6466,22 +6820,16 @@ void MainWindow::onSceneGraphInitialized()
 
 void MainWindow::adjustMainToolbar()
 {
-    if (Settings.textUnderIcons() && this->width() < 1590) {
-        ui->mainToolBar->removeAction(ui->actionFiles);
-        ui->mainToolBar->removeAction(ui->actionMarkers);
-        ui->mainToolBar->removeAction(ui->actionNotes);
-        ui->mainToolBar->removeAction(ui->actionHistory);
-    } else if (!ui->mainToolBar->actions().contains(ui->actionFiles)) {
-        ui->mainToolBar->insertAction(ui->actionTimeline, ui->actionFiles);
-        ui->mainToolBar->insertAction(ui->actionKeyframes, ui->actionMarkers);
-        ui->mainToolBar->insertAction(ui->actionPlaylist, ui->actionNotes);
-        ui->mainToolBar->insertAction(ui->actionEncode, ui->actionHistory);
-    }
+    // The dock panels have moved to the sidebar; on narrow windows the top bar
+    // drops the project metadata line to keep the workspace switcher centered.
+    if (m_projectMetaLabel)
+        m_projectMetaLabel->setVisible(this->width() >= 1200);
 }
 
 void MainWindow::on_actionShowTextUnderIcons_toggled(bool b)
 {
     ui->mainToolBar->setToolButtonStyle(b ? Qt::ToolButtonTextUnderIcon : Qt::ToolButtonIconOnly);
+    applyTopBarButtonStyles();
     Settings.setTextUnderIcons(b);
     updateLayoutSwitcher();
     adjustMainToolbar();
@@ -6489,7 +6837,12 @@ void MainWindow::on_actionShowTextUnderIcons_toggled(bool b)
 
 void MainWindow::on_actionShowSmallIcons_toggled(bool b)
 {
-    ui->mainToolBar->setIconSize(b ? QSize(15, 15) : QSize(18, 18));
+    const auto iconSize = b ? QSize(15, 15) : QSize(18, 18);
+    ui->mainToolBar->setIconSize(iconSize);
+    if (m_sideBarDock) {
+        if (auto sidebar = qobject_cast<QToolBar *>(m_sideBarDock->widget()))
+            sidebar->setIconSize(iconSize);
+    }
     Settings.setSmallIcons(b);
     updateLayoutSwitcher();
 }
@@ -6817,83 +7170,34 @@ void MainWindow::on_actionProxyConfigureHardware_triggered()
 
 void MainWindow::updateLayoutSwitcher()
 {
-    if (Settings.textUnderIcons() && !Settings.smallIcons()) {
-        auto layoutSwitcher = findChild<QWidget *>(kLayoutSwitcherName);
-        if (layoutSwitcher) {
-            layoutSwitcher->show();
-            for (const auto &child : layoutSwitcher->findChildren<QToolButton *>()) {
-                child->show();
-            }
-        } else {
-            layoutSwitcher = new QWidget;
-            layoutSwitcher->setObjectName(kLayoutSwitcherName);
-            auto layoutGrid = new QGridLayout(layoutSwitcher);
-            layoutGrid->setContentsMargins(0, 0, 0, 0);
-            ui->mainToolBar->insertWidget(ui->dummyAction, layoutSwitcher);
-            auto button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutLogging);
-            layoutGrid->addWidget(button, 0, 0, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutEditing);
-            layoutGrid->addWidget(button, 0, 1, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutEffects);
-            layoutGrid->addWidget(button, 0, 2, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutColor);
-            layoutGrid->addWidget(button, 1, 0, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutAudio);
-            layoutGrid->addWidget(button, 1, 1, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutPlayer);
-            layoutGrid->addWidget(button, 1, 2, Qt::AlignCenter);
-            layoutSwitcher->setStyleSheet(
-                "QToolButton { border-radius: 8px; }"
-                "QToolButton:checked { background-color: palette(highlight);"
-                " color: palette(highlighted-text); }");
-        }
-        ui->mainToolBar->removeAction(ui->actionLayoutLogging);
-        ui->mainToolBar->removeAction(ui->actionLayoutEditing);
-        ui->mainToolBar->removeAction(ui->actionLayoutEffects);
-        ui->mainToolBar->removeAction(ui->actionLayoutColor);
-        ui->mainToolBar->removeAction(ui->actionLayoutAudio);
-        ui->mainToolBar->removeAction(ui->actionLayoutPlayer);
-    } else {
-        auto layoutSwitcher = findChild<QWidget *>(kLayoutSwitcherName);
-        if (layoutSwitcher) {
-            layoutSwitcher->hide();
-            for (const auto &child : layoutSwitcher->findChildren<QToolButton *>()) {
-                child->hide();
-            }
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutLogging);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutEditing);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutEffects);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutColor);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutAudio);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutPlayer);
-        }
-        const QString layoutBtnStyle = QStringLiteral(
-            "QToolButton { border-radius: 8px; }"
-            "QToolButton:checked { background-color: palette(highlight);"
-            " color: palette(highlighted-text); }");
-        const QList<QAction *> layoutActions{ui->actionLayoutLogging,
-                                             ui->actionLayoutEditing,
-                                             ui->actionLayoutEffects,
-                                             ui->actionLayoutColor,
-                                             ui->actionLayoutAudio,
-                                             ui->actionLayoutPlayer};
-        for (auto *action : layoutActions) {
-            if (auto *btn = qobject_cast<QToolButton *>(ui->mainToolBar->widgetForAction(action)))
-                btn->setStyleSheet(layoutBtnStyle);
-        }
+    // Segmented workspace switcher centered in the top bar:
+    // [ Logging | Editing | FX | Color | Audio | Player ]
+    if (findChild<QWidget *>(kLayoutSwitcherName))
+        return;
+    auto layoutSwitcher = new QWidget;
+    layoutSwitcher->setObjectName(kLayoutSwitcherName);
+    layoutSwitcher->setAttribute(Qt::WA_StyledBackground);
+    layoutSwitcher->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    layoutSwitcher->setAccessibleName(tr("Workspaces"));
+    auto layout = new QHBoxLayout(layoutSwitcher);
+    layout->setContentsMargins(3, 3, 3, 3);
+    layout->setSpacing(2);
+    const QList<QAction *> layoutActions{ui->actionLayoutLogging,
+                                         ui->actionLayoutEditing,
+                                         ui->actionLayoutEffects,
+                                         ui->actionLayoutColor,
+                                         ui->actionLayoutAudio,
+                                         ui->actionLayoutPlayer};
+    for (auto action : layoutActions) {
+        auto button = new QToolButton;
+        button->setDefaultAction(action);
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setAutoRaise(true);
+        button->setFocusPolicy(Qt::TabFocus);
+        button->setAccessibleName(action->text());
+        layout->addWidget(button);
     }
+    ui->mainToolBar->insertWidget(ui->dummyAction, layoutSwitcher);
 }
 
 void MainWindow::clearCurrentLayout()
