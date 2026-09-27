@@ -703,6 +703,343 @@ DockToolBar#timelineToolbar::separator {
 }
 
 /* --------------------------------------------------------------------
+   3e. GRAFITO MEDIA & INSPECTOR - Phase 6
+   Media: segmented tabs, search + "+ Import" header, 2-column grid of
+   16:9 cards (painted by PlaylistIconView) and a dashed #343944 dropzone.
+   Inspector: tabs with a 2px accent underline, header of the selected
+   item, TRANSFORM and FILTERS sections (src/widgets/inspectorwidget.cpp).
+   MainWindow::updateDockTabBars() sets the grafitoTabs property.
+   -------------------------------------------------------------------- */
+QTabBar[grafitoTabs="segmented"] {
+    background-color: #0F1115;
+    border: 1px solid #22252D;
+    border-radius: 10px;
+    padding: 2px;
+    margin: 0px;
+}
+
+QTabBar[grafitoTabs="segmented"]::tab {
+    background-color: transparent;
+    color: #9AA1AD;
+    border: none;
+    border-radius: 7px;
+    padding: 5px 12px;
+    margin: 1px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QTabBar[grafitoTabs="segmented"]::tab:hover:!selected {
+    background-color: transparent;
+    color: #C9CED6;
+    border: none;
+}
+
+QTabBar[grafitoTabs="segmented"]::tab:selected {
+    background-color: #262A33;
+    color: #E8EAEE;
+    border: none;
+    font-weight: 600;
+}
+
+QTabBar[grafitoTabs="segmented"]::tab:disabled {
+    color: #5F6672;
+}
+
+QTabBar[grafitoTabs="underline"] {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    margin: 0px;
+}
+
+QTabBar[grafitoTabs="underline"]::tab {
+    background-color: transparent;
+    color: #9AA1AD;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0px;
+    padding: 7px 8px 5px 8px;
+    margin: 0px 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QTabBar[grafitoTabs="underline"]::tab:hover:!selected {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+
+QTabBar[grafitoTabs="underline"]::tab:selected {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: none;
+    border-bottom: 2px solid #FF7A45;
+    font-weight: 600;
+}
+
+QTabBar[grafitoTabs="underline"]::tab:disabled {
+    color: #5F6672;
+}
+
+/* Media header: search field (#0F1115) and secondary "+ Import" button */
+QLineEdit#mediaSearchField {
+    background-color: #0F1115;
+    color: #E8EAEE;
+    border: 1px solid #22252D;
+    border-radius: 8px;
+    padding: 5px 6px;
+    font-size: 12px;
+}
+
+QLineEdit#mediaSearchField:hover {
+    border-color: #2A2E37;
+}
+
+QLineEdit#mediaSearchField:focus {
+    border: 1px solid #FF7A45;
+}
+
+QLineEdit#mediaSearchField:disabled {
+    background-color: #15171C;
+    color: #5F6672;
+}
+
+QPushButton#mediaImportButton {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: 1px solid #2A2E37;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QPushButton#mediaImportButton:hover {
+    background-color: #262A33;
+    border-color: #343944;
+    color: #E8EAEE;
+}
+
+QPushButton#mediaImportButton:pressed {
+    background-color: #1F2229;
+    border-color: #343944;
+    color: #E8EAEE;
+}
+
+QPushButton#mediaImportButton:focus {
+    border: 1px solid #FF7A45;
+}
+
+QPushButton#mediaImportButton:disabled {
+    background-color: transparent;
+    border-color: #1F2229;
+    color: #5F6672;
+}
+
+/* Dashed dropzone below the media grid */
+QFrame#mediaDropZone {
+    background-color: transparent;
+    border: 1px dashed #343944;
+    border-radius: 10px;
+}
+
+QFrame#mediaDropZone:hover {
+    background-color: rgba(255, 122, 69, 0.06);
+    border: 1px dashed #FF7A45;
+}
+
+QFrame#mediaDropZone:focus {
+    border: 1px dashed #FF7A45;
+}
+
+QLabel#mediaDropZoneIcon,
+QLabel#mediaDropZoneTitle,
+QLabel#mediaDropZoneHint,
+QLabel#mediaItemCount {
+    background-color: transparent;
+    border: none;
+}
+
+QLabel#mediaItemCount {
+    color: #858C98;
+    font-size: 11px;
+}
+
+QLabel#mediaDropZoneTitle {
+    color: #C9CED6;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QLabel#mediaDropZoneHint {
+    color: #858C98;
+    font-size: 11px;
+}
+
+/* Flat Media panel bars (bin view toggle and playlist controls) */
+DockToolBar#playlistBinToolbar {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    margin: 0px;
+}
+
+DockToolBar#playlistControlsToolbar {
+    background-color: transparent;
+    border: none;
+    border-top: 1px solid #1F2229;
+    border-radius: 0px;
+    margin: 0px;
+}
+
+DockToolBar#playlistControlsToolbar::separator {
+    width: 1px;
+    background-color: #1F2229;
+    margin: 7px 2px;
+}
+
+DockToolBar#playlistBinToolbar QToolButton,
+DockToolBar#playlistControlsToolbar QToolButton {
+    padding: 1px;
+    margin: 0px;
+    border: none;
+}
+
+/* Inspector */
+QScrollArea#inspector,
+QWidget#inspectorContent {
+    background-color: transparent;
+    border: none;
+}
+
+QLabel#inspectorEmpty {
+    color: #858C98;
+    font-size: 12px;
+    padding: 24px 8px;
+}
+
+QLabel#inspectorTitle {
+    color: #E8EAEE;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QLabel#inspectorMeta {
+    color: #858C98;
+    font-size: 11px;
+}
+
+QLabel[inspectorSection="true"] {
+    color: #858C98;
+}
+
+QFrame#inspectorDivider {
+    background-color: #1F2229;
+    border: none;
+}
+
+QLabel#inspectorRowLabel {
+    color: #C9CED6;
+    font-size: 12px;
+}
+
+QLabel#inspectorAxisLabel {
+    color: #858C98;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel#inspectorTransformHint {
+    color: #858C98;
+    font-size: 11px;
+}
+
+QWidget#inspectorTransform QSpinBox {
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+/* Precision sliders: 4px #2A2E37 track, accent sub-track, 12px white handle */
+QWidget#inspectorTransform QSlider::groove:horizontal {
+    height: 4px;
+    background: #2A2E37;
+    border-radius: 2px;
+}
+
+QWidget#inspectorTransform QSlider::sub-page:horizontal {
+    background: #FF7A45;
+    border-radius: 2px;
+}
+
+QWidget#inspectorTransform QSlider::handle:horizontal {
+    width: 12px;
+    height: 12px;
+    margin: -4px 0px;
+    border: none;
+    border-radius: 6px;
+    background: #FFFFFF;
+}
+
+QWidget#inspectorTransform QSlider::handle:horizontal:hover {
+    border: 3px solid rgba(255, 122, 69, 0.30);
+    margin: -7px -3px;
+    border-radius: 9px;
+}
+
+QWidget#inspectorTransform QSlider::handle:horizontal:pressed {
+    background: #FF7A45;
+}
+
+QWidget#inspectorTransform QSlider::groove:horizontal:disabled {
+    background: #1F2229;
+}
+
+QWidget#inspectorTransform QSlider::sub-page:horizontal:disabled {
+    background: #5F6672;
+}
+
+QWidget#inspectorTransform QSlider::handle:horizontal:disabled {
+    background: #5F6672;
+}
+
+/* "+ Add filter": dashed secondary button */
+QPushButton#inspectorAddFilterButton {
+    background-color: transparent;
+    color: #C9CED6;
+    border: 1px dashed #343944;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QPushButton#inspectorAddFilterButton:hover {
+    background-color: #262A33;
+    color: #E8EAEE;
+    border: 1px dashed #FF7A45;
+}
+
+QPushButton#inspectorAddFilterButton:pressed {
+    background-color: #1F2229;
+    color: #E8EAEE;
+    border: 1px dashed #FF7A45;
+}
+
+QPushButton#inspectorAddFilterButton:focus {
+    border: 1px dashed #FF7A45;
+}
+
+QPushButton#inspectorAddFilterButton:disabled {
+    background-color: transparent;
+    color: #5F6672;
+    border: 1px dashed #1F2229;
+}
+
+/* --------------------------------------------------------------------
    4. DOCKS & FLOATING PANELS (12px radius, #15171C base, #22252D border)
    -------------------------------------------------------------------- */
 QDockWidget {

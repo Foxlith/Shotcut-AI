@@ -36,6 +36,7 @@ protected:
 
 private:
     bool isGrafitoTimeline() const;
+    bool isGrafitoFlat() const;
 
     Qt::ToolBarArea m_area;
 };

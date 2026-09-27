@@ -46,7 +46,9 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QFrame>
 #include <QGuiApplication>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QItemSelectionModel>
@@ -59,6 +61,7 @@
 #include <QSortFilterProxyModel>
 #include <QStyledItemDelegate>
 #include <QToolButton>
+#include <QVBoxLayout>
 
 static const auto kInOutChangedTimeoutMs = 100;
 static const auto kTilePaddingPx = 10;
@@ -454,6 +457,9 @@ PlaylistDock::PlaylistDock(QWidget *parent)
     Actions.loadFromMenu(m_mainMenu);
 
     DockToolBar *toolbar = new DockToolBar(tr("Playlist Controls"));
+    toolbar->setObjectName("playlistControlsToolbar");
+    // 15 px icons so that every control fits in the 300 px Media panel.
+    toolbar->setProperty("compact", true);
     toolbar->setAreaHint(Qt::BottomToolBarArea);
     QToolButton *menuButton = new QToolButton();
     menuButton->setIcon(
@@ -474,9 +480,10 @@ PlaylistDock::PlaylistDock(QWidget *parent)
     toolbar->addAction(Actions["playlistViewDetailsAction"]);
     toolbar->addAction(Actions["playlistViewTilesAction"]);
     toolbar->addAction(Actions["playlistViewIconsAction"]);
-    toolbar->addSeparator();
-    m_label = new QLabel(toolbar);
-    toolbar->addWidget(m_label);
+    // The item count goes in the dropzone below the grid (see below): the controls
+    // fill the bar of the 300 px Media panel.
+    m_label = new QLabel(this);
+    m_label->setObjectName("mediaItemCount");
     connect(m_proxyModel,
             &QAbstractItemModel::modelAboutToBeReset,
             this,
@@ -486,10 +493,14 @@ PlaylistDock::PlaylistDock(QWidget *parent)
     connect(m_proxyModel, &QAbstractItemModel::rowsRemoved, this, &PlaylistDock::updateStatus);
     ui->verticalLayout->addWidget(toolbar);
     ui->verticalLayout->addSpacing(2);
+    // Take the margins from the DockToolBar#playlistControlsToolbar rule (see Util::repolish()).
+    Util::repolish(toolbar);
 
     toolbar = new DockToolBar(tr("Playlist Filters"));
+    toolbar->setObjectName("playlistBinToolbar");
     toolbar->addAction(Actions["playlistBinView"]);
     ui->filtersLayout->addWidget(toolbar);
+    Util::repolish(toolbar);
 
     auto toolbar2 = new QToolBar(tr("Playlist Filters"));
     toolbar2->setObjectName("playlistFiltersToolbar");
@@ -497,7 +508,7 @@ PlaylistDock::PlaylistDock(QWidget *parent)
         "QToolBar { background-color: transparent; border: none; padding: 0px; margin: 0px; "
         "spacing: 4px; }"
         "QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; "
-        "border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
+        "border-radius: 6px; padding: 3px 6px; font-size: 11px; font-weight: 500; }"
         "QToolButton:hover { background-color: #262A33; color: #E8EAEE; border-color: #262A33; }"
         "QToolButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
         "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, "
@@ -509,27 +520,79 @@ PlaylistDock::PlaylistDock(QWidget *parent)
         "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: "
         "transparent; }");
     toolbar2->setStyleSheet(styleSheet);
-    ui->filtersLayout->addItem(
-        new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+    // No minimum width: the four type chips must fit in the 300 px Media panel.
+    ui->filtersLayout->addItem(new QSpacerItem(0, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     toolbar2->addActions({Actions["playlistFiltersVideo"],
                           Actions["playlistFiltersAudio"],
                           Actions["playlistFiltersImage"],
                           Actions["playlistFiltersOther"]});
     ui->filtersLayout->addWidget(toolbar2);
+
+    // Grafito Media header (plan.md 3.2, item 2): search field and "+ Import".
+    auto header = new QWidget(this);
+    header->setObjectName("mediaHeader");
+    auto headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(6);
     m_searchField = new LineEditClear(this);
+    m_searchField->setObjectName("mediaSearchField");
     m_searchField->setToolTip(
         tr("Only show files whose name, path, or comment contains some text"));
     m_searchField->setPlaceholderText(tr("search"));
+    m_searchField->addAction(QIcon::fromTheme("edit-find",
+                                              QIcon(":/icons/dark/32x32/edit-find.png")),
+                             QLineEdit::LeadingPosition);
     connect(m_searchField, &QLineEdit::textChanged, this, [=](const QString &search) {
         m_proxyModel->setFilterFixedString(search);
     });
-    ui->filtersLayout->addWidget(m_searchField, 1);
+    headerLayout->addWidget(m_searchField, 1);
+    auto importButton = new QPushButton(tr("Import"), header);
+    importButton->setObjectName("mediaImportButton");
+    importButton->setIcon(
+        QIcon::fromTheme("list-add", QIcon(":/icons/oxygen/32x32/actions/list-add.png")));
+    importButton->setToolTip(Actions["playlistAddFilesAction"]->toolTip());
+    importButton->setAutoDefault(false);
+    importButton->setCursor(Qt::PointingHandCursor);
+    connect(importButton, &QPushButton::clicked, this, &PlaylistDock::onAddFilesActionTriggered);
+    headerLayout->addWidget(importButton);
+    ui->verticalLayout->insertWidget(0, header);
+
+    // Dashed dropzone below the grid (plan.md 3.2, item 2).
+    m_mediaDropZone = new QFrame(this);
+    m_mediaDropZone->setObjectName("mediaDropZone");
+    m_mediaDropZone->setAcceptDrops(true);
+    m_mediaDropZone->setFocusPolicy(Qt::TabFocus);
+    m_mediaDropZone->setCursor(Qt::PointingHandCursor);
+    m_mediaDropZone->setToolTip(tr("Click or drop files to add them to the playlist"));
+    m_mediaDropZone->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    auto dropLayout = new QHBoxLayout(m_mediaDropZone);
+    dropLayout->setContentsMargins(12, 8, 12, 8);
+    dropLayout->setSpacing(10);
+    auto dropIcon = new QLabel(m_mediaDropZone);
+    dropIcon->setObjectName("mediaDropZoneIcon");
+    dropIcon->setPixmap(
+        QIcon::fromTheme("upload", QIcon(":/icons/dark/32x32/upload.png")).pixmap(QSize(18, 18)));
+    dropLayout->addWidget(dropIcon);
+    auto dropText = new QVBoxLayout;
+    dropText->setSpacing(0);
+    auto dropTitle = new QLabel(tr("Drag files here"), m_mediaDropZone);
+    dropTitle->setObjectName("mediaDropZoneTitle");
+    auto dropHint = new QLabel(tr("Video, audio or images"), m_mediaDropZone);
+    dropHint->setObjectName("mediaDropZoneHint");
+    dropText->addWidget(dropTitle);
+    dropText->addWidget(dropHint);
+    dropLayout->addLayout(dropText, 1);
+    dropLayout->addWidget(m_label, 0, Qt::AlignRight | Qt::AlignVCenter);
+    ui->verticalLayout_4->addWidget(m_mediaDropZone);
+    m_mediaDropZone->installEventFilter(this);
 
     ui->stackedWidget->setCurrentIndex(0);
 
     m_iconsView = new PlaylistIconView(this);
     ui->listView->parentWidget()->layout()->addWidget(m_iconsView);
     m_iconsView->setSelectionMode(QAbstractItemView::SingleSelection);
+    // Grafito: two columns of 16:9 cards with the duration, the name and the type.
+    m_iconsView->setCardMode(true);
     ui->tableView->setModel(m_proxyModel);
     ui->listView->setModel(m_proxyModel);
     m_iconsView->setModel(m_proxyModel);
@@ -2105,7 +2168,7 @@ void PlaylistDock::keyReleaseEvent(QKeyEvent *event)
 
 bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == ui->dropZoneCard || watched == ui->page) {
+    if (watched == ui->dropZoneCard || watched == ui->page || watched == m_mediaDropZone) {
         if (event->type() == QEvent::DragEnter) {
             auto dragEvent = static_cast<QDragEnterEvent *>(event);
             if (dragEvent->mimeData()
@@ -2134,7 +2197,7 @@ bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
-    if (watched == ui->dropZoneCard) {
+    if (watched == ui->dropZoneCard || watched == m_mediaDropZone) {
         if (event->type() == QEvent::MouseButtonPress) {
             auto mouseEvent = static_cast<QMouseEvent *>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
@@ -2144,7 +2207,7 @@ bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
         } else if (event->type() == QEvent::MouseButtonRelease) {
             auto mouseEvent = static_cast<QMouseEvent *>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
-                if (ui->dropZoneCard->rect().contains(mouseEvent->pos())) {
+                if (static_cast<QWidget *>(watched)->rect().contains(mouseEvent->pos())) {
                     onAddFilesActionTriggered();
                 }
                 return true;

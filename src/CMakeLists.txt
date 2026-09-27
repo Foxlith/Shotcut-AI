@@ -192,6 +192,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   widgets/htmlgeneratorwidget.ui
   widgets/imageproducerwidget.cpp widgets/imageproducerwidget.h
   widgets/imageproducerwidget.ui
+  widgets/inspectorwidget.cpp widgets/inspectorwidget.h
   widgets/isingwidget.cpp widgets/isingwidget.h
   widgets/isingwidget.ui
   widgets/lineeditclear.cpp widgets/lineeditclear.h
@@ -240,6 +241,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   widgets/timelinepropertieswidget.cpp widgets/timelinepropertieswidget.h
   widgets/timelinepropertieswidget.ui
   widgets/timespinbox.cpp widgets/timespinbox.h
+  widgets/toggleswitch.cpp widgets/toggleswitch.h
   widgets/toneproducerwidget.cpp widgets/toneproducerwidget.h
   widgets/toneproducerwidget.ui
   widgets/trackpropertieswidget.cpp widgets/trackpropertieswidget.h

@@ -67,7 +67,8 @@ TIMELINE_HEIGHT = WINDOW_SIZE.height() - TOP_BAR_HEIGHT - PANEL_GAP - TOP_ROW_HE
 # objectNames used by the C++ docks.
 SIDEBAR = "sideBarDock"
 MEDIA_TABS = ["PlaylistDock", "FilesDock", "RecentDock", "NotesDock", "SubtitlesDock", "ElementsDock"]
-INSPECTOR_TABS = ["propertiesDock", "FiltersDock", "JobsDock", "historyDock", "EncodeDock"]
+# Phase 6: [ Inspector | Jobs | History ] first (plan.md 3.2, item 4); Filters stays as a tab.
+INSPECTOR_TABS = ["propertiesDock", "JobsDock", "historyDock", "FiltersDock", "EncodeDock"]
 BOTTOM_TABS = ["TimelineDock", "KeyframesDock", "MarkersDock"]
 # ScopeController: ScopeWidget objectName + "Dock", all created in the right area.
 SCOPES = [
@@ -304,7 +305,7 @@ def build_window(workspace="Editing"):
 
     def make_dock(name, area):
         dock = QDockWidget(name.replace("Dock", "").replace("history", "History")
-                           .replace("properties", "Properties"), window)
+                           .replace("properties", "Inspector"), window)
         dock.setObjectName(name)
         dock.setWidget(QWidget())
         dock.hide()

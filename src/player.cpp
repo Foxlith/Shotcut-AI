@@ -245,6 +245,9 @@ Player::Player(QWidget *parent)
 
     // Add status bar.
     m_statusLabel = new StatusLabelWidget();
+    // The message is elided to the room that the header leaves it (setStatusLabel()), so
+    // a long message never widens the viewer column and squeezes the Media panel.
+    m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     connect(m_statusLabel, &StatusLabelWidget::statusCleared, this, &Player::onStatusFinished);
     headerLayout->addWidget(m_statusLabel, 1, Qt::AlignVCenter);
 

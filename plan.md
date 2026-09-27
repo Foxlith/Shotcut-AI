@@ -461,6 +461,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - `src/docks/jobsdock.ui`, `historyundoview.cpp`
 - **Riesgos:** Pérdida de reactividad de los filtros dinámicos al cambiar de clip en la línea de tiempo.
 - **Criterios de Aceptación:** Búsqueda fluida en Medios, grid de dos columnas con thumbnails correctos y conmutación ágil de filtros en el Inspector.
+- **Estado:** ✅ Completada. Verificada en la app real (Qt 6.10 + MLT 7.36) a 1440×900: búsqueda instantánea, cuadrícula 16:9 de 2 columnas con miniaturas y duraciones, zona de soltar, pestañas segmentadas en Medios y subrayadas en el Inspector (*Inspector | Jobs | History | Filters*), TRANSFORMAR deshacible sobre *Size, Position & Rotate* y *Opacity*, interruptores de filtros y actualización inmediata al cambiar de clip. `FiltersDock` sigue siendo una pestaña (edición de parámetros) accesible desde el Inspector y la barra lateral. Detalle en `agent.md` (Fase 6).
 
 ---
 
@@ -567,11 +568,11 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Rediseñar `TrackHead.qml` a 164 px con insignias V2, V1, A1, A2 y alturas diferenciadas (44 / 58 / 52 / 40 px, separadas 4 px y escalables).
   - [x] Implementar tokens cromáticos de clips en `Clip.qml` (video, imagen, audio) con radio de 6 px y onda `#3DD6B0` al 85 %.
   - [x] Configurar borde y anillo de acento para clips seleccionados (15 tests en `tests/test_phase5_timeline_verification.py`; 685/685 en `--fast`).
-- [ ] **Fase 6: Inspector y Medios**
-  - [ ] Rediseñar `PlaylistDock` en cuadrícula de 2 columnas con botón Importar y dropzone.
-  - [ ] Configurar pestañas del Inspector (Inspector, Tareas, Historial) con subrayado de 2 px.
-  - [ ] Incorporar controles numéricos y sliders de precisión en sección Transformar.
-  - [ ] Estilizar filas de filtros con toggles interactivos.
+- [x] **Fase 6: Inspector y Medios**
+  - [x] Rediseñar `PlaylistDock` en cuadrícula de 2 columnas con botón Importar y dropzone (tarjetas 16:9 con chip de duración, buscador `#0F1115`, conmutador segmentado).
+  - [x] Configurar pestañas del Inspector (Inspector, Tareas, Historial) con subrayado de 2 px.
+  - [x] Incorporar controles numéricos y sliders de precisión en sección Transformar (deshacibles, vía los filtros *Size, Position & Rotate* y *Opacity*).
+  - [x] Estilizar filas de filtros con toggles interactivos (30 tests en `tests/test_phase6_media_inspector_verification.py`; 715/715 en `--fast`).
 - [ ] **Fase 7: Ajustes y Retrocompatibilidad**
   - [ ] Añadir selector de color de acento (#FF7A45, #5B8CFF, #F5B83D, #B08CFF).
   - [ ] Implementar opción para alternar entre tema Grafito y tema clásico.

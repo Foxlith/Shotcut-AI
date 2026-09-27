@@ -61,7 +61,8 @@ public:
         FIELD_MEDIA_TYPE,
         FIELD_MEDIA_TYPE_ENUM,
         FIELD_COMMENT,
-        FIELD_BIN
+        FIELD_BIN,
+        FIELD_CARD_THUMBNAIL ///< The in point thumbnail at full size for the media grid cards
     };
 
     static const int THUMBNAIL_WIDTH = 80;

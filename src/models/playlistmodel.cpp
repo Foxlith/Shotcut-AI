@@ -427,6 +427,22 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const
             if (info->producer && info->producer->is_valid())
                 return QString::fromUtf8(info->producer->get(kShotcutBinsProperty));
             break;
+        case FIELD_CARD_THUMBNAIL: {
+            QScopedPointer<Mlt::Producer> producer(m_playlist->get_clip(index.row()));
+            Mlt::Producer parent(producer->get_parent());
+            if (!parent.is_valid() || !parent.get_data(kThumbnailInProperty))
+                return QImage();
+            QImage image = *((QImage *) parent.get_data(kThumbnailInProperty));
+            if (parent.get_int(kPlaylistIndexProperty) == index.row() + 1) {
+                // Mark the clip that is open in the Source player as the other views do.
+                QPainter painter(&image);
+                QPen pen(QmlApplication::playheadColor());
+                pen.setWidthF(3.0);
+                painter.setPen(pen);
+                painter.drawRect(QRectF(image.rect()).adjusted(1.5, 1.5, -1.5, -1.5));
+            }
+            return image;
+        }
         }
     }
     return QVariant();

@@ -206,8 +206,8 @@ class TestPhase3StaticContracts(unittest.TestCase):
     def test_l4_dock_arrangement(self):
         body = function_body(self.cpp, "void MainWindow::setupAndConnectDocks()")
         for pair in (("m_playlistDock", "m_filesDock"), ("m_filesDock", "m_recentDock"),
-                     ("m_propertiesDock", "m_filtersDock"), ("m_filtersDock", "m_jobsDock"),
-                     ("m_jobsDock", "m_historyDock"), ("m_timelineDock", "m_keyframesDock")):
+                     ("m_propertiesDock", "m_jobsDock"), ("m_jobsDock", "m_historyDock"),
+                     ("m_historyDock", "m_filtersDock"), ("m_timelineDock", "m_keyframesDock")):
             self.assertIn(f"tabifyDockWidget({pair[0]}, {pair[1]});", body)
         self.assertIn("splitDockWidget(m_sideBarDock, m_playlistDock, Qt::Horizontal);", body)
         self.assertIn("addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);", body)
@@ -314,7 +314,8 @@ class TestPhase3LayoutStates(unittest.TestCase):
         bars = {tuple(bar.tabText(i) for i in range(bar.count())): bar
                 for bar in window.findChildren(QTabBar) if bar.isVisible() and bar.count() > 1}
         self.assertIn(("Playlist", "Files", "Recent"), bars)
-        self.assertIn(("Properties", "Filters", "Jobs", "History"), bars)
+        # Phase 6: [ Inspector | Jobs | History ] first; Filters is still a tab.
+        self.assertIn(("Inspector", "Jobs", "History", "Filters"), bars)
         # Tabs sit on top of the panels, right below the top bar.
         for bar in bars.values():
             self.assertEqual(bar.y(), 60)

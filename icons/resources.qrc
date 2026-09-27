@@ -687,5 +687,9 @@
         <file>dark/32x32/go-previous.svg</file>
         <file>dark/32x32/go-down.png</file>
         <file>dark/32x32/go-down.svg</file>
+        <file>dark/32x32/edit-find.png</file>
+        <file>dark/32x32/edit-find.svg</file>
+        <file>dark/32x32/upload.png</file>
+        <file>dark/32x32/upload.svg</file>
     </qresource>
 </RCC>
