@@ -364,7 +364,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 
 ---
 
-### FASE 3: Estructura de Docks y Layout Superior (52 px + 500 px) [COMPLETADO — PENDIENTE DE COMPILACIÓN DEL BINARIO]
+### FASE 3: Estructura de Docks y Layout Superior (52 px + 500 px) [COMPLETADO — COMPILA EN CI LINUX; PENDIENTE DE VALIDACIÓN VISUAL EN WINDOWS]
 - **Estado:** ✅ Implementado en `src/mainwindow.ui`, `src/mainwindow.cpp/.h`, `src/defaultlayouts.h` (6 estados regenerados), `src/settings.cpp/.h`, `capcut_theme.qss`; geometría verificada a 1440×900 (`8 | 52 | 8 | 300 | 8 | 748 | 8 | 300 | 8`, barra 52 + 8, fila 500, timeline 324). Detalle completo en `agent.md`.
 - **Objetivo:** Configurar la cuadrícula superior de 4 columnas y transformar la barra de herramientas principal.
 - **Tareas Técnicas:**
