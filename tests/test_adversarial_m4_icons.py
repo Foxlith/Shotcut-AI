@@ -233,7 +233,12 @@ class TestAdversarialM4Icons(unittest.TestCase):
     # Dimension 3: Toolbar Action Silhouette & Categorization
     # -------------------------------------------------------------
     def test_dimension3_toolbar_separator_clusters(self):
-        """Verify mainToolBar in src/mainwindow.ui contains logical clusters separated by separators."""
+        """Verify the Grafito top bar clusters (Phase 3) replace the former 27-button toolbar.
+
+        mainToolBar keeps three logical clusters: main menu (+ logo/project/workspaces inserted
+        before dummyAction), undo/redo between the undo separators, and Jobs + Export. The dock
+        toggles of the former toolbar moved to the icon sidebar (MainWindow::setupSideBar()).
+        """
         ui_path = os.path.join(PROJECT_ROOT, "src", "mainwindow.ui")
         tree = ET.parse(ui_path)
         root = tree.getroot()
@@ -241,11 +246,24 @@ class TestAdversarialM4Icons(unittest.TestCase):
         main_toolbar = root.find(".//widget[@name='mainToolBar']")
         self.assertIsNotNone(main_toolbar, "mainToolBar widget not found in mainwindow.ui")
 
-        actions = main_toolbar.findall("addaction")
-        self.assertGreater(len(actions), 20, "Expected > 20 actions/separators in mainToolBar")
+        actions = [a.get("name") for a in main_toolbar.findall("addaction")]
+        self.assertEqual(actions[0], "actionMainMenu", "Main menu button must open the top bar")
+        self.assertLess(actions.index("dummyAction"), actions.index("undoStartSeparator"))
+        self.assertEqual(actions[actions.index("undoStartSeparator"):],
+                         ["undoStartSeparator", "undoEndSeparator", "actionJobs", "actionEncode"])
 
-        separators = [a.get("name") for a in actions if a.get("name") == "separator"]
-        self.assertGreaterEqual(len(separators), 5, f"Expected at least 5 separators in toolbar, got {len(separators)}")
+        separators = [a for a in root.iter("action")
+                      if a.get("name") in ("undoStartSeparator", "undoEndSeparator")
+                      and a.find("property[@name='separator']/bool") is not None]
+        self.assertEqual(len(separators), 2, "Undo/redo cluster must be delimited by separator actions")
+
+        with open(os.path.join(PROJECT_ROOT, "src", "mainwindow.cpp"), "r", encoding="utf-8") as f:
+            cpp = f.read()
+        sidebar = cpp[cpp.index("void MainWindow::setupSideBar()"):]
+        for action in ("actionPlaylist", "actionFilters", "actionKeyframes", "actionSubtitles",
+                       "actionNotes", "actionRecent", "actionWhatsThis"):
+            self.assertIn(f"ui->{action}", sidebar[:sidebar.index("\n}\n")],
+                          f"{action} must be in the icon sidebar")
 
     # -------------------------------------------------------------
     # Dimension 4: Robustness against Corrupted/Invalid MLT Files

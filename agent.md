@@ -13,6 +13,7 @@
 ## 📍 Estado del Proyecto: En Desarrollo Activo (Post-Auditoría 100% Exitosa)
 - **Repositorio:** `C:\Users\Fox\Desktop\Shotcut-AI`
 - **Última Auditoría de Victoria:** Aprobada al 100% (624/624 tests pasando, cero fallos).
+- **Fase 3 (Layout Grafito):** Completada — `--fast` sube a 647 tests (23 nuevos de Fase 3). Ver detalle y estado de pruebas en *Estado de Tareas*.
 - **Lanzador de Pruebas en Escritorio:** `C:\Users\Fox\Desktop\Probar Shotcut AI.lnk` (ejecuta con `capcut_theme.qss` y proyecto demo).
 
 ---
@@ -74,7 +75,7 @@
 - Acepta comandos JSON (e.g. `play`, `pause`, `seek`, `open`, etc.) para automatización externa.
 
 ### 6. 🧪 Infraestructura de Pruebas (E2E & Adversarial)
-- Script maestro: `python tests/run_e2e_tests.py` (624 tests) y con `--fast` (613 tests).
+- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (647 tests tras la Fase 3: 624 previos + 23 de `tests/test_phase3_layout_verification.py`).
 - Validador AST: Escaneo de 436 archivos QML/JS con 0 errores de sintaxis.
 - Pruebas de estrés y adversariales integradas en Tier 5.
 
@@ -138,17 +139,50 @@
     - Suite rápida e2e: 624/624 tests pasando (9.05s, exit code 0).
     - Suite unitaria `tests/test_phase2_icon_and_theme_verification.py` ampliada y blindada con 11/11 tests pasando al 100% en 0.246s incluyendo validación real bajo `capcut_theme.qss` y barras de filtro de docks.
 
+- **Fase 3: Estructura de Docks y Layout Superior — Barra superior de 52 px, barra lateral de 52 px y cuadrícula de 4 columnas (`src/mainwindow.ui`, `src/mainwindow.cpp`, `src/mainwindow.h`, `src/defaultlayouts.h`, `src/settings.cpp`, `src/settings.h`, `capcut_theme.qss`, `scripts/generate_grafito_layout.py`, `tests/test_phase3_layout_verification.py`, `tests/test_adversarial_m4_icons.py`, `tests/run_e2e_tests.py`):** [COMPLETADO — PENDIENTE DE COMPILACIÓN FORMAL DEL BINARIO]
+  - **Barra superior (52 px) — `ui->mainToolBar`:**
+    - `src/mainwindow.ui`: la toolbar contiene solo `actionMainMenu` (nuevo, icono `show-menu`), `dummyAction` (ancla), `undoStartSeparator`/`undoEndSeparator` (Deshacer/Rehacer se insertan entre ellos), `actionJobs` y `actionEncode`. Las 20 acciones de docks que vivían allí se reubicaron (ver invarianza).
+    - `MainWindow::setupTopBar()`: logotipo `QLabel#topBarLogo` de 28 px sobre acento `#FF7A45`; bloque de proyecto `QToolButton#projectButton` (nombre + desplegable con los 10 proyectos `.mlt` recientes, Abrir, Guardar, Guardar como, Mostrar carpeta) y `QLabel#projectMeta` con `"1920×1080 · 30 fps · Stereo · Saved"` (`updateProjectInfo()`, se refresca desde `updateWindowTitle()` y `changeEvent(QEvent::ModifiedChange)`).
+    - Altura: `setFixedHeight(kTopBarHeight + kPanelGap)` = 52 + 8 y `setContentsMargins(0, 0, 0, kPanelGap)` para centrar los controles en la barra de 52 px; el QSS pinta los 8 px como margen. **Importante:** `ensurePolished()` va antes de `setFixedHeight()` porque el motor QSS reinicia el tamaño mínimo al pulir el widget (sin ello la barra medía 57 px).
+    - `updateLayoutSwitcher()` reescrito: un único control segmentado `QWidget#workspaceSwitcher` (Registro | Edición | Efectos | Color | Audio | Reproductor) con los `actionLayout*` existentes (mismos atajos Alt+1..6). `kLayoutSwitcherName` = `"workspaceSwitcher"`.
+    - Derecha: Deshacer/Rehacer, `QToolButton#jobsButton` (texto `Jobs (n)` con los trabajos pendientes vía `updateJobsButton()` conectado a `JOBS`) y `QToolButton#exportButton` primario (`actionEncode` → abre el panel Exportar, `onEncodeTriggered()`).
+    - `applyTopBarButtonStyles()` re-aplica los estilos fijos cuando cambia "Show Text Under Icons" (QToolBar propaga su estilo a todos sus botones). Deshacer/Rehacer siguen respetando esa preferencia (por defecto `textUnderIcons=true` muestra texto bajo el icono; desactivarla deja la barra idéntica al mockup).
+    - `adjustMainToolbar()` ahora oculta la línea de metadatos en ventanas < 1200 px (antes quitaba botones de docks).
+  - **Menú hamburguesa y barra de menús clásica:**
+    - `updateMenuBarVisibility()`: oculta `menuBar()` (salvo barra nativa de macOS) y nunca oculta a la vez la barra de menús y la barra superior. Nueva opción `View > Show Menu Bar` (`actionShowMenuBar`, `Settings.showMenuBar()`, clave `menuBar`, por defecto `false`).
+    - `setupMainMenu()`: `m_mainMenu` reutiliza exactamente los mismos `QMenu` de la barra (Archivo, Editar, Ver, Reproductor, Ajustes, Ayuda) más Abrir / Generar (`actionOpenOther2`) al inicio.
+    - `registerMenuShortcuts()`: registra todas las acciones de los menús en la ventana; con la barra de menús oculta Qt desactivaría sus atajos (Ctrl+S, Ctrl+Z, Alt+1..6, Ctrl+1..9…).
+    - Tecla `Alt` sola (pulsar y soltar) abre el menú principal (`eventFilter` + `showMainMenu()`).
+    - `on_actionOpenOther2_triggered()` blindado: si el botón ya no está en la barra, abre el menú Generar en la posición del cursor.
+  - **Barra lateral de iconos (52 px) — `MainWindow::setupSideBar()`:** dock `sideBarDock` sin barra de título (ancho fijo 52, solo `DockWidgetClosable` para `View > Sidebar`) con `QToolBar#sidebarToolBar` vertical: Medios (`actionPlaylist`), Filtros, Fotogramas clave, Subtítulos, Notas, Reciente y, al fondo, Ayuda (`actionWhatsThis`). Botones de 40×40; el icono del panel visible se marca con la propiedad `active` (acento suave). `on_actionShowTitleBars_triggered()` nunca le añade barra de título.
+  - **Cuadrícula de 4 columnas — `setupAndConnectDocks()`:** `setTabPosition(North)`, márgenes exteriores `setContentsMargins(8, 0, 8, 8)`.
+    - Col. 1 `sideBarDock` (52) · Col. 2 Medios (300): `PlaylistDock` + `FilesDock` + `RecentDock` (visibles) + Notes/Subtitles/Elements (ocultos, se abren como pestaña desde la barra lateral) · Col. 3 visor (flexible, widget central) · Col. 4 Inspector (300): `propertiesDock` + `FiltersDock` + `JobsDock` + `historyDock` (+ `EncodeDock` oculto, lo abre Exportar) · Inferior: `TimelineDock` a ancho completo con `KeyframesDock`/`MarkersDock` como pestañas. `resetDockCorners()` sin cambios (esquinas inferiores → área inferior).
+    - `m_filtersDock->setMinimumSize(300, 300)` (antes 400) para caber en la columna Inspector.
+    - Todos los docks reciben `Qt::WA_StyledBackground`, de modo que la regla `QDockWidget` de `capcut_theme.qss` los pinta como paneles flotantes `#15171C` con borde `#22252D` y radio 12 px separados por el `QMainWindow::separator` de 8 px.
+  - **Estados serializados (`src/defaultlayouts.h`) y migración:**
+    - Los 6 `kLayout*Default` se regeneraron con `scripts/generate_grafito_layout.py` (réplica PySide6 con los mismos `objectName`; `restoreState()` solo empareja por nombre). Todos comparten el esqueleto Grafito y conservan el propósito de cada espacio: Registro (sin timeline), Edición (referencia), Efectos (Filtros al frente + medidor de picos junto al visor + Keyframes), Color (scopes de vídeo bajo el Inspector), Audio (scopes de audio + medidor), Reproductor (solo visor + barra lateral). Motivo: los estados antiguos no conocían `sideBarDock` y lo dejaban en posiciones erróneas (incluso fuera de pantalla).
+    - Geometría verificada a 1440×900: `8 | 52 | 8 | 300 | 8 | 748 | 8 | 300 | 8` px, barra 52 + 8, fila superior 500 px, separador 8, timeline 324 px a ancho completo (1424 px), margen inferior 8.
+    - `kDockLayoutVersion` = 2: en el primer arranque con un layout guardado anterior se aplica una vez el nuevo `kLayoutEditingDefault`, se borran los estados por espacio de trabajo guardados (`__1`..`__6`) y el modo pasa a Edición. Los layouts personalizados con nombre se conservan.
+    - Regenerar: `python scripts/generate_grafito_layout.py --write`; vista previa: `python scripts/generate_grafito_layout.py --screenshot preview.png --workspace Editing`.
+  - **`capcut_theme.qss` (sección 3b) + respaldo en `changeTheme()`:** `QToolBar#mainToolBar` (`#0B0C0F`, divisor `#1F2229`, margen inferior 8 px), `QLabel#topBarLogo`, `QToolButton#projectButton`, `QLabel#projectMeta` (`#858C98` 11 px), `QWidget#workspaceSwitcher` (`#0F1115`, radio 10 px; píldora activa `#262A33`/`#E8EAEE` radio 7 px), `QToolButton#jobsButton` (secundario, borde `#2A2E37`), `QToolButton#exportButton` (`#FF7A45`/`#140A05`, hover `#FF8F61`, pressed `#E66835`, disabled `#262A33`/`#5F6672`), `QToolBar#sidebarToolBar` (panel `#15171C` radio 12 px, botones radio 9 px).
+  - **Invarianza (Matriz de Correspondencia):** ninguna acción eliminada. Las 24 acciones de la toolbar anterior siguen accesibles: Abrir/Generar/Guardar → menú principal y selector de proyecto; paneles → barra lateral, pestañas de Medios/Inspector/Timeline y `View` (mismos atajos Ctrl+1..9); Medidor de audio → `View > Scopes` (se integrará en el visor en la Fase 4); Exportar/Tareas → barra superior; Espacios de trabajo → control segmentado + `View > Layout`. Verificado por `test_l6_former_toolbar_commands_keep_an_entry_point`.
+  - **Pruebas:**
+    - Nueva suite `tests/test_phase3_layout_verification.py` (23 tests, registrada en Tier 5 de `tests/run_e2e_tests.py`): contratos estáticos de `.ui`/`.cpp`, restauración de los 6 estados en la réplica con medición exacta de geometría, determinismo del generador, reglas QSS (parseo sin advertencias) y colores renderizados (Exportar `#FF7A45`, divisor `#1F2229`, hueco `#0B0C0F`, panel lateral `#15171C`). Mutaciones comprobadas: cambiar el color de Exportar, volver a los estados antiguos, quitar Notas de la barra lateral o añadir un botón a la toolbar hacen fallar la suite.
+    - `tests/test_adversarial_m4_icons.py::test_dimension3_toolbar_separator_clusters` actualizado: exigía > 20 botones y ≥ 5 separadores en `mainToolBar` (diseño M3), incompatible con la especificación de Fase 3; ahora valida los clústeres de la barra Grafito y que los paneles estén en la barra lateral.
+    - Resultado `python tests/run_e2e_tests.py --fast`: **647/647 (exit code 0)** reproduciendo el entorno de Windows de Fox (`.agents/TEST_INFRA.md` presente, `powershell` disponible y QML instalado en la ruta de `INSTALLED_QML`). En un contenedor Linux limpio fallan solo 2 tests dependientes de ese entorno, igual que antes de la Fase 3: `test_f13_01_test_infra_spec_exists` (`.agents/` está en `.gitignore`) y `setUpClass` de `test_adversarial_m4_icons` (llama a `powershell`) / `test_dimension2_qml_source_installed_sync` (ruta `C:\Users\Fox\...`).
+    - C++: `mainwindow.cpp` (y la salida de moc/uic) compila sin errores ni advertencias nuevas contra Qt 6.4 con `-Wall -Wextra` (`-fsyntax-only`; el enlace completo requiere Qt ≥ 6.8 y MLT ≥ 7.36, no disponibles en el contenedor). **Para ver la Fase 3 en la app hay que recompilar el binario**; con el binario actual solo cambia el estilo QSS de la toolbar.
+
 ---
 
-## 🚀 Próxima Etapa: Fase 3 (Layout Modular y Cabecera Minimalista)
-- **Objetivo:** Ocultar/compactar la barra de menú tradicional detrás de un botón de menú hamburguesa moderno, reorganizar la barra superior a 52px con selector segmentado de layouts y botón prominente de Exportar.
-- **Archivos a intervenir:** `src/mainwindow.ui`, `src/mainwindow.cpp`, `capcut_theme.qss`.
+## 🚀 Próxima Etapa: Fase 4 (Visor de Video y Controles de Transporte)
+- **Objetivo:** Escenario `#08090B`, medidor de picos de 6 px integrado en el margen derecho del visor (hoy disponible en `View > Scopes` y en los espacios Efectos/Audio), botón Play circular de 44 px en acento y fila de transporte con timecode Geist Mono de 15 px.
+- **Archivos a intervenir:** `src/player.cpp`, `src/player.h`, `src/widgets/scrubbar.cpp`, `capcut_theme.qss`.
 
 ---
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 624 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 647 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.

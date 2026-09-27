@@ -108,6 +108,7 @@
     <addaction name="menuLayout"/>
     <addaction name="actionShowTitleBars"/>
     <addaction name="actionShowToolbar"/>
+    <addaction name="actionShowMenuBar"/>
     <addaction name="actionShowSmallIcons"/>
     <addaction name="actionShowTextUnderIcons"/>
     <addaction name="separator"/>
@@ -363,46 +364,16 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <!-- Grupo 1: Archivo -->
-   <addaction name="actionOpen"/>
-   <addaction name="actionOpenOther2"/>
-   <addaction name="actionSave"/>
-   <addaction name="separator"/>
-   <!-- Grupo 2: Deshacer/Rehacer -->
+   <!-- Grafito top bar (52 px). Left: main menu, logo and project info
+        (inserted before dummyAction in MainWindow::setupTopBar). Center:
+        workspace switcher (inserted before dummyAction). Right: undo/redo
+        (inserted between the undo separators), jobs and export. -->
+   <addaction name="actionMainMenu"/>
+   <addaction name="dummyAction"/>
    <addaction name="undoStartSeparator"/>
    <addaction name="undoEndSeparator"/>
-   <addaction name="separator"/>
-   <!-- Grupo 3: Paneles de Trabajo -->
-   <addaction name="actionTimeline"/>
-   <addaction name="actionPlaylist"/>
-   <addaction name="actionFilters"/>
-   <addaction name="actionKeyframes"/>
-   <addaction name="separator"/>
-   <!-- Grupo 4: Paneles Secundarios -->
-   <addaction name="actionProperties"/>
-   <addaction name="actionFiles"/>
-   <addaction name="actionMarkers"/>
-   <addaction name="actionSubtitles"/>
-   <addaction name="actionNotes"/>
-   <addaction name="separator"/>
-   <!-- Grupo 5: Monitoreo & Exportacion -->
-   <addaction name="actionAudioMeter"/>
-   <addaction name="actionEncode"/>
    <addaction name="actionJobs"/>
-   <addaction name="separator"/>
-   <!-- Grupo 6: Utilidades -->
-   <addaction name="actionRecent"/>
-   <addaction name="actionHistory"/>
-   <addaction name="actionWhatsThis"/>
-   <addaction name="separator"/>
-   <!-- Grupo 7: Layouts -->
-   <addaction name="dummyAction"/>
-   <addaction name="actionLayoutLogging"/>
-   <addaction name="actionLayoutEditing"/>
-   <addaction name="actionLayoutEffects"/>
-   <addaction name="actionLayoutColor"/>
-   <addaction name="actionLayoutAudio"/>
-   <addaction name="actionLayoutPlayer"/>
+   <addaction name="actionEncode"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
@@ -879,6 +850,29 @@
    </property>
    <property name="text">
     <string>Show Toolbar</string>
+   </property>
+  </action>
+  <action name="actionShowMenuBar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Menu Bar</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the classic menu bar in addition to the main menu button</string>
+   </property>
+  </action>
+  <action name="actionMainMenu">
+   <property name="icon">
+    <iconset theme="show-menu" resource="../icons/resources.qrc">
+     <normaloff>:/icons/dark/32x32/show-menu.png</normaloff>:/icons/dark/32x32/show-menu.png</iconset>
+   </property>
+   <property name="text">
+    <string>Menu</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the main menu (Alt)</string>
    </property>
   </action>
   <action name="actionUpgrade">

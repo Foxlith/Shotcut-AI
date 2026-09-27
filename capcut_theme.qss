@@ -265,11 +265,12 @@ QToolBar#filesFiltersToolbar QToolButton:disabled {
     border-color: transparent;
 }
 
-/* Sidebar navigation buttons (9px radius) */
+/* Sidebar navigation buttons (9px radius, 40x40 inside the 52px sidebar) */
 QToolBar#sidebarToolBar QToolButton,
 QToolButton.sidebar-btn {
     border-radius: 9px;
-    padding: 8px;
+    padding: 10px;
+    margin: 0px;
     color: #9AA1AD;
 }
 
@@ -279,7 +280,14 @@ QToolButton.sidebar-btn:hover {
     background-color: #262A33;
 }
 
+QToolBar#sidebarToolBar QToolButton:pressed,
+QToolButton.sidebar-btn:pressed {
+    background-color: #1F2229;
+    color: #E8EAEE;
+}
+
 QToolBar#sidebarToolBar QToolButton:checked,
+QToolBar#sidebarToolBar QToolButton[active="true"],
 QToolButton.sidebar-btn:checked {
     background-color: rgba(255, 122, 69, 0.18);
     color: #FF7A45;
@@ -310,6 +318,183 @@ QToolButton[text*="Export"]:pressed,
 QToolButton[objectName*="Encode"]:pressed {
     background-color: #e0622f;
     color: #140A05;
+}
+
+/* --------------------------------------------------------------------
+   3b. GRAFITO TOP BAR (52px) & ICON SIDEBAR (52px) - Phase 3
+   Layout at 1440x900: 8px outer margin | sidebar 52 | 8 | Media 300 | 8 |
+   viewer (flex) | 8 | Inspector 300 | 8px, top row 500px, timeline below.
+   -------------------------------------------------------------------- */
+QToolBar#mainToolBar {
+    background-color: #0B0C0F;
+    border: none;
+    border-bottom: 1px solid #1F2229;
+    border-radius: 0px;
+    /* The bar is 52px; the 8px bottom margin is the gap to the panels. */
+    margin: 0px 0px 8px 0px;
+    padding: 0px 4px;
+    spacing: 8px;
+}
+
+QToolBar#mainToolBar::separator {
+    width: 1px;
+    background-color: #1F2229;
+    margin: 12px 4px;
+}
+
+QToolButton#mainMenuButton::menu-indicator {
+    image: none;
+    width: 0px;
+}
+
+QLabel#topBarLogo {
+    background-color: #FF7A45;
+    border: none;
+    border-radius: 7px;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+}
+
+QToolButton#projectButton {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: none;
+    padding: 0px 16px 0px 2px;
+    margin: 0px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QToolButton#projectButton:hover,
+QToolButton#projectButton:pressed {
+    background-color: transparent;
+    color: #FFFFFF;
+    border: none;
+}
+
+QToolButton#projectButton::menu-indicator {
+    subcontrol-origin: padding;
+    subcontrol-position: right center;
+}
+
+QLabel#projectMeta {
+    color: #858C98;
+    font-size: 11px;
+    font-weight: 400;
+    padding-left: 2px;
+}
+
+/* Segmented workspace switcher: #0F1115 container, 7px pills */
+QWidget#workspaceSwitcher {
+    background-color: #0F1115;
+    border: 1px solid #22252D;
+    border-radius: 10px;
+}
+
+QWidget#workspaceSwitcher QToolButton {
+    background-color: transparent;
+    color: #9AA1AD;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 5px 12px;
+    margin: 0px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QWidget#workspaceSwitcher QToolButton:hover {
+    background-color: transparent;
+    color: #C9CED6;
+    border-color: transparent;
+}
+
+QWidget#workspaceSwitcher QToolButton:pressed {
+    background-color: #1D2027;
+    color: #C9CED6;
+}
+
+QWidget#workspaceSwitcher QToolButton:checked {
+    background-color: #262A33;
+    color: #E8EAEE;
+    border-color: #262A33;
+    font-weight: 600;
+}
+
+QWidget#workspaceSwitcher QToolButton:focus {
+    border: 1px solid #FF7A45;
+}
+
+QWidget#workspaceSwitcher QToolButton:disabled {
+    color: #5F6672;
+}
+
+/* Secondary button: Jobs */
+QToolButton#jobsButton {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: 1px solid #2A2E37;
+    border-radius: 8px;
+    padding: 5px 12px;
+}
+
+QToolButton#jobsButton:hover {
+    background-color: #262A33;
+    border-color: #343944;
+}
+
+QToolButton#jobsButton:pressed {
+    background-color: #1F2229;
+    color: #E8EAEE;
+}
+
+QToolButton#jobsButton:disabled {
+    border-color: #1F2229;
+    color: #5F6672;
+}
+
+/* Primary button: Export */
+QToolButton#exportButton {
+    background-color: #FF7A45;
+    color: #140A05;
+    border: 1px solid #FF7A45;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-weight: 600;
+}
+
+QToolButton#exportButton:hover {
+    background-color: #FF8F61;
+    border-color: #FF8F61;
+    color: #140A05;
+}
+
+QToolButton#exportButton:pressed {
+    background-color: #E66835;
+    border-color: #E66835;
+    color: #140A05;
+}
+
+QToolButton#exportButton:disabled {
+    background-color: #262A33;
+    border-color: #262A33;
+    color: #5F6672;
+}
+
+/* Icon sidebar (52px column) */
+QDockWidget#sideBarDock {
+    border: none;
+    background-color: transparent;
+}
+
+QToolBar#sidebarToolBar {
+    background-color: #15171C;
+    border: 1px solid #22252D;
+    border-radius: 12px;
+    padding: 5px;
+    margin: 0px;
+    spacing: 4px;
 }
 
 /* --------------------------------------------------------------------
