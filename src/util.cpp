@@ -49,6 +49,7 @@
 #include <QStandardPaths>
 #include <QStorageInfo>
 #include <QStringList>
+#include <QStyle>
 #include <QTemporaryFile>
 #include <QUrl>
 #include <QWidget>
@@ -118,6 +119,19 @@ void Util::setColorsToHighlight(QWidget *widget, QPalette::ColorRole role)
                                   .arg(highlight, text);
         widget->setStyleSheet(style);
     }
+}
+
+void Util::repolish(QWidget *widget)
+{
+    // Apply the style sheet rules again, for example after changing the object name or a
+    // property that a rule selects on.
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    // Widgets that cache metrics from the style, such as the margins and spacing of
+    // QToolBar, compute them again on a style change.
+    QEvent event(QEvent::StyleChange);
+    QCoreApplication::sendEvent(widget, &event);
+    widget->update();
 }
 
 void Util::showInFolder(const QString &path)

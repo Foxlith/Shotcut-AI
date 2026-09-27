@@ -24,11 +24,13 @@
 #include "proxymanager.h"
 #include "scrubbar.h"
 #include "settings.h"
+#include "util.h"
 #include "widgets/audioscale.h"
-#include "widgets/docktoolbar.h"
 #include "widgets/newprojectfolder.h"
+#include "widgets/scopes/playerpeakmeterwidget.h"
 #include "widgets/statuslabelwidget.h"
 #include "widgets/timespinbox.h"
+#include "widgets/transportplaybutton.h"
 
 #include <QtWidgets>
 
@@ -38,9 +40,134 @@
 #define SEEK_INACTIVE (-1)
 #define VOLUME_SLIDER_HEIGHT (300)
 
+// Grafito viewer metrics (plan.md, section 3.2).
+static constexpr int kHeaderHeight = 44;
+static constexpr int kStagePadding = 8;
+static constexpr QRgb kStageColor = 0xFF08090B;
+static constexpr int kPlayIconSize = 20;
+static constexpr int kTransportInset = 14;
+static constexpr int kCompactWidth = 560;
+
 class NoWheelTabBar : public QTabBar
 {
     void wheelEvent(QWheelEvent *event) { event->ignore(); };
+};
+
+/// Lays out up to three widgets in a row: the first aligned left, the second
+/// centered in the row and the third aligned right. When the row is too narrow for
+/// all of them, the first widget moves to a line of its own above the others.
+/// Hidden widgets are skipped.
+class CenteredRowLayout : public QLayout
+{
+public:
+    explicit CenteredRowLayout(QWidget *parent)
+        : QLayout(parent)
+    {}
+    ~CenteredRowLayout() override
+    {
+        while (QLayoutItem *item = takeAt(0))
+            delete item;
+    }
+    void addItem(QLayoutItem *item) override { m_items.append(item); }
+    int count() const override { return m_items.size(); }
+    QLayoutItem *itemAt(int index) const override { return m_items.value(index); }
+    QLayoutItem *takeAt(int index) override
+    {
+        return index >= 0 && index < m_items.size() ? m_items.takeAt(index) : nullptr;
+    }
+    QSize sizeHint() const override { return rowSize(0, false); }
+    QSize minimumSize() const override
+    {
+        // As narrow as the first widget on a line of its own; heightForWidth() gives the
+        // height of that arrangement.
+        const QMargins margins = contentsMargins();
+        const int first = visible(0)
+                              ? visible(0)->minimumSize().width() + margins.left() + margins.right()
+                              : 0;
+        return QSize(qMax(first, rowSize(1, true).width()), rowSize(0, true).height());
+    }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override
+    {
+        if (fitsOneLine(width))
+            return rowSize(0, false).height();
+        return rowSize(1, false).height() + visible(0)->sizeHint().height() + kLineSpacing;
+    }
+
+    void setGeometry(const QRect &rect) override
+    {
+        QLayout::setGeometry(rect);
+        QRect area = rect.marginsRemoved(contentsMargins());
+        QLayoutItem *left = visible(0);
+        if (left && !fitsOneLine(rect.width())) {
+            const QSize size = left->sizeHint();
+            left->setGeometry(QRect(area.topLeft(), size));
+            area.setTop(area.top() + size.height() + kLineSpacing);
+            left = nullptr;
+        }
+        placeLine(area, left, visible(1), visible(2));
+    }
+
+private:
+    static constexpr int kLineSpacing = 4;
+
+    QLayoutItem *visible(int index) const
+    {
+        QLayoutItem *item = itemAt(index);
+        return item && !item->isEmpty() ? item : nullptr;
+    }
+
+    bool fitsOneLine(int width) const { return !visible(0) || rowSize(0, false).width() <= width; }
+
+    /// The size of one line with the visible widgets from index first on.
+    QSize rowSize(int first, bool minimum) const
+    {
+        int width = 0;
+        int height = 0;
+        int count = 0;
+        for (int i = first; i < m_items.size(); ++i) {
+            if (!visible(i))
+                continue;
+            const QSize size = minimum ? m_items[i]->minimumSize() : m_items[i]->sizeHint();
+            width += size.width();
+            height = qMax(height, size.height());
+            ++count;
+        }
+        width += qMax(0, count - 1) * qMax(0, spacing());
+        const QMargins margins = contentsMargins();
+        return QSize(width + margins.left() + margins.right(),
+                     height + margins.top() + margins.bottom());
+    }
+
+    void placeLine(const QRect &area, QLayoutItem *left, QLayoutItem *center, QLayoutItem *right)
+    {
+        const int gap = qMax(0, spacing());
+        auto place = [&](QLayoutItem *item, int x) {
+            const QSize size = item->sizeHint();
+            item->setGeometry(
+                QRect(QPoint(x, area.top() + (area.height() - size.height()) / 2), size));
+        };
+        int leftEnd = area.left();
+        if (left) {
+            place(left, area.left());
+            leftEnd = area.left() + left->sizeHint().width();
+        }
+        int rightStart = area.right() + 1 - (right ? right->sizeHint().width() : 0);
+        if (center) {
+            const int width = center->sizeHint().width();
+            int x = area.left() + (area.width() - width) / 2;
+            // Keep clear of the side widgets when the line is narrow.
+            x = qMin(x, rightStart - gap - width);
+            x = qMax(x, leftEnd + gap);
+            place(center, x);
+            leftEnd = x + width;
+        }
+        // Too narrow even so: keep the order and let the row clip the right widget.
+        if (right)
+            place(right, qMax(rightStart, leftEnd + gap));
+    }
+
+    QList<QLayoutItem *> m_items;
 };
 
 QString blankTime()
@@ -81,163 +208,54 @@ Player::Player(QWidget *parent)
     // Set WhatsThis help URL for the Player
     setWhatsThis("https://forum.shotcut.org/t/source-vs-project-player/12576/1");
 
-    // Create a layout.
+    // Grafito viewer (plan.md, section 3.2): a header, the video on a black stage
+    // with the peak meter, a 4 px progress bar and the transport row, in one panel.
+    setAttribute(Qt::WA_StyledBackground);
     QVBoxLayout *vlayout = new QVBoxLayout(this);
     vlayout->setObjectName("playerLayout");
-    vlayout->setContentsMargins(0, 0, 0, 0);
-    vlayout->setSpacing(4);
+    // Keep the contents inside the 1 px panel border drawn by the theme.
+    vlayout->setContentsMargins(1, 1, 1, 1);
+    vlayout->setSpacing(0);
+
+    // Header: [ Source | Project ], status, video mode chip, zoom, grid and full screen.
+    m_header = new QWidget;
+    m_header->setObjectName("playerHeader");
+    m_header->setAttribute(Qt::WA_StyledBackground);
+    m_header->setFixedHeight(kHeaderHeight);
+    QHBoxLayout *headerLayout = new QHBoxLayout(m_header);
+    headerLayout->setContentsMargins(12, 0, 10, 0);
+    headerLayout->setSpacing(8);
+    vlayout->addWidget(m_header);
 
     // Add tab bar to indicate/select what is playing: clip, playlist, timeline.
     m_tabs = new NoWheelTabBar;
-    m_tabs->setShape(QTabBar::RoundedSouth);
+    m_tabs->setObjectName("playerTabs");
+    m_tabs->setShape(QTabBar::RoundedNorth);
+    m_tabs->setDrawBase(false);
+    m_tabs->setExpanding(false);
     m_tabs->setUsesScrollButtons(false);
+    // Always show both tabs whole; the status message takes the free space instead.
+    m_tabs->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_tabs->addTab(tr("Source"));
     m_tabs->addTab(tr("Project"));
     m_tabs->setTabEnabled(SourceTabIndex, false);
     m_tabs->setTabEnabled(ProjectTabIndex, false);
-    QHBoxLayout *tabLayout = new QHBoxLayout;
-    tabLayout->setSpacing(8);
-    tabLayout->addWidget(m_tabs);
+    headerLayout->addWidget(m_tabs, 0, Qt::AlignVCenter);
     connect(m_tabs, &QTabBar::tabBarClicked, this, &Player::onTabBarClicked);
 
     // Add status bar.
     m_statusLabel = new StatusLabelWidget();
     connect(m_statusLabel, &StatusLabelWidget::statusCleared, this, &Player::onStatusFinished);
-    tabLayout->addWidget(m_statusLabel);
-    tabLayout->addStretch(1);
+    headerLayout->addWidget(m_statusLabel, 1, Qt::AlignVCenter);
 
-    // Add the layouts for managing video view, scroll bars, and audio controls.
-    m_videoLayout = new QHBoxLayout;
-    m_videoLayout->setSpacing(4);
-    m_videoLayout->setContentsMargins(0, 0, 0, 0);
-    vlayout->addLayout(m_videoLayout, 1);
-    m_videoScrollWidget = new QWidget;
-    m_videoLayout->addWidget(m_videoScrollWidget, 10);
-    m_videoLayout->addStretch();
-    QGridLayout *glayout = new QGridLayout(m_videoScrollWidget);
-    glayout->setSpacing(0);
-    glayout->setContentsMargins(0, 0, 0, 0);
+    // Resolution and frame rate of the video mode.
+    m_profileChip = new QLabel;
+    m_profileChip->setObjectName("playerProfileChip");
+    headerLayout->addWidget(m_profileChip, 0, Qt::AlignVCenter);
 
-    // Add the video widgets.
-    m_videoWidget = qobject_cast<QWidget *>(MLT.videoWidget());
-    Q_ASSERT(m_videoWidget);
-    m_videoWidget->setMinimumSize(QSize(1, 1));
-    glayout->addWidget(m_videoWidget, 0, 0);
-    m_verticalScroll = new QScrollBar(Qt::Vertical);
-    glayout->addWidget(m_verticalScroll, 0, 1);
-    m_verticalScroll->hide();
-    m_horizontalScroll = new QScrollBar(Qt::Horizontal);
-    glayout->addWidget(m_horizontalScroll, 1, 0);
-    m_horizontalScroll->hide();
-
-    // Add the new project widget.
-    m_projectWidget = new NewProjectFolder(this);
-    vlayout->addWidget(m_projectWidget, 10);
-    vlayout->addStretch();
-
-    // Add the volume and signal level meter
-    m_volumePopup = new QFrame(this, Qt::Popup);
-    QVBoxLayout *volumeLayoutV = new QVBoxLayout(m_volumePopup);
-    volumeLayoutV->setContentsMargins(0, 0, 0, 0);
-    volumeLayoutV->addSpacerItem(
-        new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding));
-    QBoxLayout *volumeLayoutH = new QHBoxLayout;
-    volumeLayoutH->setSpacing(0);
-    volumeLayoutH->setContentsMargins(0, 0, 0, 0);
-    volumeLayoutH->addWidget(new AudioScale);
-    m_volumeSlider = new QSlider(Qt::Vertical);
-    m_volumeSlider->setFocusPolicy(Qt::NoFocus);
-    m_volumeSlider->setMinimumHeight(VOLUME_SLIDER_HEIGHT);
-    m_volumeSlider->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    volumeLayoutH->addWidget(m_volumeSlider);
-    volumeLayoutV->addLayout(volumeLayoutH);
-    m_volumeSlider->setRange(0, 99);
-    m_volumeSlider->setValue(Settings.playerVolume());
-    setVolume(m_volumeSlider->value());
-    m_savedVolume = MLT.volume();
-    m_volumeSlider->setToolTip(tr("Adjust the audio volume"));
-    connect(m_volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(onVolumeChanged(int)));
-    connect(m_volumeSlider, &QAbstractSlider::sliderReleased, m_volumePopup, &QWidget::hide);
-
-    // Add mute-volume buttons layout
-#ifdef Q_OS_MAC
-    if (Settings.theme() == "system")
-        volumeLayoutH = new QVBoxLayout;
-    else
-#endif
-        volumeLayoutH = new QHBoxLayout;
-    volumeLayoutH->setContentsMargins(0, 0, 0, 0);
-    volumeLayoutH->setSpacing(0);
-    volumeLayoutV->addLayout(volumeLayoutH);
-
-    // Add mute button
-    m_muteButton = new QPushButton(this);
-    m_muteButton->setFocusPolicy(Qt::NoFocus);
-    m_muteButton->setObjectName(QString::fromUtf8("muteButton"));
-    m_muteButton->setIcon(
-        QIcon::fromTheme("audio-volume-muted",
-                         QIcon(":/icons/oxygen/32x32/status/audio-volume-muted.png")));
-    m_muteButton->setToolTip(tr("Silence the audio"));
-    m_muteButton->setCheckable(true);
-    m_muteButton->setChecked(Settings.playerMuted());
-    volumeLayoutH->addWidget(m_muteButton);
-    connect(m_muteButton, SIGNAL(clicked(bool)), this, SLOT(onMuteButtonToggled(bool)));
-
-    // Add the scrub bar.
-    m_scrubber = new ScrubBar(this);
-    m_scrubber->setFocusPolicy(Qt::NoFocus);
-    m_scrubber->setObjectName("scrubBar");
-    m_scrubber->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-    vlayout->addWidget(m_scrubber);
-
-    // Make a toolbar for the current and total duration times
-    m_currentDurationToolBar = new DockToolBar(tr("Current/Total Times"), this);
-    m_currentDurationToolBar->setAreaHint(Qt::BottomToolBarArea);
-    m_currentDurationToolBar->setContentsMargins(0, 0, 0, 0);
-    m_currentDurationToolBar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    m_positionSpinner = new TimeSpinBox(this);
-    m_positionSpinner->setToolTip(tr("Current position"));
-    m_positionSpinner->setEnabled(false);
-    m_positionSpinner->setKeyboardTracking(false);
-    m_currentDurationToolBar->addWidget(m_positionSpinner);
-    m_currentDurationToolBar->addWidget(new QLabel(" / "));
-    m_durationLabel = new QLabel(this);
-    m_durationLabel->setToolTip(tr("Total Duration"));
-    m_durationLabel->setText(blankTime());
-    QFontMetrics fm(m_durationLabel->font());
-    m_durationLabel->setFixedWidth(fm.boundingRect("00:00:00:.000").width() + 2);
-    m_durationLabel->setFixedHeight(m_positionSpinner->sizeHint().height());
-    m_currentDurationToolBar->addWidget(m_durationLabel);
-
-    // Make toolbar for transport controls.
-    m_controlsToolBar = new DockToolBar(tr("Player Controls"), this);
-    m_controlsToolBar->setAreaHint(Qt::BottomToolBarArea);
-    m_controlsToolBar->setContentsMargins(0, 0, 0, 0);
-    m_controlsToolBar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    m_controlsToolBar->addAction(Actions["playerSkipPreviousAction"]);
-    m_controlsToolBar->addAction(Actions["playerRewindAction"]);
-    m_controlsToolBar->addAction(Actions["playerPlayPauseAction"]);
-    m_controlsToolBar->addAction(Actions["playerFastForwardAction"]);
-    m_controlsToolBar->addAction(Actions["playerSkipNextAction"]);
-
-    // Make a toolbar for player options
-    m_optionsToolBar = new DockToolBar(tr("Player Options"), this);
-    m_optionsToolBar->setAreaHint(Qt::BottomToolBarArea);
-    m_optionsToolBar->setContentsMargins(0, 0, 0, 0);
-    m_optionsToolBar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    // Pause button
-    QToolButton *loopButton = new QToolButton;
-    QMenu *loopMenu = new QMenu(this);
-    loopMenu->addAction(Actions["playerLoopRangeAllAction"]);
-    loopMenu->addAction(Actions["playerLoopRangeMarkerAction"]);
-    loopMenu->addAction(Actions["playerLoopRangeSelectionAction"]);
-    loopMenu->addAction(Actions["playerLoopRangeAroundAction"]);
-    loopButton->setMenu(loopMenu);
-    loopButton->setPopupMode(QToolButton::MenuButtonPopup);
-    loopButton->setDefaultAction(Actions["playerLoopAction"]);
-    m_optionsToolBar->addWidget(loopButton);
     // Zoom button
     m_zoomButton = new QToolButton;
+    m_zoomButton->setObjectName("playerZoomButton");
     m_zoomMenu = new QMenu(this);
     m_zoomMenu
         ->addAction(QIcon::fromTheme("zoom-fit-best", QIcon(":/icons/dark/32x32/zoom-fit-best.png")),
@@ -309,11 +327,13 @@ Player::Player(QWidget *parent)
     m_zoomButton->setMenu(m_zoomMenu);
     m_zoomButton->setPopupMode(QToolButton::MenuButtonPopup);
     m_zoomButton->setCheckable(true);
+    m_zoomButton->setAutoRaise(true);
+    m_zoomButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_zoomButton->setToolTip(tr("Toggle zoom"));
-    m_optionsToolBar->addWidget(m_zoomButton);
-    toggleZoom(false);
-    // Add grid display button to toolbar.
+    headerLayout->addWidget(m_zoomButton, 0, Qt::AlignVCenter);
+    // Add grid display button.
     m_gridButton = new QToolButton;
+    m_gridButton->setObjectName("playerGridButton");
     QMenu *gridMenu = new QMenu(this);
     m_gridActionGroup = new QActionGroup(this);
     QAction *action = gridMenu->addAction(tr("2x2 Grid"), this, SLOT(onGridToggled()));
@@ -375,8 +395,202 @@ Player::Player(QWidget *parent)
     m_gridButton->setIcon(QIcon::fromTheme("view-grid", QIcon(":/icons/dark/32x32/view-grid.png")));
     m_gridButton->setPopupMode(QToolButton::MenuButtonPopup);
     m_gridButton->setCheckable(true);
+    m_gridButton->setAutoRaise(true);
     m_gridButton->setToolTip(tr("Toggle grid display on the player"));
-    m_optionsToolBar->addWidget(m_gridButton);
+    headerLayout->addWidget(m_gridButton, 0, Qt::AlignVCenter);
+    // Full screen button, bound by setFullScreenAction().
+    m_fullScreenButton = new QToolButton;
+    m_fullScreenButton->setObjectName("playerFullScreenButton");
+    m_fullScreenButton->setAutoRaise(true);
+    m_fullScreenButton->hide();
+    headerLayout->addWidget(m_fullScreenButton, 0, Qt::AlignVCenter);
+
+    // Stage: the video on a near-black background with the peak meter on its right.
+    m_stage = new QWidget;
+    m_stage->setObjectName("playerStage");
+    m_stage->setAttribute(Qt::WA_StyledBackground);
+    vlayout->addWidget(m_stage, 1);
+
+    // Add the layouts for managing video view, scroll bars, and audio controls.
+    m_videoLayout = new QHBoxLayout(m_stage);
+    m_videoLayout->setSpacing(kStagePadding);
+    m_videoLayout->setContentsMargins(0, kStagePadding, kStagePadding, kStagePadding);
+    m_videoScrollWidget = new QWidget;
+    m_videoLayout->addWidget(m_videoScrollWidget, 10);
+    m_videoLayout->addStretch();
+    QGridLayout *glayout = new QGridLayout(m_videoScrollWidget);
+    glayout->setSpacing(0);
+    glayout->setContentsMargins(0, 0, 0, 0);
+
+    // Add the video widgets.
+    m_videoWidget = qobject_cast<QWidget *>(MLT.videoWidget());
+    Q_ASSERT(m_videoWidget);
+    m_videoWidget->setMinimumSize(QSize(1, 1));
+    glayout->addWidget(m_videoWidget, 0, 0);
+    m_verticalScroll = new QScrollBar(Qt::Vertical);
+    glayout->addWidget(m_verticalScroll, 0, 1);
+    m_verticalScroll->hide();
+    m_horizontalScroll = new QScrollBar(Qt::Horizontal);
+    glayout->addWidget(m_horizontalScroll, 1, 0);
+    m_horizontalScroll->hide();
+
+    // Add the stereo peak meter at the right edge of the stage.
+    m_peakMeter = new PlayerPeakMeterWidget;
+    m_videoLayout->addWidget(m_peakMeter);
+
+    // Dark themes show the video on a near-black stage, also on an external monitor.
+    if (palette().color(QPalette::Window).lightnessF() < 0.5) {
+        QPalette stagePalette = palette();
+        stagePalette.setColor(QPalette::Window, QColor(kStageColor));
+        m_stage->setPalette(stagePalette);
+        m_stage->setAutoFillBackground(true);
+        m_videoScrollWidget->setPalette(stagePalette);
+        // The video widget clears to its window color around the frame.
+        QPalette videoPalette = m_videoWidget->palette();
+        videoPalette.setColor(QPalette::Window, QColor(kStageColor));
+        m_videoWidget->setPalette(videoPalette);
+    }
+
+    // Add the new project widget.
+    m_projectWidget = new NewProjectFolder(this);
+    vlayout->addWidget(m_projectWidget, 10);
+    vlayout->addStretch();
+
+    // Add the volume and signal level meter
+    m_volumePopup = new QFrame(this, Qt::Popup);
+    QVBoxLayout *volumeLayoutV = new QVBoxLayout(m_volumePopup);
+    volumeLayoutV->setContentsMargins(0, 0, 0, 0);
+    volumeLayoutV->addSpacerItem(
+        new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding));
+    QBoxLayout *volumeLayoutH = new QHBoxLayout;
+    volumeLayoutH->setSpacing(0);
+    volumeLayoutH->setContentsMargins(0, 0, 0, 0);
+    volumeLayoutH->addWidget(new AudioScale);
+    m_volumeSlider = new QSlider(Qt::Vertical);
+    m_volumeSlider->setFocusPolicy(Qt::NoFocus);
+    m_volumeSlider->setMinimumHeight(VOLUME_SLIDER_HEIGHT);
+    m_volumeSlider->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    volumeLayoutH->addWidget(m_volumeSlider);
+    volumeLayoutV->addLayout(volumeLayoutH);
+    m_volumeSlider->setRange(0, 99);
+    m_volumeSlider->setValue(Settings.playerVolume());
+    setVolume(m_volumeSlider->value());
+    m_savedVolume = MLT.volume();
+    m_volumeSlider->setToolTip(tr("Adjust the audio volume"));
+    connect(m_volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(onVolumeChanged(int)));
+    connect(m_volumeSlider, &QAbstractSlider::sliderReleased, m_volumePopup, &QWidget::hide);
+
+    // Add mute-volume buttons layout
+#ifdef Q_OS_MAC
+    if (Settings.theme() == "system")
+        volumeLayoutH = new QVBoxLayout;
+    else
+#endif
+        volumeLayoutH = new QHBoxLayout;
+    volumeLayoutH->setContentsMargins(0, 0, 0, 0);
+    volumeLayoutH->setSpacing(0);
+    volumeLayoutV->addLayout(volumeLayoutH);
+
+    // Add mute button
+    m_muteButton = new QPushButton(this);
+    m_muteButton->setFocusPolicy(Qt::NoFocus);
+    m_muteButton->setObjectName(QString::fromUtf8("muteButton"));
+    m_muteButton->setIcon(
+        QIcon::fromTheme("audio-volume-muted",
+                         QIcon(":/icons/oxygen/32x32/status/audio-volume-muted.png")));
+    m_muteButton->setToolTip(tr("Silence the audio"));
+    m_muteButton->setCheckable(true);
+    m_muteButton->setChecked(Settings.playerMuted());
+    volumeLayoutH->addWidget(m_muteButton);
+    connect(m_muteButton, SIGNAL(clicked(bool)), this, SLOT(onMuteButtonToggled(bool)));
+
+    // Align the progress bar and the transport row with the video, left of the meter.
+    const int rightInset = kStagePadding + m_peakMeter->sizeHint().width() + kStagePadding;
+
+    // Add the scrub bar.
+    m_scrubber = new ScrubBar(this);
+    m_scrubber->setFocusPolicy(Qt::NoFocus);
+    m_scrubber->setObjectName("scrubBar");
+    m_scrubber->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    QHBoxLayout *scrubLayout = new QHBoxLayout;
+    scrubLayout->setContentsMargins(0, 6, rightInset, 0);
+    scrubLayout->addWidget(m_scrubber);
+    vlayout->addLayout(scrubLayout);
+
+    // Make a toolbar for the current and total duration times
+    m_currentDurationToolBar = new QToolBar(tr("Current/Total Times"), this);
+    m_currentDurationToolBar->setObjectName("playerTimeToolBar");
+    m_positionSpinner = new TimeSpinBox(this);
+    m_positionSpinner->setObjectName("playerPositionSpinner");
+    m_positionSpinner->setToolTip(tr("Current position"));
+    m_positionSpinner->setEnabled(false);
+    m_positionSpinner->setKeyboardTracking(false);
+    m_positionSpinner->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    m_currentDurationToolBar->addWidget(m_positionSpinner);
+    QLabel *timeSeparator = new QLabel(QStringLiteral("/"));
+    timeSeparator->setObjectName("playerTimeSeparator");
+    m_currentDurationToolBar->addWidget(timeSeparator);
+    m_durationLabel = new QLabel(this);
+    m_durationLabel->setObjectName("playerDurationLabel");
+    m_durationLabel->setToolTip(tr("Total Duration"));
+    m_durationLabel->setText(blankTime());
+    m_currentDurationToolBar->addWidget(m_durationLabel);
+
+    // Make a toolbar for in-point and selected duration
+    m_inSelectedToolBar = new QToolBar(tr("Player Options"), this);
+    m_inSelectedToolBar->setObjectName("playerSelectionToolBar");
+    m_inPointLabel = new QLabel(this);
+    m_inPointLabel->setObjectName("playerInPointLabel");
+    m_inPointLabel->setText(blankTime());
+    m_inPointLabel->setToolTip(tr("In Point"));
+    m_inPointLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_inSelectedToolBar->addWidget(m_inPointLabel);
+    QLabel *selectionSeparator = new QLabel(QStringLiteral("/"));
+    selectionSeparator->setObjectName("playerSelectionSeparator");
+    m_inSelectedToolBar->addWidget(selectionSeparator);
+    m_selectedLabel = new QLabel(this);
+    m_selectedLabel->setObjectName("playerSelectedLabel");
+    m_selectedLabel->setText(blankTime());
+    m_selectedLabel->setToolTip(tr("Selected Duration"));
+    m_selectedLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_inSelectedToolBar->addWidget(m_selectedLabel);
+
+    m_timeBlock = new QWidget;
+    m_timeBlock->setObjectName("playerTimeBlock");
+    QVBoxLayout *timeLayout = new QVBoxLayout(m_timeBlock);
+    timeLayout->setContentsMargins(0, 0, 0, 0);
+    timeLayout->setSpacing(0);
+    timeLayout->addWidget(m_currentDurationToolBar);
+    timeLayout->addWidget(m_inSelectedToolBar);
+
+    // Make toolbar for transport controls: Start, Previous Frame, Play/Pause (a
+    // 44 px accent circle), Next Frame and End.
+    m_controlsToolBar = new QToolBar(tr("Player Controls"), this);
+    m_controlsToolBar->setObjectName("playerControlsToolBar");
+    m_controlsToolBar->addAction(Actions["playerSeekStartAction"]);
+    m_controlsToolBar->addAction(Actions["playerPreviousFrameAction"]);
+    m_playButton = new TransportPlayButton;
+    m_playButton->setObjectName("playerPlayButton");
+    m_playButton->setDefaultAction(Actions["playerPlayPauseAction"]);
+    m_playButton->setIconSize(QSize(kPlayIconSize, kPlayIconSize));
+    m_controlsToolBar->addWidget(m_playButton);
+    m_controlsToolBar->addAction(Actions["playerNextFrameAction"]);
+    m_controlsToolBar->addAction(Actions["playerSeekEndAction"]);
+
+    // Make a toolbar for player options: loop and volume.
+    m_optionsToolBar = new QToolBar(tr("Player Options"), this);
+    m_optionsToolBar->setObjectName("playerOptionsToolBar");
+    QToolButton *loopButton = new QToolButton;
+    loopButton->setObjectName("playerLoopButton");
+    QMenu *loopMenu = new QMenu(this);
+    loopMenu->addAction(Actions["playerLoopRangeAllAction"]);
+    loopMenu->addAction(Actions["playerLoopRangeMarkerAction"]);
+    loopMenu->addAction(Actions["playerLoopRangeSelectionAction"]);
+    loopMenu->addAction(Actions["playerLoopRangeAroundAction"]);
+    loopButton->setMenu(loopMenu);
+    loopButton->setPopupMode(QToolButton::MenuButtonPopup);
+    loopButton->setDefaultAction(Actions["playerLoopAction"]);
+    m_optionsToolBar->addWidget(loopButton);
     // Add volume control to toolbar.
     m_volumeButton = new QToolButton;
     m_volumeButton->setObjectName(QString::fromUtf8("volumeButton"));
@@ -387,33 +601,33 @@ Player::Player(QWidget *parent)
     connect(m_volumeButton, SIGNAL(clicked()), this, SLOT(onVolumeTriggered()));
     m_optionsToolBar->addWidget(m_volumeButton);
 
-    // Make a toolbar for in-point and selected duration
-    m_inSelectedToolBar = new DockToolBar(tr("Player Options"), this);
-    m_inSelectedToolBar->setAreaHint(Qt::BottomToolBarArea);
-    m_inSelectedToolBar->setContentsMargins(0, 0, 0, 0);
-    m_inPointLabel = new QLabel(this);
-    m_inPointLabel->setText(blankTime());
-    m_inPointLabel->setToolTip(tr("In Point"));
-    m_inPointLabel->setFixedWidth(fm.boundingRect("00:00:00.000").width() + 2);
-    m_inPointLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_inPointLabel->setFixedHeight(m_positionSpinner->sizeHint().height());
-    m_inSelectedToolBar->addWidget(m_inPointLabel);
-    m_inSelectedToolBar->addWidget(new QLabel(" / "));
-    m_selectedLabel = new QLabel(this);
-    m_selectedLabel->setText(blankTime());
-    m_selectedLabel->setToolTip(tr("Selected Duration"));
-    m_selectedLabel->setFixedWidth(fm.boundingRect("00:00:00.000").width() + 2);
-    m_selectedLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    m_selectedLabel->setFixedHeight(m_positionSpinner->sizeHint().height());
-    m_inSelectedToolBar->addWidget(m_selectedLabel);
+    for (QToolBar *toolbar :
+         {m_currentDurationToolBar, m_inSelectedToolBar, m_controlsToolBar, m_optionsToolBar}) {
+        toolbar->setMovable(false);
+        toolbar->setFloatable(false);
+        toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
+        // Take the margins and spacing from the rule for its name (see Util::repolish()).
+        Util::repolish(toolbar);
+    }
 
-    // Create two rows for the toolbars.
-    // The toolbars will be layed out in one or two rows depending on the width.
-    m_toolRow1 = new QHBoxLayout();
-    vlayout->addLayout(m_toolRow1);
-    m_toolRow2 = new QHBoxLayout();
-    vlayout->addLayout(m_toolRow2);
-    vlayout->addLayout(tabLayout);
+    // Transport row: time on the left, controls centered under the video, loop
+    // and volume on the right.
+    m_transportBar = new QWidget;
+    m_transportBar->setObjectName("playerTransport");
+    CenteredRowLayout *transportLayout = new CenteredRowLayout(m_transportBar);
+    transportLayout->setContentsMargins(kTransportInset, 2, rightInset + kTransportInset, 8);
+    transportLayout->setSpacing(12);
+    transportLayout->addWidget(m_timeBlock);
+    transportLayout->addWidget(m_controlsToolBar);
+    transportLayout->addWidget(m_optionsToolBar);
+    vlayout->addWidget(m_transportBar);
+
+    updateIconSizes();
+    connect(&Settings, &ShotcutSettings::smallIconsChanged, this, &Player::updateIconSizes);
+    updateTimeWidths();
+    toggleZoom(false);
+    onProfileChanged();
     layoutToolbars();
 
     onMuteButtonToggled(Settings.playerMuted());
@@ -438,6 +652,7 @@ Player::Player(QWidget *parent)
     connect(MLT.videoWidget(), SIGNAL(stepZoom(float, float)), SLOT(stepZoom(float, float)));
 
     connect(&Settings, &ShotcutSettings::timeFormatChanged, this, [&]() {
+        updateTimeWidths();
         updateSelection();
         if (MLT.isSeekable()) {
             onDurationChanged();
@@ -629,11 +844,13 @@ void Player::setupActions()
 
     action = new QAction(tr("Seek Start"), this);
     action->setShortcut(QKeySequence(Qt::Key_Home));
+    action->setIcon(QIcon::fromTheme("go-first", QIcon(":/icons/dark/32x32/go-first.png")));
     connect(action, &QAction::triggered, this, [&]() { seek(0); });
     Actions.add("playerSeekStartAction", action);
 
     action = new QAction(tr("Seek End"), this);
     action->setShortcut(QKeySequence(Qt::Key_End));
+    action->setIcon(QIcon::fromTheme("go-last", QIcon(":/icons/dark/32x32/go-last.png")));
     connect(action, &QAction::triggered, this, [&]() {
         if (MLT.producer()) {
             pause(MLT.producer()->get_length());
@@ -645,12 +862,14 @@ void Player::setupActions()
     action = new QAction(tr("Next Frame"), this);
     action->setProperty(Actions.hardKeyProperty, "K+L");
     action->setShortcut(QKeySequence(Qt::Key_Right));
+    action->setIcon(QIcon::fromTheme("go-next", QIcon(":/icons/dark/32x32/go-next.png")));
     connect(action, &QAction::triggered, this, &Player::nextFrame);
     Actions.add("playerNextFrameAction", action);
 
     action = new QAction(tr("Previous Frame"), this);
     action->setProperty(Actions.hardKeyProperty, "K+J");
     action->setShortcut(QKeySequence(Qt::Key_Left));
+    action->setIcon(QIcon::fromTheme("go-previous", QIcon(":/icons/dark/32x32/go-previous.png")));
     connect(action, &QAction::triggered, this, &Player::previousFrame);
     Actions.add("playerPreviousFrameAction", action);
 
@@ -900,6 +1119,7 @@ void Player::reset()
     m_inPointLabel->setText(blankTime());
     m_selectedLabel->setText(blankTime());
     m_durationLabel->setText(blankTime());
+    updateTimeWidths();
     m_scrubber->setDisabled(true);
     m_scrubber->setScale(1);
     m_positionSpinner->setValue(0);
@@ -910,6 +1130,8 @@ void Player::reset()
     Actions["playerRewindAction"]->setDisabled(true);
     Actions["playerFastForwardAction"]->setDisabled(true);
     m_videoWidget->hide();
+    m_stage->hide();
+    m_peakMeter->clear();
     m_projectWidget->show();
     m_previousIn = m_previousOut = -1;
 }
@@ -919,7 +1141,9 @@ void Player::onProducerOpened(bool play)
     if (!MLT.producer() || !MLT.producer()->is_valid())
         return;
     m_projectWidget->hide();
+    m_stage->show();
     m_videoWidget->show();
+    onProfileChanged();
     m_duration = MLT.producer()->get_length();
     setLoopRange(0, m_duration - 1);
     m_isSeekable = MLT.isSeekable();
@@ -944,6 +1168,7 @@ void Player::onProducerOpened(bool play)
         // cause scrubber redraw
         m_scrubber->setScale(m_duration);
     }
+    updateTimeWidths();
     if (MLT.isMultitrack()) {
         Actions["playerLoopRangeMarkerAction"]->setEnabled(true);
     } else {
@@ -997,6 +1222,7 @@ void Player::onDurationChanged()
     m_scrubber->setMarkers(QList<int>());
     m_durationLabel->setText(QString(MLT.producer()->get_length_time(Settings.timeFormat())));
     MLT.producer()->get_length_time(mlt_time_clock);
+    updateTimeWidths();
     if (MLT.producer()->get_speed() == 0)
         seek(m_position);
     else if (m_position >= m_duration)
@@ -1012,6 +1238,7 @@ void Player::onFrameDisplayed(const SharedFrame &frame)
         // This can happen if the profile changes. Reload the properties from the producer.
         onProducerOpened(false);
     }
+    m_peakMeter->onNewFrame(frame);
     int position = frame.get_position();
     bool loop = position >= (m_loopEnd - 1) && Actions["playerLoopAction"]->isChecked();
     if (position > MLT.producer()->get_length()) {
@@ -1095,6 +1322,7 @@ void Player::fastForward(bool forceChangeDirection)
 void Player::showPaused()
 {
     Actions["playerPlayPauseAction"]->setIcon(m_playIcon);
+    m_peakMeter->clear();
 }
 
 void Player::showPlaying()
@@ -1144,7 +1372,9 @@ void Player::setStatusLabel(const QString &text,
                             QAction *action,
                             QPalette::ColorRole role)
 {
-    m_statusLabel->setWidth(m_scrubber->width() - m_tabs->width());
+    // Elide the message to the room that the header leaves it, between the Source/Project
+    // tabs and the video mode chip.
+    m_statusLabel->setWidth(m_statusLabel->width());
     m_statusLabel->showText(text, timeoutSeconds, action, role);
 }
 
@@ -1222,38 +1452,65 @@ void Player::setLoopRange(int start, int end)
 
 void Player::layoutToolbars()
 {
-    // --- SHOTCUT AI: Always use single-row transport bar for clean CapCut-like UX ---
-    // Remove all existing widgets from both rows
-    QLayoutItem *child;
-    while ((child = m_toolRow1->takeAt(0)) != nullptr) {
-        QWidget *widget = child->widget();
-        if (widget->objectName().startsWith("spacer")) {
-            delete widget;
-        }
-        delete child;
-    }
-    while ((child = m_toolRow2->takeAt(0)) != nullptr) {
-        QWidget *widget = child->widget();
-        if (widget->objectName().startsWith("spacer")) {
-            delete widget;
-        }
-        delete child;
-    }
+    // One transport row: time | controls | loop and volume (CenteredRowLayout puts the
+    // time above the controls when they do not fit). On a narrow player, also drop the
+    // in point and selected duration line and the video mode chip of the header.
+    const bool compact = width() < kCompactWidth;
+    m_inSelectedToolBar->setVisible(!compact);
+    m_profileChip->setVisible(!compact);
+}
 
-    // Always use one compact row
-    QWidget *spacer;
-    m_toolRow1->addWidget(m_currentDurationToolBar);
-    spacer = new QWidget(this);
-    spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-    spacer->setObjectName("spacerLeft");
-    m_toolRow1->addWidget(spacer);
-    m_toolRow1->addWidget(m_controlsToolBar);
-    m_toolRow1->addWidget(m_optionsToolBar);
-    spacer = new QWidget(this);
-    spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-    spacer->setObjectName("spacerRight");
-    m_toolRow1->addWidget(spacer);
-    m_toolRow1->addWidget(m_inSelectedToolBar);
+void Player::updateIconSizes()
+{
+    const QSize size = Settings.smallIcons() ? QSize(15, 15) : QSize(18, 18);
+    m_controlsToolBar->setIconSize(size);
+    m_optionsToolBar->setIconSize(size);
+    for (auto button : m_optionsToolBar->findChildren<QToolButton *>())
+        button->setIconSize(size);
+    for (auto button : m_header->findChildren<QToolButton *>())
+        button->setIconSize(size);
+}
+
+void Player::updateTimeWidths()
+{
+    // Fit the longest time shown: the duration or a blank time of the current format, with
+    // zeros (the widest digits) for every digit. The style sheet sets the timecode fonts,
+    // so measure with the polished widgets.
+    QString sample = blankTime();
+    if (m_durationLabel->text().size() > sample.size())
+        sample = m_durationLabel->text();
+    for (auto &c : sample) {
+        if (c.isDigit() || c == QLatin1Char('-'))
+            c = QLatin1Char('0');
+    }
+    m_positionSpinner->ensurePolished();
+    // The line edit of the spin box paints the text; the font of the spin box itself can
+    // resolve differently (TimeSpinBox asks for a fixed pitch font). The spin box adds its
+    // frame, padding and text margins around the text.
+    const auto edit = m_positionSpinner->findChild<QLineEdit *>();
+    const QFontMetrics metrics = edit ? edit->fontMetrics() : m_positionSpinner->fontMetrics();
+    m_positionSpinner->setFixedWidth(metrics.horizontalAdvance(sample) + 12);
+    for (auto label : {m_durationLabel, m_inPointLabel, m_selectedLabel}) {
+        label->ensurePolished();
+        label->setFixedWidth(label->fontMetrics().horizontalAdvance(sample) + 2);
+    }
+}
+
+void Player::setFullScreenAction(QAction *action)
+{
+    m_fullScreenButton->setDefaultAction(action);
+    m_fullScreenButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_fullScreenButton->setVisible(action != nullptr);
+}
+
+void Player::onProfileChanged()
+{
+    m_profileChip->setText(QString::number(MLT.profile().width()) + QChar(0x00D7)
+                           + QString::number(MLT.profile().height())
+                           + QStringLiteral(" %1 ").arg(QChar(0x00B7))
+                           + tr("%1 fps").arg(QString::number(MLT.profile().fps(), 'g', 4)));
+    m_profileChip->setToolTip(MLT.profile().is_explicit() ? tr("Video mode")
+                                                          : tr("Video mode: Automatic"));
 }
 
 void Player::seekBy(int frames)
@@ -1422,6 +1679,8 @@ void Player::setZoom(float factor, const QIcon &icon)
 {
     emit zoomChanged(factor);
     Settings.setPlayerZoom(factor);
+    m_zoomButton->setText(factor == 0.0f ? tr("Fit")
+                                         : QStringLiteral("%1%").arg(qRound(factor * 100)));
     if (factor == 0.0f) {
         m_zoomButton->setIcon(icon);
         m_zoomButton->setChecked(false);

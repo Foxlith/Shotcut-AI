@@ -54,6 +54,25 @@ SVG_ICONS = {
         <polygon points="5 4 15 12 5 20 5 4" />
         <line x1="19" y1="5" x2="19" y2="19" />
     """,
+    # Phase 4 transport row: Start, Previous Frame, Next Frame, End
+    "go-first": """
+        <path d="m17 18-6-6 6-6" />
+        <path d="M7 6v12" />
+    """,
+    "go-previous": """
+        <path d="m15 18-6-6 6-6" />
+    """,
+    "go-next": """
+        <path d="m9 18 6-6-6-6" />
+    """,
+    "go-last": """
+        <path d="m7 18 6-6-6-6" />
+        <path d="M17 6v12" />
+    """,
+    # Phase 4 menu arrow of the player zoom, grid and loop buttons (chevron-down)
+    "go-down": """
+        <path d="m6 9 6 6 6-6" />
+    """,
     "media-playback-loop": """
         <path d="m17 2 4 4-4 4" />
         <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
@@ -524,26 +543,29 @@ def update_resources_qrc(svg_names):
     
     added_count = 0
     for name in sorted(svg_names):
-        rel = f"dark/32x32/{name}.svg"
-        if rel not in existing_files:
-            elem = ET.Element("file")
-            elem.text = rel
-            qresource.append(elem)
-            existing_files.add(rel)
-            added_count += 1
+        for ext in ("png", "svg"):
+            rel = f"dark/32x32/{name}.{ext}"
+            if rel not in existing_files:
+                elem = ET.Element("file")
+                elem.text = rel
+                qresource.append(elem)
+                existing_files.add(rel)
+                added_count += 1
             
     # Pretty format QRC
     ET.indent(tree, space="    ", level=0)
     tree.write(RESOURCES_QRC, encoding="utf-8", xml_declaration=False)
     print(f"resources.qrc updated: added {added_count} SVG entries (total files: {len(existing_files)})")
 
-def main():
-    print(f"Generating {len(SVG_ICONS)} Lucide-style stroke icons...")
+def main(only=None):
+    """Generate every icon, or only the names in `only` (e.g. newly added icons)."""
+    icons = {name: content for name, content in SVG_ICONS.items() if not only or name in only}
+    print(f"Generating {len(icons)} Lucide-style stroke icons...")
     DARK_ICONS_DIR.mkdir(parents=True, exist_ok=True)
     
     svg_generated = []
     
-    for name, content in SVG_ICONS.items():
+    for name, content in icons.items():
         svg_text = create_svg_doc(content)
         
         # 1. Save SVG
@@ -563,4 +585,8 @@ def main():
     print(f"\nSuccessfully generated and synchronized {len(svg_generated)} Lucide icons!")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate the Lucide-style dark icons.")
+    parser.add_argument("--only", help="comma-separated icon names to generate (default: all)")
+    args = parser.parse_args()
+    main(set(args.only.split(",")) if args.only else None)

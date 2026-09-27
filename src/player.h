@@ -24,7 +24,6 @@
 #include <QSize>
 #include <QWidget>
 
-class DockToolBar;
 class ScrubBar;
 class QSpinBox;
 class QLabel;
@@ -44,6 +43,9 @@ class QPushButton;
 class QMenu;
 class NewProjectFolder;
 class StatusLabelWidget;
+class QToolBar;
+class TransportPlayButton;
+class PlayerPeakMeterWidget;
 
 class Player : public QWidget
 {
@@ -62,6 +64,8 @@ public:
     void moveVideoToScreen(int screen = -1);
     void setPauseAfterOpen(bool pause);
     TabIndex tabIndex() const;
+    //! Shows a button for \a action (e.g. Enter Full Screen) in the viewer header.
+    void setFullScreenAction(QAction *action);
 
 signals:
     void endOfStream();
@@ -115,6 +119,7 @@ public slots:
     void onMuteButtonToggled(bool checked);
     void nextFrame();
     void previousFrame();
+    void onProfileChanged();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -128,6 +133,8 @@ private:
     void setLoopRange(int start, int end);
     void layoutToolbars();
     void seekBy(int frames);
+    void updateIconSizes();
+    void updateTimeWidths();
 
     ScrubBar *m_scrubber;
     TimeSpinBox *m_positionSpinner;
@@ -169,12 +176,18 @@ private:
     NewProjectFolder *m_projectWidget;
     int m_loopStart;
     int m_loopEnd;
-    DockToolBar *m_currentDurationToolBar;
-    DockToolBar *m_controlsToolBar;
-    DockToolBar *m_optionsToolBar;
-    DockToolBar *m_inSelectedToolBar;
-    QHBoxLayout *m_toolRow1;
-    QHBoxLayout *m_toolRow2;
+    QToolBar *m_currentDurationToolBar;
+    QToolBar *m_controlsToolBar;
+    QToolBar *m_optionsToolBar;
+    QToolBar *m_inSelectedToolBar;
+    QWidget *m_header;
+    QLabel *m_profileChip;
+    QToolButton *m_fullScreenButton;
+    QWidget *m_stage;
+    PlayerPeakMeterWidget *m_peakMeter;
+    TransportPlayButton *m_playButton;
+    QWidget *m_timeBlock;
+    QWidget *m_transportBar;
     int m_requestedPosition{0};
 
 private slots:

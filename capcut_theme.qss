@@ -431,6 +431,14 @@ QWidget#workspaceSwitcher QToolButton:disabled {
 }
 
 /* Secondary button: Jobs */
+/* Undo/Redo follow "Show Text Under Icons": compact so that the text fits the bar */
+QToolButton#undoButton,
+QToolButton#redoButton {
+    padding: 2px 8px;
+    margin: 0px;
+    font-size: 11px;
+}
+
 QToolButton#jobsButton {
     background-color: transparent;
     color: #E8EAEE;
@@ -495,6 +503,184 @@ QToolBar#sidebarToolBar {
     padding: 5px;
     margin: 0px;
     spacing: 4px;
+}
+
+/* --------------------------------------------------------------------
+   3c. GRAFITO VIEWER & TRANSPORT - Phase 4
+   One panel: 44px header, #08090B stage with the 6px stereo peak meter,
+   4px progress bar and the transport row with the 44px accent Play button.
+   -------------------------------------------------------------------- */
+QWidget#Player {
+    background-color: #15171C;
+    border: 1px solid #22252D;
+    border-radius: 12px;
+}
+
+QWidget#playerHeader {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #1F2229;
+}
+
+QTabBar#playerTabs {
+    background-color: #0F1115;
+    border: 1px solid #22252D;
+    border-radius: 9px;
+    padding: 2px;
+    margin: 0px;
+}
+
+QTabBar#playerTabs::tab {
+    background-color: transparent;
+    color: #9AA1AD;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    margin: 1px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QTabBar#playerTabs::tab:hover:!selected {
+    background-color: transparent;
+    color: #C9CED6;
+}
+
+QTabBar#playerTabs::tab:selected {
+    background-color: #262A33;
+    color: #E8EAEE;
+    border: none;
+    font-weight: 600;
+}
+
+QTabBar#playerTabs::tab:disabled {
+    color: #5F6672;
+}
+
+QLabel#playerProfileChip {
+    background-color: #1D2027;
+    color: #C9CED6;
+    border: 1px solid #22252D;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+}
+
+QWidget#playerHeader QToolButton {
+    padding: 4px 8px;
+    border-radius: 7px;
+    margin: 0px;
+}
+
+QToolButton#playerZoomButton {
+    color: #C9CED6;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Menu part of the zoom, grid and loop buttons (MenuButtonPopup) */
+QWidget#playerHeader QToolButton::menu-button,
+QToolBar#playerOptionsToolBar QToolButton::menu-button {
+    background-color: transparent;
+    border: none;
+    width: 14px;
+}
+
+QWidget#playerHeader QToolButton::menu-arrow,
+QToolBar#playerOptionsToolBar QToolButton::menu-arrow {
+    image: url(:/icons/dark/32x32/go-down.png);
+    width: 10px;
+    height: 10px;
+}
+
+QWidget#playerStage {
+    background-color: #08090B;
+}
+
+PlayerPeakMeterWidget {
+    qproperty-trackColor: #1D2027;
+    qproperty-lowColor: #2BB596;
+    qproperty-highColor: #F5C542;
+    qproperty-peakColor: #E8EAEE;
+    qproperty-barWidth: 6;
+}
+
+ScrubBar {
+    qproperty-trackColor: #2A2E37;
+    qproperty-progressColor: #FF7A45;
+    qproperty-handleColor: #FFFFFF;
+    qproperty-selectionColor: #E8EAEE;
+    qproperty-markerColor: #9AA1AD;
+    qproperty-loopColor: rgba(255, 122, 69, 0.6);
+}
+
+QToolBar#playerTimeToolBar,
+QToolBar#playerSelectionToolBar,
+QToolBar#playerControlsToolBar,
+QToolBar#playerOptionsToolBar {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    margin: 0px;
+    spacing: 4px;
+}
+
+QToolBar#playerControlsToolBar {
+    spacing: 8px;
+}
+
+QToolBar#playerControlsToolBar QToolButton,
+QToolBar#playerOptionsToolBar QToolButton {
+    padding: 6px;
+    border-radius: 8px;
+    margin: 0px;
+}
+
+TimeSpinBox#playerPositionSpinner {
+    background-color: transparent;
+    color: #E8EAEE;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0px 2px;
+    font-family: "Geist Mono", monospace;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+TimeSpinBox#playerPositionSpinner:focus {
+    background-color: #0F1115;
+    border-color: #FF7A45;
+}
+
+TimeSpinBox#playerPositionSpinner:disabled {
+    color: #5F6672;
+}
+
+QLabel#playerTimeSeparator,
+QLabel#playerDurationLabel {
+    color: #858C98;
+    font-family: "Geist Mono", monospace;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+QLabel#playerInPointLabel,
+QLabel#playerSelectionSeparator,
+QLabel#playerSelectedLabel {
+    color: #858C98;
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+}
+
+TransportPlayButton#playerPlayButton {
+    qproperty-fillColor: #FF7A45;
+    qproperty-hoverColor: #FF8F61;
+    qproperty-pressedColor: #E66835;
+    qproperty-glyphColor: #140A05;
+    qproperty-disabledFillColor: #262A33;
+    qproperty-disabledGlyphColor: #5F6672;
 }
 
 /* --------------------------------------------------------------------

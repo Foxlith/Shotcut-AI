@@ -47,39 +47,45 @@ AudioPeakMeterScopeWidget::AudioPeakMeterScopeWidget()
     LOG_DEBUG() << "end";
 }
 
+QVector<double> AudioPeakMeterScopeWidget::peakLevels(const SharedFrame &frame)
+{
+    QVector<double> levels;
+    if (!frame.is_valid() || frame.get_audio_samples() <= 0)
+        return levels;
+    int channels = frame.get_audio_channels();
+    int samples = frame.get_audio_samples();
+    const int16_t *audio = static_cast<const int16_t *>(frame.get_audio(mlt_audio_s16));
+    for (int c = 0; c < channels; c++) {
+        int16_t peak = 0;
+        const int16_t *p = audio + c;
+        for (int s = 0; s < samples; s++) {
+            int16_t sample = abs(*p);
+            if (sample > peak)
+                peak = sample;
+            p += channels;
+        }
+        if (peak == 0) {
+            levels << -100.0;
+        } else {
+            levels << 20 * log10((double) peak / (double) std::numeric_limits<int16_t>::max());
+        }
+    }
+    return levels;
+}
+
 void AudioPeakMeterScopeWidget::refreshScope(const QSize & /*size*/, bool /*full*/)
 {
     SharedFrame sFrame;
     while (m_queue.count() > 0) {
         sFrame = m_queue.pop();
-        if (sFrame.is_valid() && sFrame.get_audio_samples() > 0) {
-            int channels = sFrame.get_audio_channels();
-            int samples = sFrame.get_audio_samples();
-            QVector<double> levels;
-            const int16_t *audio = static_cast<const int16_t *>(sFrame.get_audio(mlt_audio_s16));
-            for (int c = 0; c < channels; c++) {
-                int16_t peak = 0;
-                const int16_t *p = audio + c;
-                for (int s = 0; s < samples; s++) {
-                    int16_t sample = abs(*p);
-                    if (sample > peak)
-                        peak = sample;
-                    p += channels;
-                }
-                if (peak == 0) {
-                    levels << -100.0;
-                } else {
-                    levels << 20
-                                  * log10((double) peak
-                                          / (double) std::numeric_limits<int16_t>::max());
-                }
-            }
+        const QVector<double> levels = peakLevels(sFrame);
+        if (!levels.isEmpty()) {
             QMetaObject::invokeMethod(m_audioMeter,
                                       "showAudio",
                                       Qt::QueuedConnection,
                                       Q_ARG(const QVector<double> &, levels));
-            if (m_channels != channels) {
-                m_channels = channels;
+            if (m_channels != levels.size()) {
+                m_channels = levels.size();
                 QMetaObject::invokeMethod(this, "reconfigureMeter", Qt::QueuedConnection);
             }
         }

@@ -221,6 +221,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   widgets/scopes/audiosurroundscopewidget.cpp widgets/scopes/audiosurroundscopewidget.h
   widgets/scopes/audiovectorscopewidget.cpp widgets/scopes/audiovectorscopewidget.h
   widgets/scopes/audiowaveformscopewidget.cpp widgets/scopes/audiowaveformscopewidget.h
+  widgets/scopes/playerpeakmeterwidget.cpp widgets/scopes/playerpeakmeterwidget.h
   widgets/scopes/scopewidget.cpp widgets/scopes/scopewidget.h
   widgets/scopes/videohistogramscopewidget.cpp widgets/scopes/videohistogramscopewidget.h
   widgets/scopes/videorgbparadescopewidget.cpp widgets/scopes/videorgbparadescopewidget.h
@@ -243,6 +244,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   widgets/toneproducerwidget.ui
   widgets/trackpropertieswidget.cpp widgets/trackpropertieswidget.h
   widgets/trackpropertieswidget.ui
+  widgets/transportplaybutton.cpp widgets/transportplaybutton.h
   widgets/video4linuxwidget.cpp widgets/video4linuxwidget.h
   widgets/video4linuxwidget.ui
   ../icons/resources.qrc
