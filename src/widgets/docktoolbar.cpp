@@ -43,6 +43,11 @@ void DockToolBar::setAreaHint(Qt::ToolBarArea area)
 
 void DockToolBar::paintEvent(QPaintEvent *event)
 {
+    if (isGrafitoTimeline()) {
+        // Flat Grafito bar painted by the style sheet (DockToolBar#timelineToolbar).
+        QToolBar::paintEvent(event);
+        return;
+    }
     QPainter p(this);
     QLinearGradient gradient
         = QLinearGradient(rect().left(), rect().center().y(), rect().right(), rect().center().y());
@@ -70,11 +75,20 @@ bool DockToolBar::event(QEvent *event)
     return QToolBar::event(event);
 }
 
+bool DockToolBar::isGrafitoTimeline() const
+{
+    return objectName() == "timelineToolbar"
+           && palette().color(QPalette::Window).lightnessF() < 0.5;
+}
+
 void DockToolBar::updateStyle()
 {
     bool isTimeline = (objectName() == "timelineToolbar") || property("compact").toBool();
     int iconDim = isTimeline ? 15 : (Settings.smallIcons() ? 15 : 18);
     int barHeight = isTimeline ? 26 : (Settings.smallIcons() ? 26 : 30);
+    // Grafito timeline toolbar: 44 px with 15 px icons in groups (plan.md 3.3).
+    if (isGrafitoTimeline())
+        barHeight = 44;
     setFixedHeight(barHeight);
     setIconSize(QSize(iconDim, iconDim));
     QString styleSheet = QString::fromUtf8("   \
@@ -117,10 +131,13 @@ void DockToolBar::updateStyle()
            color:#5F6672;                       \
          }                                      \
          QToolBar {                             \
-           spacing:3px;                         \
-           padding:1px;                         \
+           spacing:%2px;                        \
+           padding:%3;                          \
          }                                      \
         ")
-                             .arg(iconDim + 6);
+                             .arg(iconDim + 6)
+                             .arg(isGrafitoTimeline() ? 4 : 3)
+                             .arg(isGrafitoTimeline() ? QStringLiteral("0px 8px")
+                                                      : QStringLiteral("1px"));
     setStyleSheet(styleSheet);
 }

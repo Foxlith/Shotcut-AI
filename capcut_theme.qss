@@ -684,6 +684,25 @@ TransportPlayButton#playerPlayButton {
 }
 
 /* --------------------------------------------------------------------
+   3d. GRAFITO TIMELINE - Phase 5
+   44px toolbar in groups with #1F2229 dividers; the tracks, clips, ruler
+   and playhead are drawn in QML (src/qml/views/timeline).
+   -------------------------------------------------------------------- */
+DockToolBar#timelineToolbar {
+    background-color: #15171C;
+    border: none;
+    border-bottom: 1px solid #1F2229;
+    border-radius: 0px;
+    margin: 0px;
+}
+
+DockToolBar#timelineToolbar::separator {
+    width: 1px;
+    background-color: #1F2229;
+    margin: 12px 6px;
+}
+
+/* --------------------------------------------------------------------
    4. DOCKS & FLOATING PANELS (12px radius, #15171C base, #22252D border)
    -------------------------------------------------------------------- */
 QDockWidget {

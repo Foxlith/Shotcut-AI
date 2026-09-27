@@ -243,11 +243,34 @@ MultitrackModel::MultitrackModel(QObject *parent)
     connect(this, SIGNAL(modified()), SLOT(adjustTrackFilters()));
     connect(this, SIGNAL(reloadRequested()), SLOT(reload()), Qt::QueuedConnection);
     connect(this, &MultitrackModel::created, this, &MultitrackModel::scaleFactorChanged);
+    // Video tracks come first (V3, V2, V1, then A1, A2...): the timeline numbers its track
+    // badges from this count, so notify it whenever tracks are added or removed.
+    auto notifyTrackCount = [this](const QModelIndex &parent) {
+        if (!parent.isValid())
+            emit videoTrackCountChanged();
+    };
+    connect(this, &QAbstractItemModel::rowsInserted, this, notifyTrackCount);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, notifyTrackCount);
+    connect(this, &QAbstractItemModel::modelReset, this, &MultitrackModel::videoTrackCountChanged);
 }
 
 bool MultitrackModel::trackLevelIndicatorSupported() const
 {
     return m_trackLevelIndicatorSupported;
+}
+
+/*!
+    \qmlproperty int MultitrackModel::videoTrackCount
+    \brief The number of video tracks, which are listed before the audio tracks.
+*/
+int MultitrackModel::videoTrackCount() const
+{
+    int count = 0;
+    for (const auto &track : m_trackList) {
+        if (track.type == VideoTrackType)
+            ++count;
+    }
+    return count;
 }
 
 bool MultitrackModel::hasAudioTracks() const
@@ -1181,7 +1204,7 @@ int MultitrackModel::trackHeaderWidth() const
 {
     return (m_tractor && m_tractor->property_exists(kTrackHeaderWidthProperty))
                ? m_tractor->get_int(kTrackHeaderWidthProperty)
-               : 165;
+               : 164; // Grafito track headers (plan.md 3.3)
 }
 
 void MultitrackModel::setTrackHeaderWidth(int width)
@@ -1201,7 +1224,11 @@ void MultitrackModel::setTrackHeaderWidth(int width)
 double MultitrackModel::scaleFactor() const
 {
     double result = m_tractor ? m_tractor->get_double(kTimelineScaleProperty) : 0;
-    return (result > 0) ? qBound(0.0, result, 27.01) : (qPow(1.0, 3.0) + 0.01);
+    if (result > 0)
+        return qBound(0.0, result, 27.01);
+    // New timelines start at 60 px per second (plan.md 3.3).
+    const double fps = MLT.profile().fps();
+    return (fps > 0) ? qBound(0.01, 60.0 / fps, 27.01) : (qPow(1.0, 3.0) + 0.01);
 }
 
 void MultitrackModel::setScaleFactor(double scale)

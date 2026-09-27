@@ -35,6 +35,8 @@ protected:
     bool event(QEvent *event) Q_DECL_OVERRIDE;
 
 private:
+    bool isGrafitoTimeline() const;
+
     Qt::ToolBarArea m_area;
 };
 

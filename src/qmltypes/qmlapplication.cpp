@@ -113,6 +113,20 @@ QPoint QmlApplication::mousePos()
     Notifies \l paletteChanged.
 */
 
+/*!
+    \qmlproperty color Application::playheadColor
+    \brief The color of the timeline and keyframes playhead.
+
+    Dark (Grafito) themes use the accent color of the palette; others the classic red.
+*/
+QColor QmlApplication::playheadColor()
+{
+    const auto palette = QApplication::palette();
+    if (palette.color(QPalette::Window).lightnessF() < 0.5)
+        return palette.color(QPalette::Highlight);
+    return QColor(0xe0, 0x46, 0x4e);
+}
+
 QColor QmlApplication::toolTipBaseColor()
 {
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)

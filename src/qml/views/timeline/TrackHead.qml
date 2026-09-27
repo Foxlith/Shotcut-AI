@@ -23,6 +23,8 @@ Rectangle {
     id: trackHeadRoot
 
     property string trackName: ''
+    // V2, V1, A1, A2... shown in the colored badge; the name is editable.
+    property string trackCode: ''
     property real trackGain: 0
     property bool isMute
     property bool isHidden
@@ -245,9 +247,12 @@ Rectangle {
 
     Component.onCompleted: _syncTrackGain()
 
-    color: selected ? selectedTrackColor : (index % 2) ? activePalette.alternateBase : activePalette.base
-    border.color: selected ? application.playheadColor : 'transparent'
+    // Grafito track header (plan.md 3.3): #1B1E24, #262A33 on hover, #22252D when current
+    // and an accent border when selected.
+    color: root.trackHeadColor
+    border.color: selected ? root.accentColor : 'transparent'
     border.width: selected ? 1 : 0
+    radius: root.grafito ? 6 : 0
     clip: true
     state: 'normal'
     states: [
@@ -257,7 +262,7 @@ Rectangle {
 
             PropertyChanges {
                 target: trackHeadRoot
-                color: isVideo ? root.shotcutBlue : 'darkseagreen'
+                color: root.trackHeadActiveColor
             }
         },
         State {
@@ -266,7 +271,16 @@ Rectangle {
 
             PropertyChanges {
                 target: trackHeadRoot
-                color: Qt.rgba(selectedTrackColor.r * selectedTrackColor.a + activePalette.window.r * (1 - selectedTrackColor.a), selectedTrackColor.g * selectedTrackColor.a + activePalette.window.g * (1 - selectedTrackColor.a), selectedTrackColor.b * selectedTrackColor.a + activePalette.window.b * (1 - selectedTrackColor.a), 1)
+                color: root.trackHeadActiveColor
+            }
+        },
+        State {
+            name: 'hovered'
+            when: headMouseArea.containsMouse && !trackHeadRoot.selected && !trackHeadRoot.current
+
+            PropertyChanges {
+                target: trackHeadRoot
+                color: root.trackHeadHoverColor
             }
         },
         State {
@@ -275,7 +289,7 @@ Rectangle {
 
             PropertyChanges {
                 target: trackHeadRoot
-                color: (index % 2) ? activePalette.alternateBase : activePalette.base
+                color: root.trackHeadColor
             }
         }
     ]
@@ -291,7 +305,10 @@ Rectangle {
     ]
 
     MouseArea {
+        id: headMouseArea
+
         anchors.fill: parent
+        hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {
             parent.clicked();
@@ -304,79 +321,183 @@ Rectangle {
     Column {
         id: trackHeadColumn
 
-        spacing: trackHeadRoot.stackedHeaderLayout ? 1 : 2
+        // The left 8 px are the handle to drag the track up or down (timeline.qml).
+        x: 10
+        width: parent.width - x - 6
+        y: Math.max(2, Math.round((parent.height - height) / 2))
+        spacing: 2
 
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-            leftMargin: 8
-            rightMargin: trackHeadRoot.stackedHeaderLayout ? 4 : 0
-            topMargin: trackHeadRoot.stackedHeaderLayout ? 2 : 0
-            bottomMargin: trackHeadRoot.stackedHeaderLayout ? 4 : 0
-        }
-
-        Flow {
+        GridLayout {
             id: trackHeadHeaderFlow
 
             width: parent.width
-            flow: trackHeadRoot.stackedHeaderLayout ? Flow.TopToBottom : Flow.LeftToRight
-            spacing: trackHeadRoot.stackedHeaderLayout ? 4 : 0
+            columns: trackHeadRoot.stackedHeaderLayout ? 1 : 2
+            rowSpacing: 2
+            columnSpacing: 4
 
-            Rectangle {
-            color: 'transparent'
-            width: trackHeadHeaderFlow.width - (trackHeadRoot.stackedHeaderLayout ? 0 : trackHeadButtons.implicitWidth)
-            radius: 2
-            border.color: (!timeline.isFloating() && trackNameMouseArea.containsMouse) ? activePalette.shadow : 'transparent'
-            height: nameEdit.height
+            Item {
+                id: trackNameRow
 
-            MouseArea {
-                id: trackNameMouseArea
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
 
-                height: parent.height
-                width: nameEdit.width
-                hoverEnabled: true
-                onClicked: {
-                    if (!timeline.isFloating()) {
-                        nameEdit.focus = true;
-                        nameEdit.selectAll();
+                Rectangle {
+                    id: trackBadge
+
+                    // Colored by track type like the clips: video blue, audio green.
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(24, trackBadgeLabel.implicitWidth + 10)
+                    height: 18
+                    radius: 5
+                    color: isVideo ? '#24346B' : '#0F3B35'
+                    border.width: 1
+                    border.color: trackHeadRoot.current || trackHeadRoot.selected ? root.accentColor : (isVideo ? '#4D6BE0' : '#2BB596')
+
+                    Label {
+                        id: trackBadgeLabel
+
+                        anchors.centerIn: parent
+                        text: trackHeadRoot.trackCode
+                        // Dimmed while the track is hidden (video) or muted.
+                        color: ((isVideo && isHidden) || isMute) ? root.disabledTextColor : (isVideo ? '#EEF1FF' : '#E6FFF8')
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        font.family: 'Geist Mono'
+                    }
+                }
+
+                Rectangle {
+                    id: trackNameBox
+
+                    anchors.left: trackBadge.right
+                    anchors.leftMargin: 6
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: 'transparent'
+                    radius: 4
+                    border.color: (!timeline.isFloating() && trackNameMouseArea.containsMouse) ? root.dividerColor : 'transparent'
+                    height: 20
+
+                    MouseArea {
+                        id: trackNameMouseArea
+
+                        height: parent.height
+                        width: parent.width
+                        hoverEnabled: true
+                        onClicked: {
+                            if (!timeline.isFloating()) {
+                                nameEdit.focus = true;
+                                nameEdit.selectAll();
+                            }
+                        }
+                    }
+
+                    Control {
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Shotcut.HoverTip {
+                            text: trackName
+                        }
+
+                        contentItem: Label {
+                            // Default names (V1, A1...) repeat the badge: show the track type instead.
+                            readonly property bool isDefaultName: trackName === trackHeadRoot.trackCode
+                            text: isDefaultName ? (isVideo ? qsTr('Video') : qsTr('Audio')) : trackName
+                            color: isDefaultName ? root.labelTextColor : root.secondaryTextColor
+                            elide: Qt.ElideRight
+                            leftPadding: 2
+                            width: trackNameBox.width
+                            font.pixelSize: 12
+                            font.weight: Font.Medium
+                        }
+                    }
+
+                    TextField {
+                        id: nameEdit
+
+                        visible: focus
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        height: 22
+                        topPadding: 0
+                        bottomPadding: 0
+                        selectByMouse: true
+                        text: trackName
+                        onEditingFinished: {
+                            timeline.setTrackName(index, text);
+                            focus = false;
+                        }
+                        Keys.onTabPressed: editingFinished()
                     }
                 }
             }
 
-            Control {
-                Shotcut.HoverTip {
-                    text: trackName
-                }
-
-                contentItem: Label {
-                    text: trackName
-                    color: activePalette.windowText
-                    elide: Qt.ElideRight
-                    leftPadding: 4
-                    topPadding: 3
-                    width: nameEdit.width
-                }
-            }
-
-            TextField {
-                id: nameEdit
-
-                visible: focus
-                width: parent.width
-                selectByMouse: true
-                text: trackName
-                onEditingFinished: {
-                    timeline.setTrackName(index, text);
-                    focus = false;
-                }
-                Keys.onTabPressed: editingFinished()
-            }
-        }
-
             RowLayout {
             id: trackHeadButtons
-            spacing: 8
+            Layout.alignment: Qt.AlignRight
+            Layout.preferredHeight: 20
+            spacing: 2
+
+            Item {
+                width: 20
+                height: 20
+                visible: isFiltered
+
+                ToolButton {
+                    id: filterButton
+
+                    anchors.centerIn: parent
+                    icon.name: 'view-filter'
+                    icon.source: 'qrc:///icons/dark/32x32/view-filter.png'
+                    icon.width: 16
+                    icon.height: 16
+                    padding: 1
+                    focusPolicy: Qt.NoFocus
+                    onClicked: {
+                        trackHeadRoot.clicked();
+                        nameEdit.focus = false;
+                        timeline.filteredClicked();
+                    }
+
+                    Shotcut.HoverTip {
+                        text: qsTr('Filters')
+                    }
+                }
+            }
+
+            Item {
+                width: 20
+                height: 20
+                visible: isVideo
+
+                ToolButton {
+                    id: hideButton
+
+                    anchors.centerIn: parent
+                    icon.name: isHidden ? 'layer-visible-off' : 'layer-visible-on'
+                    icon.source: isHidden ? 'qrc:///icons/dark/32x32/layer-visible-off.png' : 'qrc:///icons/dark/32x32/layer-visible-on.png'
+                    icon.width: 16
+                    icon.height: 16
+                    padding: 1
+                    focusPolicy: Qt.NoFocus
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: mouse => {
+                            if (mouse.modifiers & Qt.AltModifier) {
+                                timeline.toggleOtherTracksHidden(index);
+                            } else {
+                                timeline.toggleTrackHidden(index);
+                            }
+                        }
+                    }
+
+                    Shotcut.HoverTip {
+                        text: qsTr('Show/Hide - Alt+Click to toggle visibility of other tracks') + application.actionFirstShortcut('timelineToggleTrackHiddenAction')
+                    }
+                }
+            }
 
             Item {
                 Layout.alignment: Qt.AlignVCenter
@@ -490,9 +611,9 @@ Rectangle {
                     onOpened: trackHeadRoot._positionVolumePopupOverVolumeButton()
 
                     background: Rectangle {
-                        radius: 3
-                        color: activePalette.base
-                        border.color: activePalette.mid
+                        radius: root.grafito ? 8 : 3
+                        color: root.grafito ? '#1D2027' : activePalette.base
+                        border.color: root.grafito ? '#22252D' : activePalette.mid
                     }
 
                     contentItem: RowLayout {
@@ -586,69 +707,9 @@ Rectangle {
                             Layout.preferredWidth: 52
                             horizontalAlignment: Text.AlignRight
                             text: (Math.abs(trackGain) < 0.05) ? '0 dB' : ((trackGain > 0 ? '+' : '') + (Math.round(trackGain * 10) / 10).toFixed(1) + ' dB')
-                            color: activePalette.windowText
+                            color: root.secondaryTextColor
                             font.pixelSize: 10
                         }
-                    }
-                }
-            }
-
-            Item {
-                width: 20
-                height: 20
-
-                ToolButton {
-                    id: hideButton
-
-                    anchors.centerIn: parent
-                    visible: isVideo
-                    icon.name: isHidden ? 'layer-visible-off' : 'layer-visible-on'
-                    icon.source: isHidden ? 'qrc:///icons/dark/32x32/layer-visible-off.png' : 'qrc:///icons/dark/32x32/layer-visible-on.png'
-                    icon.width: 16
-                    icon.height: 16
-                    padding: 1
-                    focusPolicy: Qt.NoFocus
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: mouse => {
-                            if (mouse.modifiers & Qt.AltModifier) {
-                                timeline.toggleOtherTracksHidden(index);
-                            } else {
-                                timeline.toggleTrackHidden(index);
-                            }
-                        }
-                    }
-
-                    Shotcut.HoverTip {
-                        text: qsTr('Show/Hide - Alt+Click to toggle visibility of other tracks') + application.actionFirstShortcut('timelineToggleTrackHiddenAction')
-                    }
-                }
-            }
-
-            Item {
-                width: 20
-                height: 20
-
-                ToolButton {
-                    id: filterButton
-
-                    anchors.centerIn: parent
-                    visible: isFiltered
-                    icon.name: 'view-filter'
-                    icon.source: 'qrc:///icons/dark/32x32/view-filter.png'
-                    icon.width: 16
-                    icon.height: 16
-                    padding: 1
-                    focusPolicy: Qt.NoFocus
-                    onClicked: {
-                        trackHeadRoot.clicked();
-                        nameEdit.focus = false;
-                        timeline.filteredClicked();
-                    }
-
-                    Shotcut.HoverTip {
-                        text: qsTr('Filters')
                     }
                 }
             }
@@ -674,8 +735,8 @@ Rectangle {
                     width: parent.width
                     height: trackHeadRoot.stackedHeaderLayout ? 9 : 10
                     radius: 2
-                    color: Qt.darker(activePalette.mid, 1.35)
-                    border.color: activePalette.shadow
+                    color: root.grafito ? '#1D2027' : Qt.darker(activePalette.mid, 1.35)
+                    border.color: root.grafito ? '#22252D' : activePalette.shadow
                     border.width: 1
                     clip: true
 
