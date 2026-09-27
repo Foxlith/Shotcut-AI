@@ -104,7 +104,11 @@ jobs:
           "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
           if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
           $log = Join-Path $env:LOCALAPPDATA "Meltytech\Shotcut\shotcut-log.txt"
-          if (Test-Path $log) { Copy-Item $log shotcut-log.txt }
+          if (Test-Path $log) {
+            Copy-Item $log shotcut-log.txt
+            "---- Last lines of shotcut-log.txt ----"
+            Get-Content $log -Tail 40
+          }
 
       - name: Upload the screenshot
         if: always()
