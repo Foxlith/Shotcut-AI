@@ -1,0 +1,126 @@
+name: Build Windows (Shotcut AI)
+
+# Builds this repository for Windows x64 with the Qt 6 and MLT packages of MSYS2
+# (UCRT64) and uploads a portable zip: download it from the run page (Artifacts),
+# extract it and run "Shotcut AI.bat" or bin\shotcut.exe.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - 'claude/**'
+      - 'fase-*'
+    paths-ignore:
+      - '**.md'
+      - 'tests/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-cc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-declarative
+            mingw-w64-ucrt-x86_64-qt6-multimedia
+            mingw-w64-ucrt-x86_64-qt6-charts
+            mingw-w64-ucrt-x86_64-qt6-websockets
+            mingw-w64-ucrt-x86_64-qt6-svg
+            mingw-w64-ucrt-x86_64-qt6-imageformats
+            mingw-w64-ucrt-x86_64-qt6-5compat
+            mingw-w64-ucrt-x86_64-qt6-tools
+            mingw-w64-ucrt-x86_64-qt6-translations
+            mingw-w64-ucrt-x86_64-mlt
+            mingw-w64-ucrt-x86_64-ffmpeg
+            mingw-w64-ucrt-x86_64-fftw
+            mingw-w64-ucrt-x86_64-frei0r-plugins
+
+      - name: Versions
+        run: |
+          pacman -Q mingw-w64-ucrt-x86_64-qt6-base mingw-w64-ucrt-x86_64-mlt mingw-w64-ucrt-x86_64-ffmpeg
+          pkg-config --modversion mlt++-7
+
+      - name: Configure
+        run: |
+          VERSION=$(date +%y.%m.%d | sed -E 's/(^|\.)0+([0-9])/\1\2/g')
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          CXXFLAGS="-DSHOTCUT_NOUPGRADE" cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWINDOWS_DEPLOY=OFF \
+            -DSHOTCUT_VERSION="$VERSION" \
+            -DCMAKE_INSTALL_PREFIX="$(cygpath -m "$PWD/dist/Shotcut-AI")"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Bundle the runtime
+        run: bash scripts/bundle-windows-msys2.sh dist/Shotcut-AI
+
+      - name: Check MLT in the bundle
+        run: |
+          # Run the bundled melt with a PATH that does not reach MSYS2.
+          cd dist/Shotcut-AI/bin
+          PATH=/c/Windows/system32:/c/Windows ./melt.exe -query producers | tee ../../melt-producers.txt
+          grep -q avformat ../../melt-producers.txt
+
+      - name: Smoke test and screenshot
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Windows\system32;C:\Windows"
+          $exe = Join-Path $PWD "dist\Shotcut-AI\bin\shotcut.exe"
+          $process = Start-Process -FilePath $exe -ArgumentList "--noupgrade" -PassThru
+          Start-Sleep -Seconds 60
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("screenshot.png")
+          "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
+          if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          $log = Join-Path $env:LOCALAPPDATA "Meltytech\Shotcut\shotcut-log.txt"
+          if (Test-Path $log) { Copy-Item $log shotcut-log.txt }
+
+      - name: Upload the screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test
+          path: |
+            screenshot.png
+            smoke.txt
+            shotcut-log.txt
+            dist/melt-producers.txt
+          if-no-files-found: ignore
+
+      - name: Upload the portable folder (downloads as a zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shotcut-AI-windows-x64
+          path: dist/Shotcut-AI
+          compression-level: 9
