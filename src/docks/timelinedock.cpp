@@ -376,6 +376,11 @@ TimelineDock::TimelineDock(QWidget *parent)
     toolbar->addAction(Actions["timelineRippleAction"]);
     toolbar->addAction(Actions["timelineRippleAllTracksAction"]);
     toolbar->addAction(Actions["timelineRippleMarkersAction"]);
+    // Right end: voice-over recording and zoom (plan.md 3.3, group 6).
+    auto spacer = new QWidget;
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    toolbar->addWidget(spacer);
+    toolbar->addAction(Actions["timelineRecordAudioAction"]);
     toolbar->addSeparator();
     toolbar->addAction(Actions["timelineZoomOutAction"]);
     QSlider *zoomSlider = new QSlider();
@@ -399,8 +404,6 @@ TimelineDock::TimelineDock(QWidget *parent)
     toolbar->addWidget(zoomSlider);
     toolbar->addAction(Actions["timelineZoomInAction"]);
     toolbar->addAction(Actions["timelineZoomFitAction"]);
-    toolbar->addSeparator();
-    toolbar->addAction(Actions["timelineRecordAudioAction"]);
     vboxLayout->setMenuBar(toolbar);
 
     qmlRegisterType<MultitrackModel>("Shotcut.Models", 1, 0, "MultitrackModel");

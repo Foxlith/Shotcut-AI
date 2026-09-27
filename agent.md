@@ -15,6 +15,7 @@
 - **Última Auditoría de Victoria:** Aprobada al 100% (624/624 tests pasando, cero fallos).
 - **Fase 3 (Layout Grafito):** Completada — `--fast` sube a 647 tests (23 nuevos de Fase 3). Ver detalle y estado de pruebas en *Estado de Tareas*.
 - **Fase 4 (Visor y Transporte):** Completada — `--fast` sube a 670 tests (23 nuevos de Fase 4). Verificada además ejecutando la app real (Qt 6.10 + MLT 7.36 en Linux) con capturas; ver *Estado de Tareas*.
+- **Fase 5 (Línea de Tiempo):** Completada — `--fast` sube a 685 tests (15 nuevos de Fase 5). Verificada en la app real con un proyecto de 4 pistas (V2, V1, A1, A2): mover clips entre pistas, bloquear, pistas más altas y selección.
 - **Lanzador de Pruebas en Escritorio:** `C:\Users\Fox\Desktop\Probar Shotcut AI.lnk` (ejecuta con `capcut_theme.qss` y proyecto demo).
 
 ---
@@ -56,7 +57,7 @@
   6. *Utilidades* (`actionRecent`, `actionHistory`, `actionWhatsThis`)
   7. *Layouts de Trabajo* (Logging, Editing, Effects, Color, Audio, Player)
 
-### 4. 🎛️ Reproductor y Línea de Tiempo QML (M4)
+### 4. 🎛️ Reproductor y Línea de Tiempo QML (M4) — sustituido por las Fases 4 y 5
 - **Barra de Transporte (`src/player.cpp`):** `layoutToolbars()` bloqueado a **1 sola fila fija compacta**, eliminando el salto dinámico a 2 filas al redimensionar.
 - **Clips de Video/Audio (`src/qml/views/timeline/Clip.qml`):**
   - Esquinas redondeadas tipo píldora (`_cornerRadius: 12`).
@@ -76,7 +77,7 @@
 - Acepta comandos JSON (e.g. `play`, `pause`, `seek`, `open`, etc.) para automatización externa.
 
 ### 6. 🧪 Infraestructura de Pruebas (E2E & Adversarial)
-- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (670 tests tras la Fase 4: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py`).
+- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (685 tests tras la Fase 5: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py`).
 - Validador AST: Escaneo de 436 archivos QML/JS con 0 errores de sintaxis.
 - Pruebas de estrés y adversariales integradas en Tier 5.
 
@@ -205,19 +206,33 @@
     - Resultado `python tests/run_e2e_tests.py --fast`: **670/670 (exit code 0)** en el entorno Windows simulado de siempre (`.agents/TEST_INFRA.md`, `powershell` y QML instalado); en Linux limpio fallan solo los mismos 2 tests dependientes de ese entorno.
     - clang-format-14 sin cambios pendientes en todos los archivos C++ tocados.
 
+- **Fase 5: Línea de Tiempo Multipista — lienzo `#111317`, cabezal de 2 px en acento, regla de 28 px a 60 px/s, cabeceras de 164 px con insignias, alturas por pista y tokens de clips (`src/qml/views/timeline/timeline.qml`, `TrackHead.qml`, `Track.qml`, `Clip.qml`, `Ruler.qml`, `Timeline.js`, `src/models/multitrackmodel.cpp/.h`, `src/qmltypes/qmlapplication.cpp/.h`, `src/qmltypes/timelineitems.cpp`, `src/widgets/docktoolbar.cpp/.h`, `src/docks/timelinedock.cpp`, `src/mainwindow.cpp`, `capcut_theme.qss`, `tests/test_phase5_timeline_verification.py` (nuevo), `tests/run_e2e_tests.py`):** [COMPLETADO — COMPILADO Y EJECUTADO CON Qt 6.10 + MLT 7.36 EN LINUX; PENDIENTE DE RECOMPILAR EL BINARIO DE WINDOWS Y COPIAR EL QML INSTALADO]
+  - **Tokens del lienzo (`timeline.qml`):** todos en propiedades de `root` con un interruptor `grafito` (paleta oscura) para que la Fase 7 pueda alternar al tema clásico: `trackBgDark` `#111317` (lienzo y separaciones), carriles `#15171C`, `selectedTrackColor` `#1D2027` (carril de la pista actual), cabeceras `#1B1E24` / hover `#262A33` / actual o seleccionada `#22252D`, divisores `#1F2229`, textos `#C9CED6` / `#858C98` / `#5F6672`, zonas de soltar `#343944`, `accentColor` = color del cabezal. Con temas claros se usan los colores de la paleta, como antes.
+  - **Alturas por pista (`Timeline.js::trackHeight(isAudio, isMain)`):** V1 (pista de vídeo principal) 58 px, otras de vídeo 44 px, A1 (audio principal) 52 px, otras de audio 40 px con la altura por defecto (50); *Make Tracks Taller/Shorter* (Ctrl++ / Ctrl+−), Mayús+rueda y *Reset Track Height* las escalan juntas (antes todas medían `trackHeight × 2` = 100 px). Cabeceras, carriles y pistas usan la misma función y la misma separación de 4 px (`trackSpacing`), así que siguen alineadas; mover clips entre pistas, la selección por rectángulo y soltar desde fuera ya calculaban con la `y`/altura de cada pista.
+  - **Cabeceras (`TrackHead.qml`, 164 px por defecto en `MultitrackModel::trackHeaderWidth()`, antes 165; el divisor sigue permitiendo 150–500 px):** insignia `V2`/`V1`/`A1`/`A2` coloreada como los clips (vídeo `#24346B`/`#4D6BE0`, audio `#0F3B35`/`#2BB596`, borde de acento en la pista actual, texto atenuado si está oculta o silenciada), numerada con la nueva propiedad `MultitrackModel::videoTrackCount` (se notifica al añadir, quitar o recargar pistas). El nombre editable se muestra junto a la insignia; con el nombre por defecto (igual a la insignia) se muestra el tipo, *Video* / *Audio*. Botones alineados a la derecha en el mismo orden en todas las pistas (filtros, ocultar, nivel, bloqueo, volumen): una línea en pistas bajas, dos líneas desde 44 px y medidor + volumen en línea desde 80 px (por pista). Se conservan todos los controles y llamadas: bloqueo, silencio/volumen (popup), ocultar, Alt+clic sobre otras pistas, filtros, renombrar, arrastrar para reordenar.
+  - **Cabezal:** línea de 2 px (ya lo era) en el color de acento: `QmlApplication::playheadColor()` devuelve el `Highlight` de la paleta con temas oscuros (Grafito: `#FF7A45`; seguirá al acento de la Fase 7) y el rojo clásico con temas claros. `TimelinePlayhead` dibuja una cabeza con esquinas redondeadas y punta (12 × 16 px); con proporciones de triángulo (Keyframes, 16 × 8) sigue siendo el triángulo de antes.
+  - **Regla (`Ruler.qml`, 28 px):** fondo `#15171C`, etiquetas Geist Mono 10 px `#858C98` en el intervalo redondo más corto con ≥ 90 px (1, 2, 5, 10, 15, 30 s, 1 min…) y marcas menores. Las líneas de tiempo nuevas empiezan a 60 px por segundo (`MultitrackModel::scaleFactor()` por defecto = 60 / fps); el zoom guardado en cada proyecto no cambia.
+  - **Clips (`Clip.qml`):** radio 6 px; vídeo `#24346B` / borde `#4D6BE0` / texto `#EEF1FF` / subtexto `#B7C2F0`; imagen o superposición (`qimage`, `pixbuf`, `color`, `qtext`, `kdenlivetitle`, `glaxnimate`) `#34275A` / `#8E6FE0` / `#EEE8FF` / `#C9B8FF`; audio `#0F3B35` / `#2BB596` / `#E6FFF8` con onda `#3DD6B0` al 85 %; transiciones con la X en el color de la pista y ajustes en ámbar. Texto claro sin las cajas grises; hover: borde +15 % de brillo. **Seleccionado:** borde interno de 1 px de acento (gris claro si el clip pertenece a un grupo, como antes se distinguía en blanco) más un anillo exterior de 1 px (capa nueva en `timeline.qml` sobre `timeline.selection`, oculta al arrastrar). Rectángulo de selección en acento.
+  - **Pista vacía:** área punteada `#343944` (radio 6) con *Drag audio here* / *Drag video here* (`Track.qml::isEmpty`: sin clips, solo huecos). Es solo visual; soltar sigue funcionando igual.
+  - **Barra de herramientas (44 px):** `DockToolBar` pinta la del timeline con la hoja de estilos (`DockToolBar#timelineToolbar`: `#15171C`, divisor inferior y separadores `#1F2229`) cuando el tema es oscuro. Grupos: Menú | Cortar, Copiar, Pegar | Generar, Añadir al final, Borrar y cerrar hueco, Levantar, Sobrescribir, Dividir | Marcador, anterior, siguiente | Imán, Arrastre con vista previa, Ripple, Ripple en todas las pistas, Ripple de marcadores | (espacio) Grabar voz en off | Zoom −, deslizador, Zoom +, Ajustar. Ninguna acción eliminada; en ventanas estrechas las últimas se ocultan primero, y el zoom sigue en el menú del timeline, Ctrl+rueda y atajos.
+  - **Detalle del layout en la app real (Fase 3):** con la ventana creada a 1440×900 el estado por defecto se restaura exacto (viewer 748 × 500, timeline 324 px, las 4 pistas visibles). Si la app arranca más pequeña (p. ej. el primer arranque a 1270 × 688) y luego se maximiza, Qt da todo el alto extra al visor y el timeline se queda en ~240 px; basta con arrastrar el separador o volver a elegir el espacio de trabajo tras maximizar.
+  - **Pruebas:** nueva suite `tests/test_phase5_timeline_verification.py` (15 tests, Tier 5). Ejecuta el código real en un motor JavaScript (`QJSEngine`): `Timeline.js::trackHeight` (44/58/52/40 y su escalado), el cálculo de intervalos de `Ruler.qml` y la expresión de las insignias (V2, V1, A1, A2). Además tokens, anillo de selección, orden de la barra, QSS + respaldo, invarianza de las acciones de la barra, de los comandos de las cabeceras y de la altura de pistas, y sintaxis QML. Mutación comprobada: cambiar la altura de V1 hace fallar la suite. `python tests/run_e2e_tests.py --fast`: **685/685 (exit code 0)** en el entorno Windows simulado; en Linux limpio solo fallan los mismos 2 tests de entorno. clang-format-14 limpio.
+  - **Verificación en la app real:** Qt 6.10.2 + MLT 7.36.1 bajo Xvfb a 1440×900 con un proyecto de 4 pistas (V2 título, V1 vídeo + color, A1 tono, A2 vacía): insignias y alturas correctas, clips por tipo, regla cada 2 s a 60 px/s, cabezal naranja, anillo de selección, pista vacía punteada; mover `Toma_02` de V1 a V2 arrastrando, bloquear A1 y Ctrl++ funcionan. El único aviso de QML (`scrubTimer`, `parent.skim`) ya existía antes.
+
 ---
 
-## 🚀 Próxima Etapa: Fase 5 (Línea de Tiempo QML)
-- **Objetivo:** colores Grafito en `timeline.qml` y cabezal de 2 px en acento; `TrackHead.qml` de 164 px con insignias V2, V1, A1, A2 y alturas diferenciadas (V2 = 44, V1 = 58, A1 = 52, A2 = 40 px); tokens de clips en `Clip.qml` (vídeo `#24346B`, imagen `#34275A`, audio `#0F3B35` con onda al 85 %); borde y anillo de acento en clips seleccionados.
-- **Archivos a intervenir:** `src/qml/views/timeline/timeline.qml`, `TrackHead.qml`, `Clip.qml` (verificar rutas en el repositorio) y sincronizar la copia instalada de QML en Windows.
+## 🚀 Próxima Etapa: Fase 6 (Inspector y Panel de Medios)
+- **Objetivo:** Panel de Medios en cuadrícula de 2 columnas con botón Importar y zona de soltar; pestañas del Inspector (Inspector, Tareas, Historial) con subrayado de 2 px; sección Transformar con controles numéricos y sliders de precisión; filas de filtros con interruptores.
+- **Archivos a intervenir:** `src/docks/playlistdock.*`, `src/docks/filtersdock.*`, `src/qml/filters/...` y `capcut_theme.qss` (ver plan.md, Fase 6). Revisar también el alto mínimo de la tarjeta de importación, que hoy puede reducir la fila superior.
 
 ---
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 670 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 685 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).
 5. **Toolbars con nombre:** una `QToolBar` creada antes de recibir su `objectName` (p. ej. desde `setupUi()` o `new QToolBar` + `setObjectName()`) conserva los márgenes de la regla genérica `QToolBar`; llamar a `Util::repolish(toolbar)` tras nombrarla. Igual con cualquier widget cuyas reglas `#id` o `[propiedad]` cambien después de pulirse.
-6. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.
+6. **Colores del timeline:** los tokens Grafito del timeline viven en las propiedades de `root` en `timeline.qml` (con el interruptor `grafito`); usarlos desde `TrackHead.qml`, `Clip.qml` y `Ruler.qml` como `root.<token>` en lugar de repetir colores.
+7. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.

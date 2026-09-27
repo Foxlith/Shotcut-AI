@@ -439,6 +439,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - `src/docks/timelinedock.cpp` (líneas 334–402)
 - **Riesgos:** Desincronización de alturas de pista entre `TrackHead.qml` y `Track.qml` provocando desalineaciones verticales de clips.
 - **Criterios de Aceptación:** Clips diferenciados por color y luminosidad, playhead naranja de 2 px y cabeceras de 164 px alineadas milimétricamente.
+- **Estado:** ✅ Completada. Verificada en la app real (Qt 6.10 + MLT 7.36) a 1440×900 con 4 pistas: cabeceras y pistas alineadas con alturas por pista, clips por tipo, cabezal naranja, anillo de selección y pista vacía punteada; mover clips entre pistas, bloquear y cambiar la altura siguen funcionando. Detalle en `agent.md` (Fase 5).
 
 ---
 
@@ -561,11 +562,11 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Incrustar medidor de audio de 6 px en el lateral derecho del visor (`PlayerPeakMeterWidget`, estéreo, `#1D2027` con degradado `#2BB596`→`#F5C542`).
   - [x] Implementar botón de reproducción circular de 44 px en color de acento (`TransportPlayButton`, hover `#FF8F61`, pressed `#E66835`, deshabilitado `#262A33`).
   - [x] Reorganizar barra de transporte con timecode en Geist Mono (15 px a la izquierda; Inicio, Fotograma anterior, Play, Fotograma siguiente y Final al centro; Bucle y Volumen a la derecha), barra de progreso de 4 px con manija de 12 px y cabecera `[ Fuente | Proyecto ]` con chip de resolución/fps, zoom "Fit", rejilla y pantalla completa (23 tests en `tests/test_phase4_viewer_verification.py`; 670/670 en `--fast`).
-- [ ] **Fase 5: Línea de Tiempo QML**
-  - [ ] Actualizar colores en `timeline.qml` y playhead de 2 px con acento.
-  - [ ] Rediseñar `TrackHead.qml` a 164 px con insignias V2, V1, A1, A2 y alturas diferenciadas.
-  - [ ] Implementar tokens cromáticos de clips en `Clip.qml` (video, imagen, audio).
-  - [ ] Configurar borde y anillo de acento para clips seleccionados.
+- [x] **Fase 5: Línea de Tiempo QML**
+  - [x] Actualizar colores en `timeline.qml` y playhead de 2 px con acento (lienzo `#111317`, pista actual `#1D2027`, regla de 28 px a 60 px/s, barra de 44 px en grupos).
+  - [x] Rediseñar `TrackHead.qml` a 164 px con insignias V2, V1, A1, A2 y alturas diferenciadas (44 / 58 / 52 / 40 px, separadas 4 px y escalables).
+  - [x] Implementar tokens cromáticos de clips en `Clip.qml` (video, imagen, audio) con radio de 6 px y onda `#3DD6B0` al 85 %.
+  - [x] Configurar borde y anillo de acento para clips seleccionados (15 tests en `tests/test_phase5_timeline_verification.py`; 685/685 en `--fast`).
 - [ ] **Fase 6: Inspector y Medios**
   - [ ] Rediseñar `PlaylistDock` en cuadrícula de 2 columnas con botón Importar y dropzone.
   - [ ] Configurar pestañas del Inspector (Inspector, Tareas, Historial) con subrayado de 2 px.

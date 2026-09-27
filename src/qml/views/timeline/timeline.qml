@@ -28,17 +28,32 @@ Rectangle {
     id: root
 
     property int headerWidth: multitrack.trackHeaderWidth
-    property color selectedTrackColor: Qt.rgba(32/255, 230/255, 197/255, 0.2)
+    // Grafito timeline tokens (plan.md 2.1, 2.4 and 3.3) with dark themes; the classic
+    // palette colors with light themes.
+    readonly property bool grafito: activePalette.window.hsvValue < 0.5
+    property color trackBgDark: grafito ? '#111317' : activePalette.window
+    property color laneColor: grafito ? '#15171C' : activePalette.base
+    property color alternateLaneColor: grafito ? '#15171C' : activePalette.alternateBase
+    property color selectedTrackColor: grafito ? '#1D2027' : Qt.rgba(0.8, 0.8, 0, 0.3)
+    property color trackHeadColor: grafito ? '#1B1E24' : activePalette.base
+    property color trackHeadHoverColor: grafito ? '#262A33' : Qt.darker(activePalette.base, 1.05)
+    property color trackHeadActiveColor: grafito ? '#22252D' : Qt.darker(activePalette.base, 1.1)
+    property color dividerColor: grafito ? '#1F2229' : activePalette.mid
+    property color secondaryTextColor: grafito ? '#C9CED6' : activePalette.windowText
+    property color labelTextColor: grafito ? '#858C98' : activePalette.windowText
+    property color disabledTextColor: grafito ? '#5F6672' : activePalette.mid
+    property color dropZoneColor: grafito ? '#343944' : activePalette.mid
+    property color accentColor: application.playheadColor
+    property color groupSelectionColor: '#E8EAEE'
+    property int trackSpacing: 4
     property alias trackCount: tracksRepeater.count
     property bool stopScrolling: false
-    property color shotcutBlue: Qt.rgba(32 / 255, 230 / 255, 197 / 255, 1)
     property color adjustmentClipColor: Qt.rgba(92 / 255, 72 / 255, 23 / 255, 1)
     property var dragDelta
-    property int inlineAudioControlsThreshold: 60
-    property int separateTrackHeaderRowsThreshold: 80
-    property int shortestTrackHeight: Logic.trackHeight()
-    property bool inlineAudioControlsEnabled: shortestTrackHeight >= inlineAudioControlsThreshold
-    property bool separateTrackHeaderRows: shortestTrackHeight >= separateTrackHeaderRowsThreshold
+    // Per track header: two lines (badge and name above the buttons) from 44 px and the
+    // inline meter and volume slider from 80 px.
+    property int inlineAudioControlsThreshold: 80
+    property int separateTrackHeaderRowsThreshold: 44
     property real pendingZoomContentX: -1
     property int zoomScrollRetries: 0
 
@@ -131,7 +146,7 @@ Rectangle {
         trackTypeDialog.show();
     }
 
-    color: activePalette.window
+    color: trackBgDark
 
     SystemPalette {
         id: activePalette
@@ -227,19 +242,30 @@ Rectangle {
 
                 width: headerWidth
                 height: rulerFlickable.height
-                color: selected ? shotcutBlue : activePalette.window
-                border.color: selected ? application.playheadColor : 'transparent'
+                color: selected ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.18) : (grafito ? '#15171C' : activePalette.window)
+                border.color: selected ? accentColor : 'transparent'
                 border.width: selected ? 1 : 0
                 visible: trackHeaderRepeater.count
                 z: 1
 
                 Label {
                     text: qsTr('Output')
-                    color: activePalette.windowText
+                    color: cornerstone.selected ? accentColor : labelTextColor
                     elide: Qt.ElideRight
-                    x: 8
+                    x: 10
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 8
+                    width: parent.width - 10
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 0.8
+                }
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: dividerColor
                 }
 
                 MouseArea {
@@ -284,6 +310,8 @@ Rectangle {
                 Column {
                     id: trackHeaders
 
+                    spacing: root.trackSpacing
+
                     Repeater {
                         id: trackHeaderRepeater
 
@@ -298,8 +326,9 @@ Rectangle {
                             trackGain: typeof model.gain !== 'undefined' ? model.gain : 0
                             trackAudioLevel: typeof model.audioLevel !== 'undefined' ? model.audioLevel : -100
                             trackAudioLevelSupported: multitrack.trackLevelIndicatorSupported
-                            inlineAudioControlsEnabled: root.inlineAudioControlsEnabled
-                            stackedHeaderLayout: root.separateTrackHeaderRows
+                            inlineAudioControlsEnabled: height >= root.inlineAudioControlsThreshold
+                            stackedHeaderLayout: height >= root.separateTrackHeaderRowsThreshold
+                            trackCode: model.audio ? 'A' + (index - multitrack.videoTrackCount + 1) : 'V' + (multitrack.videoTrackCount - index)
                             isMute: model.mute
                             isHidden: model.hidden
                             isComposite: model.composite
@@ -311,7 +340,7 @@ Rectangle {
                             isTopAudio: model.isTopAudio
                             isBottomAudio: model.isBottomAudio
                             width: headerWidth
-                            height: Logic.trackHeight()
+                            height: Logic.trackHeight(model.audio, model.audio ? model.isTopAudio : model.isBottomVideo)
                             current: index === timeline.currentTrack
                             onIsLockedChanged: tracksRepeater.itemAt(index).isLocked = isLocked
                             onClicked: {
@@ -443,7 +472,7 @@ Rectangle {
 
                 Rectangle {
                     // thin dividing line between headers and tracks
-                    color: activePalette.base
+                    color: dividerColor
                     width: 1
                     x: parent.x + parent.width
                     anchors.top: parent.top
@@ -620,13 +649,15 @@ Rectangle {
                             // These make the striped background for the tracks.
                             // It is important that these are not part of the track visual hierarchy;
                             // otherwise, the clips will be obscured by the Track's background.
+                            spacing: root.trackSpacing
+
                             Repeater {
                                 model: multitrack
 
                                 delegate: Rectangle {
-                                    width: tracksContainer.width
-                                    color: (index === timeline.currentTrack) ? selectedTrackColor : (index % 2) ? activePalette.alternateBase : activePalette.base
-                                    height: Logic.trackHeight()
+                                    width: Math.max(tracksContainer.width, tracksFlickable.width)
+                                    color: (index === timeline.currentTrack) ? selectedTrackColor : (index % 2) ? alternateLaneColor : laneColor
+                                    height: Logic.trackHeight(model.audio, model.audio ? model.isTopAudio : model.isBottomVideo)
                                 }
                             }
                         }
@@ -634,12 +665,41 @@ Rectangle {
                         Column {
                             id: tracksContainer
 
+                            spacing: root.trackSpacing
                             onWidthChanged: applyPendingZoomScroll()
 
                             Repeater {
                                 id: tracksRepeater
 
                                 model: trackDelegateModel
+                            }
+                        }
+
+                        Item {
+                            // Accent ring 1 px outside each selected clip (plan.md 2.4). The
+                            // clip draws the inner 1 px border; hidden while dragging.
+                            visible: !selectionContainer.visible
+
+                            Repeater {
+                                model: timeline.selection
+
+                                Rectangle {
+                                    property var track: trackAt(modelData.y)
+                                    property var clipN: track ? track.clipAt(modelData.x) : null
+
+                                    visible: !!clipN && !clipN.isBlank && !clipN.offScreen
+                                    x: clipN ? clipN.x - 2 : 0
+                                    y: track ? track.y - 2 : 0
+                                    width: clipN ? clipN.width + 4 : 0
+                                    height: track ? track.height + 4 : 0
+                                    color: 'transparent'
+                                    border.width: 1
+                                    border.color: (clipN && clipN.group >= 0) ? groupSelectionColor : accentColor
+                                    topLeftRadius: (clipN && clipN.topLeftRadius > 0) ? clipN.topLeftRadius + 2 : 2
+                                    bottomLeftRadius: topLeftRadius
+                                    topRightRadius: (clipN && clipN.topRightRadius > 0) ? clipN.topRightRadius + 2 : 2
+                                    bottomRightRadius: topRightRadius
+                                }
                             }
                         }
 
@@ -662,7 +722,7 @@ Rectangle {
                                     width: clipN ? clipN.width : 0
                                     height: track ? track.height : 0
                                     color: 'transparent'
-                                    border.color: (clipN && clipN.group < 0) ? application.playheadColor : 'white'
+                                    border.color: (clipN && clipN.group < 0) ? accentColor : 'white'
                                     visible: clipN && !clipN.Drag.active && clipN.trackIndex === clipN.originalTrackIndex
                                 }
                             }
@@ -671,8 +731,8 @@ Rectangle {
 
                     Rectangle {
                         id: selectionBox
-                        color: "#33ff0000"
-                        border.color: "#ccff7d7d"
+                        color: Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.14)
+                        border.color: Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8)
                         border.width: 1
                         visible: false
                     }
@@ -740,7 +800,7 @@ Rectangle {
                 id: cursor
 
                 visible: timeline.position > -1
-                color: application.playheadColor
+                color: accentColor
                 width: root.snapToDevicePixel(2)
                 height: root.height - horizontalScrollBar.height
                 x: root.snapToDevicePixel(timeline.position * multitrack.scaleFactor - tracksFlickable.contentX) - root.snapToDevicePixel(1)
@@ -760,8 +820,8 @@ Rectangle {
                 visible: timeline.position > -1
                 x: root.snapToDevicePixel(timeline.position * multitrack.scaleFactor - tracksFlickable.contentX) - width / 2
                 y: 0
-                width: 16
-                height: 8
+                width: 12
+                height: 16
             }
         }
     }
@@ -871,7 +931,7 @@ Rectangle {
             //  Clear previous blank selection
             model: multitrack
             rootIndex: trackDelegateModel.modelIndex(index)
-            height: Logic.trackHeight()
+            height: Logic.trackHeight(audio, audio ? isTopAudio : isBottomVideo)
             isAudio: audio
             isMute: mute
             isCurrentTrack: timeline.currentTrack === index
@@ -933,6 +993,39 @@ Rectangle {
             onCheckSnap: clip => {
                 for (let i = 0; i < tracksRepeater.count; i++)
                     tracksRepeater.itemAt(i).snapClip(clip);
+            }
+
+            Item {
+                // Empty track: a dashed drop area with a hint (plan.md 3.3).
+                visible: root.grafito && parent.isEmpty
+                x: tracksFlickable.contentX + 8
+                y: 3
+                width: Math.max(0, tracksFlickable.width - 16)
+                height: Math.max(0, parent.height - 6)
+
+                Canvas {
+                    anchors.fill: parent
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    onPaint: {
+                        const ctx = getContext('2d');
+                        ctx.reset();
+                        ctx.strokeStyle = root.dropZoneColor;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 3]);
+                        ctx.beginPath();
+                        ctx.roundedRect(0.5, 0.5, width - 1, height - 1, 6, 6);
+                        ctx.stroke();
+                    }
+                }
+
+                Label {
+                    anchors.centerIn: parent
+                    visible: parent.height >= 18
+                    text: isAudio ? qsTr('Drag audio here') : qsTr('Drag video here')
+                    color: root.disabledTextColor
+                    font.pixelSize: 11
+                }
             }
 
             Image {

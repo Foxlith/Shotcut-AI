@@ -31,6 +31,16 @@ Rectangle {
     property alias clipCount: repeater.count
     property bool isMute: false
     property int layoutEpoch: 0
+    // Only blank space, no clips: the timeline shows a drop hint on empty tracks.
+    readonly property bool isEmpty: {
+        layoutEpoch;
+        for (let i = 0; i < repeater.count; i++) {
+            const clip = repeater.itemAt(i);
+            if (clip && !clip.isBlank)
+                return false;
+        }
+        return true;
+    }
 
     signal clipClicked(var clip, var track, var mouse)
     signal clipRightClicked(var clip, var track, var mouse)

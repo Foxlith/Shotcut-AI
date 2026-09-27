@@ -57,6 +57,7 @@ class MultitrackModel : public QAbstractItemModel
     Q_PROPERTY(bool filtered READ isFiltered NOTIFY filteredChanged)
     Q_PROPERTY(bool trackLevelIndicatorSupported READ trackLevelIndicatorSupported CONSTANT)
     Q_PROPERTY(bool hasAudioTracks READ hasAudioTracks NOTIFY hasAudioTracksChanged)
+    Q_PROPERTY(int videoTrackCount READ videoTrackCount NOTIFY videoTrackCountChanged)
 
 public:
     /// Two level model: tracks and clips on track
@@ -149,6 +150,7 @@ public:
     QString trackTransitionService();
     bool trackLevelIndicatorSupported() const;
     bool hasAudioTracks() const;
+    int videoTrackCount() const;
     void beginBulkUpdate();
     void endBulkUpdate(bool changed = true);
     bool isBulkUpdating() const { return m_bulkUpdateDepth > 0; }
@@ -166,6 +168,7 @@ signals:
     void durationChanged();
     void filteredChanged();
     void hasAudioTracksChanged();
+    void videoTrackCountChanged();
     void reloadRequested();
     void appended(int trackIndex, int clipIndex);
     void inserted(int trackIndex, int clipIndex);

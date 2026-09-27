@@ -4676,6 +4676,9 @@ void MainWindow::changeTheme(const QString &theme)
             "QLabel#playerTimeSeparator, QLabel#playerDurationLabel { color: #858C98; font-family: \"Geist Mono\", monospace; font-size: 15px; font-weight: 500; }"
             "QLabel#playerInPointLabel, QLabel#playerSelectionSeparator, QLabel#playerSelectedLabel { color: #858C98; font-family: \"Geist Mono\", monospace; font-size: 11px; }"
             "TransportPlayButton#playerPlayButton { qproperty-fillColor: #FF7A45; qproperty-hoverColor: #FF8F61; qproperty-pressedColor: #E66835; qproperty-glyphColor: #140A05; qproperty-disabledFillColor: #262A33; qproperty-disabledGlyphColor: #5F6672; }"
+            // Phase 5: Grafito timeline toolbar (44 px, #1F2229 dividers)
+            "DockToolBar#timelineToolbar { background-color: #15171C; border: none; border-bottom: 1px solid #1F2229; border-radius: 0px; margin: 0px; }"
+            "DockToolBar#timelineToolbar::separator { width: 1px; background-color: #1F2229; margin: 12px 6px; }"
         ));
             // clang-format on
         }

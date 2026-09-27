@@ -22,18 +22,40 @@ Rectangle {
     id: rulerTop
 
     property real timeScale: 1
-    readonly property real intervalFrames: profile.fps * ((timeScale > 5) ? 1 : (5 * Math.max(1, Math.floor(1.5 / timeScale))))
+    // Labels at the shortest round interval (1, 2, 5, 10, 15, 30 s...) that keeps them at
+    // least 90 px apart; at the default zoom of 60 px per second that is every 2 seconds.
+    readonly property var labelSeconds: [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200]
+    readonly property real intervalFrames: {
+        for (let i = 0; i < labelSeconds.length; i++) {
+            if (labelSeconds[i] * profile.fps * timeScale >= 90)
+                return labelSeconds[i] * profile.fps;
+        }
+        return labelSeconds[labelSeconds.length - 1] * profile.fps;
+    }
     readonly property real tickSpacing: intervalFrames * timeScale
+    // Minor ticks between the labels while they stay at least 8 px apart.
+    readonly property int minorTicks: tickSpacing / 10 >= 8 ? 10 : tickSpacing / 5 >= 8 ? 5 : tickSpacing / 2 >= 8 ? 2 : 1
     // Clamp to rulerTop.width (the actual timeline content width) so ticks do not render past the end of an empty/short timeline.
     readonly property real tickAreaEnd: Math.min(tracksFlickable.contentX + tracksFlickable.width + tickSpacing * 3, rulerTop.width)
     readonly property int firstTick: tickSpacing > 0 ? Math.max(0, Math.floor(tracksFlickable.contentX / tickSpacing) - 1) : 0
     readonly property int tickCount: (tickSpacing > 0 && tickAreaEnd > firstTick * tickSpacing) ? Math.ceil((tickAreaEnd - firstTick * tickSpacing) / tickSpacing) : 0
+    // Grafito ruler (plan.md 3.3): 28 px on the panel color, Geist Mono labels.
+    readonly property color tickColor: root.grafito ? '#3A3F4A' : activePalette.windowText
+    readonly property color minorTickColor: root.grafito ? '#2A2E37' : activePalette.mid
+    readonly property color labelColor: root.grafito ? '#858C98' : activePalette.windowText
 
     signal editMarkerRequested(int index)
     signal deleteMarkerRequested(int index)
 
     height: 28
-    color: activePalette.base
+    color: root.grafito ? '#15171C' : activePalette.base
+
+    Rectangle {
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: 1
+        color: root.dividerColor
+    }
 
     Repeater {
         id: repeater
@@ -45,17 +67,31 @@ Rectangle {
 
             // right edge
             anchors.bottom: rulerTop.bottom
-            height: 18
+            height: 12
             width: 1
-            color: activePalette.windowText
+            color: rulerTop.tickColor
             x: tickIndex * rulerTop.tickSpacing
+
+            Repeater {
+                model: rulerTop.minorTicks - 1
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    x: (index + 1) * rulerTop.tickSpacing / rulerTop.minorTicks
+                    width: 1
+                    height: (rulerTop.minorTicks === 10 && index === 4) ? 7 : 4
+                    color: rulerTop.minorTickColor
+                }
+            }
 
             Label {
                 anchors.left: parent.right
-                anchors.leftMargin: 2
+                anchors.leftMargin: 4
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
-                color: activePalette.windowText
+                anchors.bottomMargin: 4
+                color: rulerTop.labelColor
+                font.family: 'Geist Mono'
+                font.pixelSize: 10
                 text: application.clockFromFrames(parent.tickIndex * rulerTop.intervalFrames + 2).substr(0, 8)
             }
         }

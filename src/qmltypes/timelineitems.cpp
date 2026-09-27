@@ -70,13 +70,26 @@ private:
 
 class TimelinePlayhead : public QQuickPaintedItem
 {
+public:
+    TimelinePlayhead() { setAntialiasing(true); }
+
     void paint(QPainter *painter)
     {
+        // A head with rounded top corners that ends in a point; a plain triangle when
+        // the item is not taller than half its width.
+        const qreal w = width();
+        const qreal h = height();
+        const qreal point = qMin(w / 2.0, h);
+        const qreal radius = qMin(w / 4.0, h - point);
         QPainterPath path;
-        path.moveTo(width(), 0);
-        path.lineTo(width() / 2.0, height());
-        path.lineTo(0, 0);
-        QPalette p;
+        path.moveTo(w / 2.0, h);
+        path.lineTo(0, h - point);
+        path.lineTo(0, radius);
+        path.quadTo(0, 0, radius, 0);
+        path.lineTo(w - radius, 0);
+        path.quadTo(w, 0, w, radius);
+        path.lineTo(w, h - point);
+        path.closeSubpath();
         painter->fillPath(path, QmlApplication::playheadColor());
     }
 };

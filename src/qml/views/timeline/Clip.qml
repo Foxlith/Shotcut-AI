@@ -84,8 +84,27 @@ Rectangle {
         const last = Math.min(Math.ceil(clipPxW / waveformMaxWidth), Math.ceil(Math.max(localRight, 0) / waveformMaxWidth));
         return Math.min(8, Math.max(0, last - waveformFirstTile));
     }
-    property color clipColor: isBlank ? 'transparent' : isTransition ? '#ff8800' : isAudio ? '#ff3b7c' : isAdjustment ? root.adjustmentClipColor : '#20e6c5'
-    readonly property real _cornerRadius: 12
+    // Grafito clip tokens (plan.md 2.4): video, image or overlay, audio; transitions and
+    // adjustment clips in amber.
+    readonly property bool isImage: !isAudio && !isTransition && !isBlank && ['qimage', 'pixbuf', 'color', 'colour', 'qtext', 'kdenlivetitle', 'glaxnimate'].indexOf(mltService) >= 0
+    readonly property string clipKind: isBlank ? 'blank' : isTransition ? 'transition' : isAudio ? 'audio' : isAdjustment ? 'adjustment' : isImage ? 'image' : 'video'
+    readonly property var kindColors: ({
+            "video": ['#24346B', '#4D6BE0', '#EEF1FF', '#B7C2F0'],
+            "image": ['#34275A', '#8E6FE0', '#EEE8FF', '#C9B8FF'],
+            "audio": ['#0F3B35', '#2BB596', '#E6FFF8', '#A8E6D6'],
+            "transition": ['#2A2E37', '#F5B83D', '#FFF4DC', '#E8D3A6'],
+            "adjustment": ['#3D2F12', '#F5B83D', '#FFF4DC', '#E8D3A6'],
+            "blank": ['transparent', 'transparent', '#E8EAEE', '#C9CED6']
+        })
+    property color clipColor: kindColors[clipKind][0]
+    readonly property color clipBorderColor: kindColors[clipKind][1]
+    readonly property color clipTextColor: kindColors[clipKind][2]
+    readonly property color clipSubtextColor: kindColors[clipKind][3]
+    readonly property color waveformColor: isAudio ? '#3DD6B0' : clipBorderColor
+    // Selected: 1 px accent border (plus the ring drawn by the timeline), light gray for a
+    // group; hover: the kind border 15 % brighter.
+    readonly property color frameColor: (selected || Drag.active || trackIndex != originalTrackIndex) ? (group < 0 ? root.accentColor : root.groupSelectionColor) : clipNameHover.containsMouse ? Qt.lighter(clipBorderColor, 1.15) : clipBorderColor
+    readonly property real _cornerRadius: 6
     property real _roundLeft: {
         if (isBlank || !trackRoot || trackRoot.clipCount === 0)
             return 0;
@@ -195,7 +214,7 @@ Rectangle {
         }
     }
 
-    border.color: (selected || Drag.active || trackIndex != originalTrackIndex) ? group < 0 ? 'red' : 'white' : 'black'
+    border.color: frameColor
     border.width: (isBlank && !selected) ? 0 : 1
     clip: !offScreen && clipPxW < 4096
     color: clipColor
@@ -240,11 +259,6 @@ Rectangle {
             PropertyChanges {
                 target: clipRoot
                 z: 1
-            }
-
-            PropertyChanges {
-                target: gradientStop
-                color: Qt.darker(clipColor)
             }
         }
     ]
@@ -442,12 +456,13 @@ Rectangle {
         id: transitionComponent
 
         Shotcut.TimelineTransition {
-            property var color: isAudio ? 'darkseagreen' : root.shotcutBlue
+            // The X of a transition in the colors of its track: video blue or audio green.
+            property color color: isAudio ? '#2BB596' : '#4D6BE0'
 
             anchors.fill: parent
-            anchors.margins: selected ? parent.border.width : 0
-            colorA: color
-            colorB: clipRoot.selected ? Qt.darker(color) : Qt.lighter(color)
+            anchors.margins: parent.border.width
+            colorA: Qt.rgba(color.r, color.g, color.b, 0.75)
+            colorB: Qt.rgba(color.r, color.g, color.b, clipRoot.selected ? 0.45 : 0.25)
         }
     }
 
@@ -466,7 +481,7 @@ Rectangle {
         anchors.leftMargin: leftOffset
         anchors.rightMargin: rightOffset
         anchors.bottomMargin: parent.border.width
-        opacity: isTrackMute ? 0.2 : 0.7
+        opacity: isTrackMute ? 0.2 : 0.85
 
         Repeater {
             id: waveformRepeater
@@ -482,7 +497,7 @@ Rectangle {
                 x: tileIndex * waveformMaxWidth
                 width: Math.min(waveformMaxWidth, waveform.availableWidth - x)
                 height: waveform.height
-                fillColor: clipColor
+                fillColor: clipRoot.waveformColor
                 inPoint: Math.round((clipRoot.inPoint + tileIndex * waveformMaxWidth / timeScale) * speed) * channels
                 outPoint: inPoint + Math.round(width / timeScale * speed) * channels
                 active: ((clipRoot.x + x + width) > tracksFlickable.contentX) && ((clipRoot.x + x) < tracksFlickable.contentX + tracksFlickable.width) && ((trackRoot.y + y + height) > tracksFlickable.contentY) && ((trackRoot.y + y) < tracksFlickable.contentY + tracksFlickable.height)
@@ -501,7 +516,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.leftMargin: parent.border.width
         y: clipRoot.gainLineY(gain)
-        color: audioPeakMouseArea.enabled ? audioPeakMouseArea.dragging ? Qt.lighter(parent.color) : Qt.darker(clipColor) : 'gray'
+        color: audioPeakMouseArea.enabled ? audioPeakMouseArea.dragging ? root.accentColor : clipSubtextColor : root.disabledTextColor
         opacity: waveform.opacity
 
         MouseArea {
@@ -573,7 +588,7 @@ Rectangle {
     Rectangle {
         id: leftLabelBackground
 
-        color: 'lightgray'
+        color: 'transparent'
         visible: !elided && !isBlank && !isTransition
         opacity: 0.7
         anchors.top: parent.top
@@ -590,8 +605,11 @@ Rectangle {
         text: clipName
         visible: !elided && !isBlank && !isTransition
         width: Math.min(implicitWidth, parent.width - leftLabelBackground.anchors.leftMargin - _rightRoundedInset - 2 * parent.border.width)
-        font.pointSize: 8
-        color: 'black'
+        font.pixelSize: 11
+        font.weight: Font.Medium
+        color: clipTextColor
+        leftPadding: 4
+        topPadding: 2
 
         anchors {
             top: parent.top
@@ -603,7 +621,7 @@ Rectangle {
     Rectangle {
         id: rightLabelBackground
 
-        color: 'lightgray'
+        color: 'transparent'
         visible: labelRight.visible
         opacity: 0.7
         anchors.top: parent.top
@@ -619,8 +637,10 @@ Rectangle {
 
         text: clipName
         visible: !elided && !isBlank && !isTransition && parent.width > (((settings.timelineShowThumbnails && !isAdjustment) ? 2 * outThumbnail.width : 0) + 3 * label.width)
-        font.pointSize: 8
-        color: 'black'
+        font.pixelSize: 11
+        color: clipSubtextColor
+        rightPadding: 4
+        topPadding: 1
 
         anchors {
             top: parent.top
@@ -636,10 +656,10 @@ Rectangle {
         property real enabledWidth: enabled ? 2 * width : width
 
         visible: !elided && !isBlank && isFiltered
-        icon.source: 'qrc:///icons/light/32x32/view-filter.png'
-        icon.width: 16
-        icon.height: 16
-        opacity: 0.7
+        icon.source: 'qrc:///icons/dark/32x32/view-filter.png'
+        icon.width: 14
+        icon.height: 14
+        opacity: 0.9
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.topMargin: parent.border.width
@@ -656,8 +676,8 @@ Rectangle {
         background: Rectangle {
             implicitWidth: 16
             implicitHeight: 16
-            color: 'lightgray'
-            opacity: 1
+            radius: 4
+            color: Qt.rgba(0, 0, 0, 0.35)
         }
     }
 
@@ -997,7 +1017,7 @@ Rectangle {
             id: gradientStop
 
             position: 0
-            color: Qt.lighter(clipColor)
+            color: Qt.lighter(clipColor, 1.12)
         }
 
         GradientStop {
@@ -1011,7 +1031,7 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         color: 'transparent'
-        border.color: (selected || Drag.active || trackIndex != originalTrackIndex) ? group < 0 ? application.playheadColor : 'white' : 'black'
+        border.color: clipRoot.frameColor
         border.width: (isBlank && !selected) ? 0 : 1
         topLeftRadius: clipRoot.topLeftRadius
         bottomLeftRadius: clipRoot.bottomLeftRadius

@@ -112,8 +112,12 @@ function acceptDrop(xml) {
     timeline.handleDrop(timeline.currentTrack, position, xml)
 }
 
-function trackHeight() {
-    return multitrack.trackHeight * 2;
+// Grafito track heights (plan.md 3.3) at the default track height of 50: the main video
+// track (V1) is 58 px, other video tracks 44 px, the main audio track (A1) 52 px and other
+// audio tracks 40 px. Make Tracks Taller/Shorter scales all of them.
+function trackHeight(isAudio, isMain) {
+    const design = isAudio ? (isMain ? 52 : 40) : (isMain ? 58 : 44)
+    return Math.max(10, Math.round(multitrack.trackHeight * design / 50))
 }
 
 function clamp(x, minimum, maximum) {
