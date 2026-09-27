@@ -30,6 +30,7 @@ class PlaylistDock;
 }
 
 class QAbstractItemView;
+class QFrame;
 class QItemSelectionModel;
 class QLabel;
 class QMenu;
@@ -163,6 +164,7 @@ private:
     Mlt::Playlist m_binPlaylist;
     LineEditClear *m_searchField;
     QLabel *m_label;
+    QFrame *m_mediaDropZone{nullptr};
 };
 
 #endif // PLAYLISTDOCK_H

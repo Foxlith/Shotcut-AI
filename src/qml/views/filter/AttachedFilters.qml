@@ -161,13 +161,16 @@ Rectangle {
             }
 
             function updateMobility() {
-                if (currentIndex >= 0 && count > 1) {
-                    let currentSection = attachedFiltersView.itemAtIndex(currentIndex).ListView.section;
+                // Delegates do not exist yet while the Filters panel has never been shown,
+                // for example when the Inspector selects a filter.
+                let currentItem = currentIndex >= 0 ? attachedFiltersView.itemAtIndex(currentIndex) : null;
+                if (currentItem && count > 1) {
+                    let currentSection = currentItem.ListView.section;
                     if (currentIndex <= 0) {
                         selectedCanMoveUp = false;
                     } else {
-                        let prevSection = attachedFiltersView.itemAtIndex(currentIndex - 1).ListView.section;
-                        selectedCanMoveUp = currentSection === prevSection;
+                        let prevItem = attachedFiltersView.itemAtIndex(currentIndex - 1);
+                        selectedCanMoveUp = prevItem !== null && currentSection === prevItem.ListView.section;
                     }
                     if (currentIndex >= attachedFiltersView.count - 1) {
                         selectedCanMoveDown = false;
@@ -207,6 +210,7 @@ Rectangle {
                 updateMobility();
             }
             onCountChanged: possiblySelectFirstFilter()
+            onHeightChanged: updateMobility()
 
             MouseArea {
                 property int oldIndex: -1

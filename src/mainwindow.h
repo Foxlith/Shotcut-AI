@@ -48,6 +48,7 @@ class ScopeController;
 class ElementsDock;
 class FilesDock;
 class FiltersDock;
+class InspectorWidget;
 class TimelineDock;
 class AutoSaveFile;
 class QNetworkReply;
@@ -142,6 +143,7 @@ protected:
     void hideEvent(QHideEvent *event);
     void resizeEvent(QResizeEvent *event);
     void changeEvent(QEvent *event);
+    void childEvent(QChildEvent *event);
 
 private:
     void connectFocusSignals();
@@ -189,6 +191,8 @@ private:
     void setVideoModeMenu();
     void resetVideoModeMenu();
     void resetDockCorners();
+    void scheduleDockTabBarsUpdate();
+    void updateDockTabBars();
     void showIncompatibleProjectMessage(const QString &shotcutVersion);
     void restartAfterChangeTheme();
     void backup();
@@ -201,6 +205,8 @@ private:
     Ui::MainWindow *ui;
     Player *m_player;
     QDockWidget *m_propertiesDock;
+    InspectorWidget *m_inspector{nullptr};
+    bool m_dockTabBarsUpdatePending{false};
     RecentDock *m_recentDock;
     EncodeDock *m_encodeDock;
     JobsDock *m_jobsDock;

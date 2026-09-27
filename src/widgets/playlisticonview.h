@@ -19,6 +19,9 @@
 #define SRC_WIDGETS_PLAYLISTICONVIEW_H
 
 #include <QAbstractItemView>
+#include <QPersistentModelIndex>
+
+class QPainter;
 
 class PlaylistIconView : public QAbstractItemView
 {
@@ -28,6 +31,10 @@ public:
     void resetMultiSelect();
     void setIconRole(int role);
     void setElideMode(Qt::TextElideMode mode) { m_elideMode = mode; }
+    /// Lays the items out as the Grafito media grid (16:9 cards with a duration
+    /// chip, the name and the type) when the palette is dark.
+    void setCardMode(bool enabled);
+    bool isCardLayout() const;
 
     QRect visualRect(const QModelIndex &index) const Q_DECL_OVERRIDE;
     void scrollTo(const QModelIndex &index, ScrollHint hint = EnsureVisible) Q_DECL_OVERRIDE;
@@ -45,6 +52,8 @@ public:
     void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
     bool event(QEvent *event) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
+    bool viewportEvent(QEvent *event) Q_DECL_OVERRIDE;
     void dragMoveEvent(QDragMoveEvent *e) Q_DECL_OVERRIDE;
     void dragLeaveEvent(QDragLeaveEvent *e) Q_DECL_OVERRIDE;
     void dropEvent(QDropEvent *e) Q_DECL_OVERRIDE;
@@ -72,6 +81,8 @@ private:
                                                       const QRect &rect,
                                                       const QModelIndex &index) const;
     QRect _visualRect(const QModelIndex &index) const;
+    QRect cardRect(const QRect &cell) const;
+    void paintCard(QPainter &painter, const QModelIndex &index, const QRect &card);
 
     QSize m_gridSize;
     QPoint m_draggingOverPos;
@@ -81,6 +92,9 @@ private:
     QModelIndex m_pendingSelect;
     int m_iconRole;
     Qt::TextElideMode m_elideMode{Qt::ElideMiddle};
+    bool m_cardMode{false};
+    QSize m_cardSize;
+    QPersistentModelIndex m_hoverIndex;
 };
 
 #endif

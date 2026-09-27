@@ -80,6 +80,7 @@
 #include "widgets/glaxnimateproducerwidget.h"
 #include "widgets/htmlgeneratorwidget.h"
 #include "widgets/imageproducerwidget.h"
+#include "widgets/inspectorwidget.h"
 #include "widgets/isingwidget.h"
 #include "widgets/lissajouswidget.h"
 #include "widgets/lumamixtransition.h"
@@ -140,7 +141,8 @@ static constexpr int AUTOSAVE_TIMEOUT_MS = 60000;
 // Bump kDockLayoutVersion whenever a new dock is added to setupAndConnectDocks().
 // This triggers a one-time re-tabification for users upgrading from an older saved state.
 // Version 2 introduced the Grafito 4-column layout and the icon sidebar dock.
-static constexpr int kDockLayoutVersion = 2;
+// Version 3 (Phase 6) orders the Inspector tabs as Inspector, Jobs, History, Filters.
+static constexpr int kDockLayoutVersion = 3;
 static constexpr char kReservedLayoutPrefix[] = "__%1";
 static constexpr char kLayoutSwitcherName[] = "workspaceSwitcher";
 // Grafito layout metrics (see plan.md, section 3).
@@ -676,15 +678,17 @@ void MainWindow::setupAndConnectDocks()
                 SLOT(trigger()));
     }
 
-    m_propertiesDock = new QDockWidget(tr("Properties"), this);
+    // Grafito Inspector (plan.md 3.2, item 4): the former Properties panel with the
+    // header of the selected item and the TRANSFORM and FILTERS sections on top.
+    m_propertiesDock = new QDockWidget(tr("Inspector"), this);
     m_propertiesDock->hide();
     m_propertiesDock->setObjectName("propertiesDock");
     m_propertiesDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_2));
     m_propertiesDock->toggleViewAction()->setIcon(ui->actionProperties->icon());
     m_propertiesDock->setMinimumWidth(300);
-    QScrollArea *scroll = new QScrollArea;
-    scroll->setWidgetResizable(true);
-    m_propertiesDock->setWidget(scroll);
+    m_inspector = new InspectorWidget(m_propertiesDock);
+    m_propertiesDock->setWidget(m_inspector);
+    connect(m_undoStack, &QUndoStack::indexChanged, m_inspector, &InspectorWidget::refresh);
     ui->menuView->addAction(m_propertiesDock->toggleViewAction());
     connect(m_propertiesDock->toggleViewAction(),
             SIGNAL(triggered(bool)),
@@ -861,6 +865,10 @@ void MainWindow::setupAndConnectDocks()
                                     this);
     // The Inspector column is 300 px wide in the Grafito layout.
     m_filtersDock->setMinimumSize(300, 300);
+    m_inspector->setFilterController(m_filterController);
+    connect(m_inspector, &InspectorWidget::filtersPanelRequested, this, [this]() {
+        onFiltersDockTriggered(true);
+    });
     m_filtersDock->hide();
     m_filtersDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_6));
     ui->menuView->addAction(m_filtersDock->toggleViewAction());
@@ -1176,16 +1184,17 @@ void MainWindow::setupAndConnectDocks()
     tabifyDockWidget(m_notesDock, m_subtitlesDock);
     tabifyDockWidget(m_subtitlesDock, m_elementsDock);
     // Column 3 (flexible): the player is the central widget.
-    // Column 4 (300 px): Inspector - Properties, Filters, Jobs, History and Export.
+    // Column 4 (300 px): [ Inspector | Jobs | History ] (plan.md 3.2, item 4), then
+    // Filters (also reachable from the Inspector and the sidebar) and Export.
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
-    addDockWidget(Qt::RightDockWidgetArea, m_filtersDock);
     addDockWidget(Qt::RightDockWidgetArea, m_jobsDock);
     addDockWidget(Qt::RightDockWidgetArea, m_historyDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_filtersDock);
     addDockWidget(Qt::RightDockWidgetArea, m_encodeDock);
-    tabifyDockWidget(m_propertiesDock, m_filtersDock);
-    tabifyDockWidget(m_filtersDock, m_jobsDock);
+    tabifyDockWidget(m_propertiesDock, m_jobsDock);
     tabifyDockWidget(m_jobsDock, m_historyDock);
-    tabifyDockWidget(m_historyDock, m_encodeDock);
+    tabifyDockWidget(m_historyDock, m_filtersDock);
+    tabifyDockWidget(m_filtersDock, m_encodeDock);
     // Scopes (created by ScopeController in the right area) stack below the Inspector.
     if (audioMeterDock)
         splitDockWidget(m_propertiesDock, audioMeterDock, Qt::Vertical);
@@ -1199,9 +1208,21 @@ void MainWindow::setupAndConnectDocks()
     m_propertiesDock->raise();
     m_timelineDock->raise();
     // Let the theme paint every dock as a floating panel (12 px radius in capcut_theme.qss).
-    for (auto dock : findChildren<QDockWidget *>())
+    for (auto dock : findChildren<QDockWidget *>()) {
         dock->setAttribute(Qt::WA_StyledBackground);
+        // Keep the Media and Inspector tab styles when docks move or change tabs.
+        connect(dock,
+                &QDockWidget::dockLocationChanged,
+                this,
+                &MainWindow::scheduleDockTabBarsUpdate);
+        connect(dock, &QDockWidget::visibilityChanged, this, &MainWindow::scheduleDockTabBarsUpdate);
+    }
+    connect(this,
+            &QMainWindow::tabifiedDockWidgetActivated,
+            this,
+            &MainWindow::scheduleDockTabBarsUpdate);
     resetDockCorners();
+    scheduleDockTabBarsUpdate();
 }
 
 void MainWindow::setupSideBar()
@@ -2574,6 +2595,50 @@ void MainWindow::resetDockCorners()
     setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 }
 
+void MainWindow::scheduleDockTabBarsUpdate()
+{
+    if (m_dockTabBarsUpdatePending)
+        return;
+    m_dockTabBarsUpdatePending = true;
+    QTimer::singleShot(0, this, &MainWindow::updateDockTabBars);
+}
+
+void MainWindow::updateDockTabBars()
+{
+    // The tab bars of the tabified docks have no name. Tag them with the
+    // column they belong to so that the theme styles the Media tabs as a
+    // segmented control and the Inspector tabs with an accent underline
+    // (plan.md 3.2, items 2 and 4).
+    m_dockTabBarsUpdatePending = false;
+    QHash<quintptr, QDockWidget *> docks;
+    for (auto dock : findChildren<QDockWidget *>(Qt::FindDirectChildrenOnly))
+        docks.insert(quintptr(dock), dock);
+    const QRect central = centralWidget() ? centralWidget()->geometry() : QRect();
+    for (auto tabBar : findChildren<QTabBar *>(Qt::FindDirectChildrenOnly)) {
+        Qt::DockWidgetArea area = Qt::NoDockWidgetArea;
+        // QMainWindow stores the dock of every tab in its data.
+        for (int i = 0; i < tabBar->count() && area == Qt::NoDockWidgetArea; i++) {
+            if (QDockWidget *dock = docks.value(tabBar->tabData(i).value<quintptr>()))
+                area = dockWidgetArea(dock);
+        }
+        if (area == Qt::NoDockWidgetArea && tabBar->isVisible() && central.isValid()) {
+            const QPoint center = tabBar->geometry().center();
+            if (center.y() < central.bottom())
+                area = center.x() < central.left() ? Qt::LeftDockWidgetArea
+                                                   : Qt::RightDockWidgetArea;
+        }
+        QString style;
+        if (area == Qt::LeftDockWidgetArea)
+            style = QStringLiteral("segmented");
+        else if (area == Qt::RightDockWidgetArea)
+            style = QStringLiteral("underline");
+        if (tabBar->property("grafitoTabs").toString() != style) {
+            tabBar->setProperty("grafitoTabs", style);
+            Util::repolish(tabBar);
+        }
+    }
+}
+
 void MainWindow::showIncompatibleProjectMessage(const QString &shotcutVersion)
 {
     LOG_INFO() << shotcutVersion;
@@ -2843,9 +2908,7 @@ void MainWindow::hideProducer()
     openCut(new Mlt::Producer(MLT.profile(), "color:_hide"));
     QCoreApplication::processEvents();
 
-    QScrollArea *scrollArea = (QScrollArea *) m_propertiesDock->widget();
-    delete scrollArea->widget();
-    scrollArea->setWidget(nullptr);
+    m_inspector->setProducerWidget(nullptr);
     m_player->reset();
 
     QCoreApplication::processEvents();
@@ -3050,6 +3113,7 @@ void MainWindow::readWindowSettings()
         if (Settings.dockLayoutVersion() < kDockLayoutVersion) {
             // Version 2 (Grafito): move to the 4-column layout with the icon sidebar
             // once, and drop the saved per-workspace states that predate it.
+            // Version 3: the same for the new order of the Inspector tabs.
             for (int mode = LayoutMode::Logging; mode <= LayoutMode::PlayerOnly; ++mode)
                 Settings.setLayout(QString(kReservedLayoutPrefix).arg(mode),
                                    QByteArray(),
@@ -3867,6 +3931,14 @@ void MainWindow::changeEvent(QEvent *event)
         updateProjectInfo();
 }
 
+void MainWindow::childEvent(QChildEvent *event)
+{
+    QMainWindow::childEvent(event);
+    // QMainWindow creates a tab bar when docks are tabified (see updateDockTabBars()).
+    if (event->type() == QEvent::ChildAdded || event->type() == QEvent::ChildPolished)
+        scheduleDockTabBarsUpdate();
+}
+
 void MainWindow::on_actionOpenOther_triggered()
 {
     auto dialog = new OpenOtherDialog(this);
@@ -4679,6 +4751,60 @@ void MainWindow::changeTheme(const QString &theme)
             // Phase 5: Grafito timeline toolbar (44 px, #1F2229 dividers)
             "DockToolBar#timelineToolbar { background-color: #15171C; border: none; border-bottom: 1px solid #1F2229; border-radius: 0px; margin: 0px; }"
             "DockToolBar#timelineToolbar::separator { width: 1px; background-color: #1F2229; margin: 12px 6px; }"
+            // Phase 6: Grafito Media and Inspector (tabs, header, dropzone, Inspector sections)
+            "QTabBar[grafitoTabs=\"segmented\"] { background-color: #0F1115; border: 1px solid #22252D; border-radius: 10px; padding: 2px; margin: 0px; }"
+            "QTabBar[grafitoTabs=\"segmented\"]::tab { background-color: transparent; color: #9AA1AD; border: none; border-radius: 7px; padding: 5px 12px; margin: 1px; font-size: 12px; font-weight: 500; }"
+            "QTabBar[grafitoTabs=\"segmented\"]::tab:hover:!selected { background-color: transparent; color: #C9CED6; border: none; }"
+            "QTabBar[grafitoTabs=\"segmented\"]::tab:selected { background-color: #262A33; color: #E8EAEE; border: none; font-weight: 600; }"
+            "QTabBar[grafitoTabs=\"segmented\"]::tab:disabled { color: #5F6672; }"
+            "QTabBar[grafitoTabs=\"underline\"] { background-color: transparent; border: none; border-radius: 0px; padding: 0px; margin: 0px; }"
+            "QTabBar[grafitoTabs=\"underline\"]::tab { background-color: transparent; color: #9AA1AD; border: none; border-bottom: 2px solid transparent; border-radius: 0px; padding: 7px 8px 5px 8px; margin: 0px 3px; font-size: 12px; font-weight: 500; }"
+            "QTabBar[grafitoTabs=\"underline\"]::tab:hover:!selected { background-color: transparent; color: #E8EAEE; border: none; border-bottom: 2px solid transparent; }"
+            "QTabBar[grafitoTabs=\"underline\"]::tab:selected { background-color: transparent; color: #E8EAEE; border: none; border-bottom: 2px solid #FF7A45; font-weight: 600; }"
+            "QTabBar[grafitoTabs=\"underline\"]::tab:disabled { color: #5F6672; }"
+            "QLineEdit#mediaSearchField { background-color: #0F1115; color: #E8EAEE; border: 1px solid #22252D; border-radius: 8px; padding: 5px 6px; font-size: 12px; }"
+            "QLineEdit#mediaSearchField:hover { border-color: #2A2E37; }"
+            "QLineEdit#mediaSearchField:focus { border: 1px solid #FF7A45; }"
+            "QLineEdit#mediaSearchField:disabled { background-color: #15171C; color: #5F6672; }"
+            "QPushButton#mediaImportButton { background-color: transparent; color: #E8EAEE; border: 1px solid #2A2E37; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 500; }"
+            "QPushButton#mediaImportButton:hover { background-color: #262A33; border-color: #343944; color: #E8EAEE; }"
+            "QPushButton#mediaImportButton:pressed { background-color: #1F2229; border-color: #343944; color: #E8EAEE; }"
+            "QPushButton#mediaImportButton:focus { border: 1px solid #FF7A45; }"
+            "QPushButton#mediaImportButton:disabled { background-color: transparent; border-color: #1F2229; color: #5F6672; }"
+            "QFrame#mediaDropZone { background-color: transparent; border: 1px dashed #343944; border-radius: 10px; }"
+            "QFrame#mediaDropZone:hover { background-color: rgba(255, 122, 69, 0.06); border: 1px dashed #FF7A45; }"
+            "QFrame#mediaDropZone:focus { border: 1px dashed #FF7A45; }"
+            "QLabel#mediaDropZoneIcon, QLabel#mediaDropZoneTitle, QLabel#mediaDropZoneHint, QLabel#mediaItemCount { background-color: transparent; border: none; }"
+            "QLabel#mediaItemCount { color: #858C98; font-size: 11px; }"
+            "QLabel#mediaDropZoneTitle { color: #C9CED6; font-size: 12px; font-weight: 500; }"
+            "QLabel#mediaDropZoneHint { color: #858C98; font-size: 11px; }"
+            "DockToolBar#playlistBinToolbar { background-color: transparent; border: none; border-radius: 0px; margin: 0px; }"
+            "DockToolBar#playlistControlsToolbar { background-color: transparent; border: none; border-top: 1px solid #1F2229; border-radius: 0px; margin: 0px; }"
+            "DockToolBar#playlistControlsToolbar::separator { width: 1px; background-color: #1F2229; margin: 7px 2px; }"
+            "DockToolBar#playlistBinToolbar QToolButton, DockToolBar#playlistControlsToolbar QToolButton { padding: 1px; margin: 0px; border: none; }"
+            "QScrollArea#inspector, QWidget#inspectorContent { background-color: transparent; border: none; }"
+            "QLabel#inspectorEmpty { color: #858C98; font-size: 12px; padding: 24px 8px; }"
+            "QLabel#inspectorTitle { color: #E8EAEE; font-size: 13px; font-weight: 600; }"
+            "QLabel#inspectorMeta { color: #858C98; font-size: 11px; }"
+            "QLabel[inspectorSection=\"true\"] { color: #858C98; }"
+            "QFrame#inspectorDivider { background-color: #1F2229; border: none; }"
+            "QLabel#inspectorRowLabel { color: #C9CED6; font-size: 12px; }"
+            "QLabel#inspectorAxisLabel { color: #858C98; font-size: 11px; font-weight: 600; }"
+            "QLabel#inspectorTransformHint { color: #858C98; font-size: 11px; }"
+            "QWidget#inspectorTransform QSpinBox { padding: 4px 6px; font-size: 12px; }"
+            "QWidget#inspectorTransform QSlider::groove:horizontal { height: 4px; background: #2A2E37; border-radius: 2px; }"
+            "QWidget#inspectorTransform QSlider::sub-page:horizontal { background: #FF7A45; border-radius: 2px; }"
+            "QWidget#inspectorTransform QSlider::handle:horizontal { width: 12px; height: 12px; margin: -4px 0px; border: none; border-radius: 6px; background: #FFFFFF; }"
+            "QWidget#inspectorTransform QSlider::handle:horizontal:hover { border: 3px solid rgba(255, 122, 69, 0.30); margin: -7px -3px; border-radius: 9px; }"
+            "QWidget#inspectorTransform QSlider::handle:horizontal:pressed { background: #FF7A45; }"
+            "QWidget#inspectorTransform QSlider::groove:horizontal:disabled { background: #1F2229; }"
+            "QWidget#inspectorTransform QSlider::sub-page:horizontal:disabled { background: #5F6672; }"
+            "QWidget#inspectorTransform QSlider::handle:horizontal:disabled { background: #5F6672; }"
+            "QPushButton#inspectorAddFilterButton { background-color: transparent; color: #C9CED6; border: 1px dashed #343944; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 500; }"
+            "QPushButton#inspectorAddFilterButton:hover { background-color: #262A33; color: #E8EAEE; border: 1px dashed #FF7A45; }"
+            "QPushButton#inspectorAddFilterButton:pressed { background-color: #1F2229; color: #E8EAEE; border: 1px dashed #FF7A45; }"
+            "QPushButton#inspectorAddFilterButton:focus { border: 1px dashed #FF7A45; }"
+            "QPushButton#inspectorAddFilterButton:disabled { background-color: transparent; color: #5F6672; border: 1px dashed #1F2229; }"
         ));
             // clang-format on
         }
@@ -4805,14 +4931,12 @@ bool MainWindow::isMultitrackValid() const
 QWidget *MainWindow::loadProducerWidget(Mlt::Producer *producer)
 {
     QWidget *w = 0;
-    QScrollArea *scrollArea = (QScrollArea *) m_propertiesDock->widget();
-
     if (!producer || !producer->is_valid()) {
-        if (scrollArea->widget())
-            scrollArea->widget()->deleteLater();
+        if (m_inspector->producerWidget())
+            m_inspector->producerWidget()->deleteLater();
         return w;
     } else {
-        scrollArea->show();
+        m_inspector->show();
     }
 
     QString service(producer->get("mlt_service"));
@@ -4821,7 +4945,7 @@ QWidget *MainWindow::loadProducerWidget(Mlt::Producer *producer)
 
     if (shotcutProducer == QLatin1String("adjustment")) {
         w = new QWidget(this);
-        scrollArea->setWidget(w);
+        m_inspector->setProducerWidget(w);
         m_filterController->setProducer(producer);
         return w;
     } else if (resource.startsWith("video4linux2:")
@@ -4870,7 +4994,7 @@ QWidget *MainWindow::loadProducerWidget(Mlt::Producer *producer)
     else if (producer->parent().get(kShotcutTransitionProperty)) {
         auto *lumaMixTransition = new LumaMixTransition(producer->parent(), this);
         w = lumaMixTransition;
-        scrollArea->setWidget(w);
+        m_inspector->setProducerWidget(w);
         if (-1 != w->metaObject()->indexOfSignal("modified()")) {
             connect(w, SIGNAL(modified()), SLOT(onProducerModified()));
         }
@@ -4905,11 +5029,11 @@ QWidget *MainWindow::loadProducerWidget(Mlt::Producer *producer)
         showDucking = !isTopTrack;
 #endif
         w = new TrackPropertiesWidget(*producer, !isBottomVideo, showDucking, this);
-        scrollArea->setWidget(w);
+        m_inspector->setProducerWidget(w);
         return w;
     } else if (mlt_service_tractor_type == producer->type()) {
         w = new TimelinePropertiesWidget(*producer, this);
-        scrollArea->setWidget(w);
+        m_inspector->setProducerWidget(w);
         connect(w, SIGNAL(editProfile()), SLOT(on_actionAddCustomProfile_triggered()));
         return w;
     }
@@ -4961,10 +5085,10 @@ QWidget *MainWindow::loadProducerWidget(Mlt::Producer *producer)
                     SLOT(offerConvert(QString, bool)),
                     Qt::QueuedConnection);
         }
-        scrollArea->setWidget(w);
+        m_inspector->setProducerWidget(w);
         onProducerChanged();
-    } else if (scrollArea->widget()) {
-        scrollArea->widget()->deleteLater();
+    } else if (m_inspector->producerWidget()) {
+        m_inspector->producerWidget()->deleteLater();
     }
     return w;
 }

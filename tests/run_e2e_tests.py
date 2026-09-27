@@ -126,6 +126,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     print("   5. tests.test_phase3_layout_verification (Phase 3 Grafito docks, top bar & sidebar)")
     print("   6. tests.test_phase4_viewer_verification (Phase 4 Grafito viewer & transport)")
     print("   7. tests.test_phase5_timeline_verification (Phase 5 Grafito multitrack timeline)")
+    print("   8. tests.test_phase6_media_inspector_verification (Phase 6 Grafito Media panel & Inspector)")
     print("=" * 78)
 
     import tests.test_adversarial_branding_m1_dark
@@ -135,6 +136,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     import tests.test_phase3_layout_verification
     import tests.test_phase4_viewer_verification
     import tests.test_phase5_timeline_verification
+    import tests.test_phase6_media_inspector_verification
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -156,6 +158,9 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
 
     # 6. Phase 5 Grafito multitrack timeline verification (15 tests)
     suite.addTests(loader.loadTestsFromModule(tests.test_phase5_timeline_verification))
+
+    # 7. Phase 6 Grafito Media panel & Inspector verification (30 tests)
+    suite.addTests(loader.loadTestsFromModule(tests.test_phase6_media_inspector_verification))
 
     # 3. Runtime UI & stress recovery
     if no_gui:

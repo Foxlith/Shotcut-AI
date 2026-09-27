@@ -43,8 +43,8 @@ void DockToolBar::setAreaHint(Qt::ToolBarArea area)
 
 void DockToolBar::paintEvent(QPaintEvent *event)
 {
-    if (isGrafitoTimeline()) {
-        // Flat Grafito bar painted by the style sheet (DockToolBar#timelineToolbar).
+    if (isGrafitoFlat()) {
+        // Flat Grafito bar painted by the style sheet (DockToolBar#timelineToolbar, ...).
         QToolBar::paintEvent(event);
         return;
     }
@@ -79,6 +79,15 @@ bool DockToolBar::isGrafitoTimeline() const
 {
     return objectName() == "timelineToolbar"
            && palette().color(QPalette::Window).lightnessF() < 0.5;
+}
+
+bool DockToolBar::isGrafitoFlat() const
+{
+    // The timeline bar and the Media panel bars (Phase 6) have no gradient in Grafito.
+    static const QStringList kFlatBars{QStringLiteral("timelineToolbar"),
+                                       QStringLiteral("playlistControlsToolbar"),
+                                       QStringLiteral("playlistBinToolbar")};
+    return kFlatBars.contains(objectName()) && palette().color(QPalette::Window).lightnessF() < 0.5;
 }
 
 void DockToolBar::updateStyle()
