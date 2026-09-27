@@ -365,11 +365,19 @@ void MainWindow::setupAndConnectUndoStack()
     ui->menuEdit->addSeparator();
     ui->mainToolBar->insertAction(ui->undoEndSeparator, undoAction);
     ui->mainToolBar->insertAction(ui->undoEndSeparator, redoAction);
+    // Named for their compact rule: the text under the icons fits in the top bar.
+    if (auto button = ui->mainToolBar->widgetForAction(undoAction))
+        button->setObjectName("undoButton");
+    if (auto button = ui->mainToolBar->widgetForAction(redoAction))
+        button->setObjectName("redoButton");
 }
 
 void MainWindow::setupAndConnectPlayerWidget()
 {
     m_player = new Player;
+    // The viewer header shows the full screen button and the video mode chip.
+    m_player->setFullScreenAction(ui->actionEnterFullScreen);
+    connect(this, &MainWindow::profileChanged, m_player, &Player::onProfileChanged);
     MLT.videoWidget()->installEventFilter(this);
     qApp->installEventFilter(this); // Install global event filter for WhatsThis events
     ui->centralWidget->layout()->addWidget(m_player);
@@ -472,8 +480,10 @@ void MainWindow::setupTopBar()
 {
     // 52 px bar plus the 8 px gap to the panels below: the contents margin keeps the
     // buttons centered in the bar and the theme paints the gap as margin.
-    // Polish first: the style sheet engine resets the minimum size when it polishes.
-    ui->mainToolBar->ensurePolished();
+    // QToolBar takes its margins from the style sheet when it is created, before setupUi()
+    // names it, so repolish it for the QToolBar#mainToolBar rule. Polish first: the style
+    // sheet engine resets the minimum size when it polishes.
+    Util::repolish(ui->mainToolBar);
     ui->mainToolBar->setFixedHeight(kTopBarHeight + kPanelGap);
     ui->mainToolBar->setContentsMargins(0, 0, 0, kPanelGap);
     setupMainMenu();
@@ -482,7 +492,10 @@ void MainWindow::setupTopBar()
     logo->setObjectName("topBarLogo");
     logo->setFixedSize(kTopBarLogoSize, kTopBarLogoSize);
     logo->setAlignment(Qt::AlignCenter);
-    logo->setPixmap(QIcon(":/icons/shotcut-logo-64.svg").pixmap(QSize(20, 20)));
+    QIcon logoIcon(":/icons/shotcut-logo-64.svg");
+    // Same artwork as a bitmap, for when the SVG icon engine is not available.
+    logoIcon.addFile(":/icons/shotcut-logo-320x320.png");
+    logo->setPixmap(logoIcon.pixmap(QSize(20, 20)));
     logo->setToolTip(qApp->applicationName());
     logo->setAccessibleName(qApp->applicationName());
     ui->mainToolBar->insertWidget(ui->dummyAction, logo);
@@ -583,21 +596,25 @@ void MainWindow::updateMenuBarVisibility()
 void MainWindow::applyTopBarButtonStyles()
 {
     // QToolBar pushes its toolButtonStyle to every action button; these keep a fixed style.
+    // The buttons are named after they are polished, so repolish them for their rules.
     if (auto button = qobject_cast<QToolButton *>(
             ui->mainToolBar->widgetForAction(ui->actionMainMenu))) {
         button->setObjectName("mainMenuButton");
         button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         button->setPopupMode(QToolButton::InstantPopup);
+        Util::repolish(button);
     }
     if (auto button = qobject_cast<QToolButton *>(
             ui->mainToolBar->widgetForAction(ui->actionJobs))) {
         button->setObjectName("jobsButton");
         button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        Util::repolish(button);
     }
     if (auto button = qobject_cast<QToolButton *>(
             ui->mainToolBar->widgetForAction(ui->actionEncode))) {
         button->setObjectName("exportButton");
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        Util::repolish(button);
     }
 }
 
@@ -1205,6 +1222,8 @@ void MainWindow::setupSideBar()
     toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     toolbar->setIconSize(Settings.smallIcons() ? QSize(15, 15) : QSize(18, 18));
     toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
+    // Take the margins from the QToolBar#sidebarToolBar rule (see Util::repolish()).
+    Util::repolish(toolbar);
 
     const QList<QPair<QAction *, QDockWidget *>> entries{
         {ui->actionPlaylist, m_playlistDock},
@@ -4617,6 +4636,7 @@ void MainWindow::changeTheme(const QString &theme)
             "QWidget#workspaceSwitcher QToolButton:checked { background-color: #262A33; color: #E8EAEE; border-color: #262A33; font-weight: 600; }"
             "QWidget#workspaceSwitcher QToolButton:focus { border: 1px solid #FF7A45; }"
             "QWidget#workspaceSwitcher QToolButton:disabled { color: #5F6672; }"
+            "QToolButton#undoButton, QToolButton#redoButton { padding: 2px 8px; margin: 0px; font-size: 11px; }"
             "QToolButton#jobsButton { background-color: transparent; color: #E8EAEE; border: 1px solid #2A2E37; border-radius: 8px; padding: 5px 12px; }"
             "QToolButton#jobsButton:hover { background-color: #262A33; border-color: #343944; }"
             "QToolButton#jobsButton:pressed { background-color: #1F2229; color: #E8EAEE; }"
@@ -4631,6 +4651,31 @@ void MainWindow::changeTheme(const QString &theme)
             "QToolBar#sidebarToolBar QToolButton:hover { color: #E8EAEE; background-color: #262A33; }"
             "QToolBar#sidebarToolBar QToolButton:pressed { background-color: #1F2229; color: #E8EAEE; }"
             "QToolBar#sidebarToolBar QToolButton:checked, QToolBar#sidebarToolBar QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; }"
+            // Phase 4: Grafito viewer (header, #08090B stage, 6 px peak meter, 4 px progress bar, 44 px Play)
+            "QWidget#Player { background-color: #15171C; border: 1px solid #22252D; border-radius: 12px; }"
+            "QWidget#playerHeader { background-color: transparent; border: none; border-bottom: 1px solid #1F2229; }"
+            "QTabBar#playerTabs { background-color: #0F1115; border: 1px solid #22252D; border-radius: 9px; padding: 2px; margin: 0px; }"
+            "QTabBar#playerTabs::tab { background-color: transparent; color: #9AA1AD; border: none; border-radius: 6px; padding: 4px 12px; margin: 1px; font-size: 12px; font-weight: 500; }"
+            "QTabBar#playerTabs::tab:hover:!selected { background-color: transparent; color: #C9CED6; }"
+            "QTabBar#playerTabs::tab:selected { background-color: #262A33; color: #E8EAEE; border: none; font-weight: 600; }"
+            "QTabBar#playerTabs::tab:disabled { color: #5F6672; }"
+            "QLabel#playerProfileChip { background-color: #1D2027; color: #C9CED6; border: 1px solid #22252D; border-radius: 5px; padding: 2px 8px; font-family: \"Geist Mono\", monospace; font-size: 11px; }"
+            "QWidget#playerHeader QToolButton { padding: 4px 8px; border-radius: 7px; margin: 0px; }"
+            "QToolButton#playerZoomButton { color: #C9CED6; font-size: 12px; font-weight: 500; }"
+            "QWidget#playerHeader QToolButton::menu-button, QToolBar#playerOptionsToolBar QToolButton::menu-button { background-color: transparent; border: none; width: 14px; }"
+            "QWidget#playerHeader QToolButton::menu-arrow, QToolBar#playerOptionsToolBar QToolButton::menu-arrow { image: url(:/icons/dark/32x32/go-down.png); width: 10px; height: 10px; }"
+            "QWidget#playerStage { background-color: #08090B; }"
+            "PlayerPeakMeterWidget { qproperty-trackColor: #1D2027; qproperty-lowColor: #2BB596; qproperty-highColor: #F5C542; qproperty-peakColor: #E8EAEE; qproperty-barWidth: 6; }"
+            "ScrubBar { qproperty-trackColor: #2A2E37; qproperty-progressColor: #FF7A45; qproperty-handleColor: #FFFFFF; qproperty-selectionColor: #E8EAEE; qproperty-markerColor: #9AA1AD; qproperty-loopColor: rgba(255, 122, 69, 0.6); }"
+            "QToolBar#playerTimeToolBar, QToolBar#playerSelectionToolBar, QToolBar#playerControlsToolBar, QToolBar#playerOptionsToolBar { background-color: transparent; border: none; border-radius: 0px; padding: 0px; margin: 0px; spacing: 4px; }"
+            "QToolBar#playerControlsToolBar { spacing: 8px; }"
+            "QToolBar#playerControlsToolBar QToolButton, QToolBar#playerOptionsToolBar QToolButton { padding: 6px; border-radius: 8px; margin: 0px; }"
+            "TimeSpinBox#playerPositionSpinner { background-color: transparent; color: #E8EAEE; border: 1px solid transparent; border-radius: 6px; padding: 0px 2px; font-family: \"Geist Mono\", monospace; font-size: 15px; font-weight: 500; }"
+            "TimeSpinBox#playerPositionSpinner:focus { background-color: #0F1115; border-color: #FF7A45; }"
+            "TimeSpinBox#playerPositionSpinner:disabled { color: #5F6672; }"
+            "QLabel#playerTimeSeparator, QLabel#playerDurationLabel { color: #858C98; font-family: \"Geist Mono\", monospace; font-size: 15px; font-weight: 500; }"
+            "QLabel#playerInPointLabel, QLabel#playerSelectionSeparator, QLabel#playerSelectedLabel { color: #858C98; font-family: \"Geist Mono\", monospace; font-size: 11px; }"
+            "TransportPlayButton#playerPlayButton { qproperty-fillColor: #FF7A45; qproperty-hoverColor: #FF8F61; qproperty-pressedColor: #E66835; qproperty-glyphColor: #140A05; qproperty-disabledFillColor: #262A33; qproperty-disabledGlyphColor: #5F6672; }"
         ));
             // clang-format on
         }

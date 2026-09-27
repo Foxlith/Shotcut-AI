@@ -677,5 +677,15 @@
         <file>dark/32x32/text-speak.svg</file>
         <file>dark/32x32/view-choose.svg</file>
         <file>dark/32x32/zoom-select.svg</file>
+        <file>dark/32x32/go-first.png</file>
+        <file>dark/32x32/go-first.svg</file>
+        <file>dark/32x32/go-last.png</file>
+        <file>dark/32x32/go-last.svg</file>
+        <file>dark/32x32/go-next.png</file>
+        <file>dark/32x32/go-next.svg</file>
+        <file>dark/32x32/go-previous.png</file>
+        <file>dark/32x32/go-previous.svg</file>
+        <file>dark/32x32/go-down.png</file>
+        <file>dark/32x32/go-down.svg</file>
     </qresource>
 </RCC>

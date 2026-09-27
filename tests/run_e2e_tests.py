@@ -124,6 +124,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     print(f"   3. tests.test_adversarial_m4_icons (Runtime UI & stress recovery{' - fast unit only' if no_gui else ''})")
     print("   4. tests.test_phase2_icon_and_theme_verification (Phase 2 Lucide iconography & Grafito theme)")
     print("   5. tests.test_phase3_layout_verification (Phase 3 Grafito docks, top bar & sidebar)")
+    print("   6. tests.test_phase4_viewer_verification (Phase 4 Grafito viewer & transport)")
     print("=" * 78)
 
     import tests.test_adversarial_branding_m1_dark
@@ -131,6 +132,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     import tests.test_adversarial_m4_icons
     import tests.test_phase2_icon_and_theme_verification
     import tests.test_phase3_layout_verification
+    import tests.test_phase4_viewer_verification
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -146,6 +148,9 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
 
     # 4. Phase 3 Grafito dock structure & top bar verification (23 tests)
     suite.addTests(loader.loadTestsFromModule(tests.test_phase3_layout_verification))
+
+    # 5. Phase 4 Grafito viewer & transport verification (23 tests)
+    suite.addTests(loader.loadTestsFromModule(tests.test_phase4_viewer_verification))
 
     # 3. Runtime UI & stress recovery
     if no_gui:

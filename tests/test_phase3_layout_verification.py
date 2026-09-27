@@ -112,8 +112,12 @@ class TestPhase3StaticContracts(unittest.TestCase):
                                 ("kSideBarWidth", 52), ("kSideBarButtonSize", 40)):
             self.assertRegex(self.cpp, rf"static constexpr int {constant} = {value};")
         body = function_body(self.cpp, "void MainWindow::setupTopBar()")
-        self.assertIn("ui->mainToolBar->ensurePolished();", body)
+        # Repolished (not only polished) so that QToolBar#mainToolBar sets its margins, and
+        # before sizing it: the style sheet engine resets the minimum size when it polishes.
+        self.assertIn("Util::repolish(ui->mainToolBar);", body)
         self.assertIn("ui->mainToolBar->setFixedHeight(kTopBarHeight + kPanelGap);", body)
+        self.assertLess(body.index("Util::repolish(ui->mainToolBar);"),
+                        body.index("ui->mainToolBar->setFixedHeight("))
         self.assertIn("ui->mainToolBar->setContentsMargins(0, 0, 0, kPanelGap);", body)
         self.assertIn('logo->setObjectName("topBarLogo");', body)
         self.assertIn("logo->setFixedSize(kTopBarLogoSize, kTopBarLogoSize);", body)

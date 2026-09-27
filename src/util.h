@@ -45,6 +45,7 @@ private:
 public:
     static QString baseName(const QString &filePath, bool trimQuery = false);
     static void setColorsToHighlight(QWidget *widget, QPalette::ColorRole role = QPalette::Window);
+    static void repolish(QWidget *widget);
     static void showInFolder(const QString &path);
     static bool warnIfNotWritable(const QString &filePath, QWidget *parent, const QString &caption);
     static QString producerTitle(const Mlt::Producer &producer);

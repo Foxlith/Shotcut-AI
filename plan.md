@@ -407,6 +407,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - `src/widgets/scrubbar.cpp` (verificar en el repositorio)
 - **Riesgos:** Parpadeos de redibujado de OpenGL/DirectX al superponer widgets sobre el área de renderizado de MLT.
 - **Criterios de Aceptación:** El botón Play mide 44 px en color de acento, el medidor de audio responde en el margen derecho y el video se centra en fondo `#08090B`.
+- **Estado:** ✅ Completada. Verificada con la app real (Qt 6.10 + MLT 7.36) a 1440×900, 1180 y 1024 px: escenario y letterbox `#08090B`, Play centrado bajo el vídeo, medidor respondiendo durante la reproducción. Detalle en `agent.md` (Fase 4).
 
 ---
 
@@ -555,11 +556,11 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Configurar barra superior en 52 px con layout segmentado y botón Exportar (logo 28 px, proyecto + metadatos, Deshacer/Rehacer, Tareas con contador).
   - [x] Implementar barra lateral de 52 px con accesos rápidos (Medios, Filtros, Fotogramas clave, Subtítulos, Notas, Reciente + Ayuda).
   - [x] Organizar layout de 4 columnas respetando alturas de 500 px (6 espacios de trabajo regenerados con `scripts/generate_grafito_layout.py`; 23 tests en `tests/test_phase3_layout_verification.py`).
-- [ ] **Fase 4: Visor y Transporte**
-  - [ ] Configurar escenario de video en `#08090B`.
-  - [ ] Incrustar medidor de audio de 6 px en el lateral derecho del visor.
-  - [ ] Implementar botón de reproducción circular de 44 px en color de acento.
-  - [ ] Reorganizar barra de transporte con timecode en Geist Mono.
+- [x] **Fase 4: Visor y Transporte**
+  - [x] Configurar escenario de video en `#08090B` (QSS + paleta del escenario y del `VideoWidget`, también el letterbox).
+  - [x] Incrustar medidor de audio de 6 px en el lateral derecho del visor (`PlayerPeakMeterWidget`, estéreo, `#1D2027` con degradado `#2BB596`→`#F5C542`).
+  - [x] Implementar botón de reproducción circular de 44 px en color de acento (`TransportPlayButton`, hover `#FF8F61`, pressed `#E66835`, deshabilitado `#262A33`).
+  - [x] Reorganizar barra de transporte con timecode en Geist Mono (15 px a la izquierda; Inicio, Fotograma anterior, Play, Fotograma siguiente y Final al centro; Bucle y Volumen a la derecha), barra de progreso de 4 px con manija de 12 px y cabecera `[ Fuente | Proyecto ]` con chip de resolución/fps, zoom "Fit", rejilla y pantalla completa (23 tests en `tests/test_phase4_viewer_verification.py`; 670/670 en `--fast`).
 - [ ] **Fase 5: Línea de Tiempo QML**
   - [ ] Actualizar colores en `timeline.qml` y playhead de 2 px con acento.
   - [ ] Rediseñar `TrackHead.qml` a 164 px con insignias V2, V1, A1, A2 y alturas diferenciadas.

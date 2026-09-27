@@ -34,6 +34,8 @@ public:
     explicit AudioPeakMeterScopeWidget();
     QString getTitle() Q_DECL_OVERRIDE;
     void setOrientation(Qt::Orientation orientation) Q_DECL_OVERRIDE;
+    //! Returns the peak level in dB of each audio channel in the frame (empty if none).
+    static QVector<double> peakLevels(const SharedFrame &frame);
 
 private:
     // Functions run in scope thread.
