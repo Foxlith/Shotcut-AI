@@ -507,6 +507,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 - **Riesgos:** diálogos modales dentro de una herramienta (se evitan con `skipConvert`/`discard_changes`; si aparecen, la respuesta espera al usuario y un indicador de ocupado evita la reentrada); cambios en las versiones del protocolo MCP y en el formato de configuración de cada cliente; tamaño de las imágenes de `get_frame` (JPEG con ancho máximo).
 - **Fuera de alcance (entrega posterior):** exportar vídeo desde la IA.
 - **Criterios de Aceptación:** con la app abierta, una IA conectada por MCP lee el estado, reproduce, divide/mueve/recorta clips, añade filtros y ve el fotograma; cada cambio aparece al instante y se deshace con un Ctrl+Z; el servidor no acepta conexiones de otros equipos ni de páginas web.
+- **Estado:** ✅ Completada. Servidor MCP en `http://127.0.0.1:9999/mcp` con 33 herramientas, puente stdio para Claude Desktop, WebSocket que ejecuta de verdad, menú *Settings > AI Agent (MCP)* con la configuración de los 4 clientes y guía `docs/ai-mcp.md`. Verificada en la app real (Qt 6.10 + MLT 7.36) editando por MCP, por el puente y por WebSocket, con cada cambio visible al momento y deshacible como *AI: …*, y comprobando que solo acepta conexiones locales. 19 tests nuevos en `--fast` (754/754) y 34 comprobaciones QtTest en el CI de Linux; el build de Windows ejecuta la prueba MCP contra la app compilada. Detalle en `agent.md` (Fase 8).
 
 ---
 
@@ -603,13 +604,13 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Añadir selector de color de acento (#FF7A45, #5B8CFF, #F5B83D, #B08CFF) en *Ajustes > Tema > Color de acento*, con cambio instantáneo sin reiniciar.
   - [x] Implementar opción para alternar entre tema Grafito y tema clásico (*Grafito Modern* / *Classic Fusion Dark*).
   - [x] Validar que las pruebas E2E continúan pasando (20 tests nuevos en `tests/test_phase7_accent_theme_verification.py`; 735/735 en `--fast`).
-- [ ] **Fase 8: Sistema de IA en Vivo (MCP)**
-  - [ ] Protocolo MCP (JSON-RPC 2.0 + Streamable HTTP) en la app, probado con QtTest.
-  - [ ] Servidor seguro solo local (127.0.0.1 / ::1, comprobación de `Origin`) con el WebSocket antiguo funcionando de verdad.
-  - [ ] Herramientas de estado, reproducción, deshacer, acciones, proyecto/medios, timeline, filtros y fotograma, deshacibles como *AI: …*.
-  - [ ] Menú *Settings > AI Agent (MCP)* y puente stdio para Claude Desktop.
-  - [ ] Configuración y guía para OpenCode, Antigravity, Claude Code y Claude Desktop (`docs/ai-mcp.md`).
-  - [ ] Pruebas (`--fast` al 100 %) y verificación en la app real y en el build de Windows.
+- [x] **Fase 8: Sistema de IA en Vivo (MCP)**
+  - [x] Protocolo MCP (JSON-RPC 2.0 + Streamable HTTP) en la app, probado con QtTest (34 comprobaciones, también en el CI de Linux).
+  - [x] Servidor seguro solo local (127.0.0.1 / ::1, comprobación de `Origin` y `Host`) con el WebSocket antiguo funcionando de verdad.
+  - [x] 33 herramientas de estado, reproducción, deshacer, acciones, proyecto/medios, timeline, filtros y fotograma, deshacibles como *AI: …*.
+  - [x] Menú *Settings > AI Agent (MCP)* y puente stdio para Claude Desktop.
+  - [x] Configuración y guía para OpenCode, Antigravity, Claude Code y Claude Desktop (`docs/ai-mcp.md`).
+  - [x] Pruebas (`--fast`: 754/754; 19 nuevos en `tests/test_phase8_ai_mcp_verification.py`) y verificación en la app real; el build de Windows ejecuta `tests/live_mcp_smoke.py`.
 
 ---
 

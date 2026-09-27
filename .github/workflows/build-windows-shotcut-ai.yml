@@ -87,22 +87,40 @@ jobs:
           PATH=/c/Windows/system32:/c/Windows ./melt.exe -query producers | tee ../../melt-producers.txt
           grep -q avformat ../../melt-producers.txt
 
-      - name: Smoke test and screenshot
-        continue-on-error: true
+      - name: Start Shotcut AI
         shell: pwsh
         run: |
+          # Python of the runner for the MCP check; the application runs without MSYS2.
+          $python = (Get-Command python).Source
+          "PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           $env:PATH = "C:\Windows\system32;C:\Windows"
           $exe = Join-Path $PWD "dist\Shotcut-AI\bin\shotcut.exe"
           $process = Start-Process -FilePath $exe -ArgumentList "--noupgrade" -PassThru
+          "SHOTCUT_PID=$($process.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Start-Sleep -Seconds 60
+          "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
+          if ($process.HasExited) { throw "Shotcut AI closed during startup" }
+
+      - name: Check the AI agent server (MCP)
+        shell: pwsh
+        run: |
+          # MCP over HTTP (Claude Code, OpenCode) and through the bundled stdio bridge
+          # (Claude Desktop, Antigravity), without changing the project.
+          & $env:PYTHON tests\live_mcp_smoke.py --read-only --bridge dist\Shotcut-AI\share\shotcut\mcp\shotcut_mcp_bridge.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Screenshot and stop
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
           $bitmap.Save("screenshot.png")
-          "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
-          if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          if ($env:SHOTCUT_PID) { Stop-Process -Id $env:SHOTCUT_PID -Force -ErrorAction SilentlyContinue }
           $log = Join-Path $env:LOCALAPPDATA "Meltytech\Shotcut\shotcut-log.txt"
           if (Test-Path $log) {
             Copy-Item $log shotcut-log.txt

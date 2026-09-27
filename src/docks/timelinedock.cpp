@@ -3229,11 +3229,11 @@ void TimelineDock::copy(int trackIndex, int clipIndex)
 
 void TimelineDock::flushSelection()
 {
-    if (m_selectionSignalTimer.isActive()) {
-        m_selectionSignalTimer.stop();
-        emit selectionChanged();
-        emitSelectedFromSelection();
-    }
+    // Also when the selection did not change: the filters panel may show another clip,
+    // such as a source clip opened since.
+    m_selectionSignalTimer.stop();
+    emit selectionChanged();
+    emitSelectedFromSelection();
 }
 
 void TimelineDock::appendXml(int trackIndex, const QString &xml)
