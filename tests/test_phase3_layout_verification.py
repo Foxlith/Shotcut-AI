@@ -22,7 +22,8 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QtMsgType, qInstallMessageHandler  # noqa: E402
+from PySide6.QtCore import Qt, QtMsgType, qInstallMessageHandler  # noqa: E402
+from PySide6.QtGui import QImage  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLabel, QTabBar, QToolBar, QToolButton, QWidget  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +53,19 @@ SIDEBAR_ACTIONS = ["actionPlaylist", "actionFilters", "actionKeyframes",
 def read(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def render_1x(widget):
+    """Render `widget` into an image with a device pixel ratio of 1.
+
+    QWidget.grab() follows the screen scaling (for example 125 % on Windows): the image
+    is then larger than the widget and every sampled pixel misses its target.
+    """
+    image = QImage(widget.size(), QImage.Format_ARGB32_Premultiplied)
+    image.setDevicePixelRatio(1.0)
+    image.fill(Qt.transparent)
+    widget.render(image)
+    return image
 
 
 def function_body(source, signature):
@@ -411,7 +425,7 @@ class TestPhase3Theme(unittest.TestCase):
         ok, window, docks = layout.restore(self.app, state, "Editing")
         self.addCleanup(window.close)
         self.assertTrue(ok)
-        image = window.grab().toImage()
+        image = render_1x(window)
 
         def color_at(widget, x, y):
             point = widget.mapTo(window, widget.rect().topLeft())
