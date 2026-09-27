@@ -494,14 +494,20 @@ PlaylistDock::PlaylistDock(QWidget *parent)
     auto toolbar2 = new QToolBar(tr("Playlist Filters"));
     toolbar2->setObjectName("playlistFiltersToolbar");
     QString styleSheet = QStringLiteral(
-        "QToolBar { background-color: transparent; border: none; padding: 0px; margin: 0px; spacing: 4px; }"
-        "QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
+        "QToolBar { background-color: transparent; border: none; padding: 0px; margin: 0px; "
+        "spacing: 4px; }"
+        "QToolButton { background-color: #1D2027; color: #9AA1AD; border: 1px solid #22252D; "
+        "border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }"
         "QToolButton:hover { background-color: #262A33; color: #E8EAEE; border-color: #262A33; }"
         "QToolButton:pressed { background-color: #FF7A45; color: #140A05; border-color: #FF7A45; }"
-        "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
-        "QToolButton:checked:hover, QToolButton[active=\"true\"]:hover { background-color: rgba(255, 122, 69, 0.28); color: #FF7A45; border: 1px solid #FF7A45; }"
-        "QToolButton:checked:pressed, QToolButton[active=\"true\"]:pressed { background-color: #FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
-        "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: transparent; }");
+        "QToolButton:checked, QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, "
+        "0.18); color: #FF7A45; border: 1px solid #FF7A45; font-weight: 600; }"
+        "QToolButton:checked:hover, QToolButton[active=\"true\"]:hover { background-color: "
+        "rgba(255, 122, 69, 0.28); color: #FF7A45; border: 1px solid #FF7A45; }"
+        "QToolButton:checked:pressed, QToolButton[active=\"true\"]:pressed { background-color: "
+        "#FF7A45; color: #140A05; border: 1px solid #FF7A45; }"
+        "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: "
+        "transparent; }");
     toolbar2->setStyleSheet(styleSheet);
     ui->filtersLayout->addItem(
         new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
@@ -2102,19 +2108,25 @@ bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
     if (watched == ui->dropZoneCard || watched == ui->page) {
         if (event->type() == QEvent::DragEnter) {
             auto dragEvent = static_cast<QDragEnterEvent *>(event);
-            if (dragEvent->mimeData() && (dragEvent->mimeData()->hasUrls() || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+            if (dragEvent->mimeData()
+                && (dragEvent->mimeData()->hasUrls()
+                    || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
                 dragEvent->acceptProposedAction();
                 return true;
             }
         } else if (event->type() == QEvent::DragMove) {
             auto dragEvent = static_cast<QDragMoveEvent *>(event);
-            if (dragEvent->mimeData() && (dragEvent->mimeData()->hasUrls() || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+            if (dragEvent->mimeData()
+                && (dragEvent->mimeData()->hasUrls()
+                    || dragEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
                 dragEvent->acceptProposedAction();
                 return true;
             }
         } else if (event->type() == QEvent::Drop) {
             auto dropEvent = static_cast<QDropEvent *>(event);
-            if (dropEvent->mimeData() && (dropEvent->mimeData()->hasUrls() || dropEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
+            if (dropEvent->mimeData()
+                && (dropEvent->mimeData()->hasUrls()
+                    || dropEvent->mimeData()->hasFormat(Mlt::XmlMimeType))) {
                 onDropped(dropEvent->mimeData(), -1);
                 dropEvent->acceptProposedAction();
                 return true;
@@ -2139,7 +2151,8 @@ bool PlaylistDock::eventFilter(QObject *watched, QEvent *event)
             }
         } else if (event->type() == QEvent::KeyPress) {
             auto keyEvent = static_cast<QKeyEvent *>(event);
-            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Space) {
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter
+                || keyEvent->key() == Qt::Key_Space) {
                 onAddFilesActionTriggered();
                 return true;
             }

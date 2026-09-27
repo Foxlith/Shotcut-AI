@@ -16,8 +16,8 @@
  */
 
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "aiagentserver.h"
+#include "ui_mainwindow.h"
 
 #include "Logger.h"
 #include "actions.h"
@@ -154,6 +154,8 @@ static QRegularExpression kBackupFileRegex("^(.+) "
                                            "0-3]|[01][0-9])-([0-5][0-9])-([0-5][0-9]).mlt$");
 
 // Legacy CapCut theme fallback definition (retained for backward compatibility and test verification)
+// Keep each style sheet rule on a single line.
+// clang-format off
 [[maybe_unused]] static QString capcutQss = QStringLiteral(
     "QMainWindow { background-color: #121212; }"
     "QWidget { color: #f0f0f0; }"
@@ -182,6 +184,7 @@ static QRegularExpression kBackupFileRegex("^(.+) "
     "QLineEdit, QSpinBox, QDoubleSpinBox { background-color: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 4px; }"
     "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 1px solid #20e6c5; }"
 );
+// clang-format on
 
 MainWindow::MainWindow()
     : QMainWindow(0)
@@ -343,10 +346,8 @@ void MainWindow::setupAndConnectUndoStack()
     m_undoStack->setUndoLimit(Settings.undoLimit());
     QAction *undoAction = m_undoStack->createUndoAction(this);
     QAction *redoAction = m_undoStack->createRedoAction(this);
-    undoAction->setIcon(
-        QIcon::fromTheme("edit-undo", QIcon(":/icons/dark/32x32/edit-undo.png")));
-    redoAction->setIcon(
-        QIcon::fromTheme("edit-redo", QIcon(":/icons/dark/32x32/edit-redo.png")));
+    undoAction->setIcon(QIcon::fromTheme("edit-undo", QIcon(":/icons/dark/32x32/edit-undo.png")));
+    redoAction->setIcon(QIcon::fromTheme("edit-redo", QIcon(":/icons/dark/32x32/edit-redo.png")));
     undoAction->setIconText(tr("Undo"));
     redoAction->setIconText(tr("Redo"));
     undoAction->setShortcut(QString::fromLatin1("Ctrl+Z"));
@@ -4517,17 +4518,19 @@ void MainWindow::changeTheme(const QString &theme)
         QApplication::setStyle(kStyleFusion);
         QPalette palette;
         // --- SHOTCUT AI: Grafito Modern Dark Palette ---
-        palette.setColor(QPalette::Window, QColor("#0B0C0F"));          // #0B0C0F base canvas
-        palette.setColor(QPalette::WindowText, QColor("#E8EAEE"));      // #E8EAEE primary text
-        palette.setColor(QPalette::Base, QColor("#0F1115"));            // #0F1115 text inputs/search
-        palette.setColor(QPalette::AlternateBase, QColor("#1D2027"));   // #1D2027 elevated cards/alt rows
-        palette.setColor(QPalette::Highlight, QColor("#FF7A45"));       // #FF7A45 primary accent
-        palette.setColor(QPalette::HighlightedText, QColor("#140A05")); // #140A05 text/icons on accent
-        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027"));     // #1D2027 tooltip base
-        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE"));     // #E8EAEE tooltip text
-        palette.setColor(QPalette::Text, QColor("#E8EAEE"));            // #E8EAEE primary text
+        palette.setColor(QPalette::Window, QColor("#0B0C0F"));     // #0B0C0F base canvas
+        palette.setColor(QPalette::WindowText, QColor("#E8EAEE")); // #E8EAEE primary text
+        palette.setColor(QPalette::Base, QColor("#0F1115"));       // #0F1115 text inputs/search
+        palette.setColor(QPalette::AlternateBase,
+                         QColor("#1D2027"));                      // #1D2027 elevated cards/alt rows
+        palette.setColor(QPalette::Highlight, QColor("#FF7A45")); // #FF7A45 primary accent
+        palette.setColor(QPalette::HighlightedText,
+                         QColor("#140A05"));                        // #140A05 text/icons on accent
+        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027")); // #1D2027 tooltip base
+        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE")); // #E8EAEE tooltip text
+        palette.setColor(QPalette::Text, QColor("#E8EAEE"));        // #E8EAEE primary text
         palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Button, QColor("#15171C"));          // #15171C panels/button background
+        palette.setColor(QPalette::Button, QColor("#15171C")); // #15171C panels/button background
         palette.setColor(QPalette::ButtonText, QColor("#E8EAEE"));      // #E8EAEE button text
         palette.setColor(QPalette::Link, QColor("#FF7A45"));            // #FF7A45 accent link
         palette.setColor(QPalette::LinkVisited, QColor("#D96232"));     // visited link
@@ -4546,6 +4549,8 @@ void MainWindow::changeTheme(const QString &theme)
         if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
         } else if (qApp->styleSheet().isEmpty()) {
+            // Keep each style sheet rule on a single line.
+            // clang-format off
             qApp->setStyleSheet(QStringLiteral(
             "QMainWindow, QDialog { background-color: #0B0C0F; color: #E8EAEE; font-family: \"Geist\", \"Segoe UI\", sans-serif; }"
             "QMainWindow::separator { width: 8px; height: 8px; background: #0B0C0F; }"
@@ -4627,6 +4632,7 @@ void MainWindow::changeTheme(const QString &theme)
             "QToolBar#sidebarToolBar QToolButton:pressed { background-color: #1F2229; color: #E8EAEE; }"
             "QToolBar#sidebarToolBar QToolButton:checked, QToolBar#sidebarToolBar QToolButton[active=\"true\"] { background-color: rgba(255, 122, 69, 0.18); color: #FF7A45; border: 1px solid #FF7A45; }"
         ));
+            // clang-format on
         }
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
