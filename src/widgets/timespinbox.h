@@ -35,11 +35,14 @@ protected:
     int valueFromText(const QString &text) const;
     QString textFromValue(int val) const;
     void keyPressEvent(QKeyEvent *event);
+    void changeEvent(QEvent *event);
 
 signals:
     void accepted();
 
 private:
+    void updateWidth();
+
     QRegularExpressionValidator *m_validator;
 };
 

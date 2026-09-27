@@ -30,6 +30,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import shiboken6  # noqa: E402
 from PySide6.QtCore import QEvent, Qt, QtMsgType, qInstallMessageHandler  # noqa: E402
+from PySide6.QtGui import QImage  # noqa: E402
 from PySide6.QtQml import QJSEngine  # noqa: E402
 from PySide6.QtWidgets import QApplication, QDockWidget, QTabBar, QWidget  # noqa: E402
 
@@ -95,6 +96,19 @@ def block(source, start):
             if depth == 0:
                 return source[begin:index + 1]
     raise ValueError(f"Unbalanced block after {start}")
+
+
+def render_1x(widget):
+    """Render `widget` into an image with a device pixel ratio of 1.
+
+    QWidget.grab() follows the screen scaling (for example 125 % on Windows): the image
+    is then larger than the widget and every sampled pixel misses its target.
+    """
+    image = QImage(widget.size(), QImage.Format_ARGB32_Premultiplied)
+    image.setDevicePixelRatio(1.0)
+    image.fill(Qt.transparent)
+    widget.render(image)
+    return image
 
 
 def flat(text):
@@ -209,8 +223,8 @@ class TestPhase6Media(CodeTestCase):
     # M2 -----------------------------------------------------------------
     def test_m2_card_mode_is_the_default_icons_view(self):
         self.assertIn("m_iconsView->setCardMode(true);", self.dock)
-        self.assertIn("return m_cardMode && palette().color(QPalette::Window).lightnessF() < 0.5;",
-                      self.view)
+        # Cards with the Grafito theme (Phase 7: one switch instead of the palette lightness).
+        self.assertIn("return m_cardMode && Settings.isGrafito();", self.view)
         # Icons is the default view mode (Settings.viewMode() empty).
         self.assertIn("} else { /* if (Settings.viewMode() == kIconsMode) */", self.dock)
         header = read(ICONVIEW_H)
@@ -370,7 +384,7 @@ class TestPhase6Tabs(CodeTestCase):
         self.assertTrue(ok)
         tag_tab_bars(window)
         self.app.processEvents()
-        image = window.grab().toImage()
+        image = render_1x(window)
         bars = {bar.tabText(0): bar for bar in window.findChildren(QTabBar)
                 if bar.isVisible() and bar.count() > 1}
         media, inspector = bars["Playlist"], bars["Inspector"]

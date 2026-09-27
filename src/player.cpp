@@ -441,8 +441,8 @@ Player::Player(QWidget *parent)
     m_peakMeter = new PlayerPeakMeterWidget;
     m_videoLayout->addWidget(m_peakMeter);
 
-    // Dark themes show the video on a near-black stage, also on an external monitor.
-    if (palette().color(QPalette::Window).lightnessF() < 0.5) {
+    // Grafito shows the video on a near-black stage, also on an external monitor.
+    if (Settings.isGrafito()) {
         QPalette stagePalette = palette();
         stagePalette.setColor(QPalette::Window, QColor(kStageColor));
         m_stage->setPalette(stagePalette);

@@ -18,6 +18,7 @@
 #include "docktoolbar.h"
 
 #include "settings.h"
+#include "util.h"
 
 #include <QEvent>
 #include <QPainter>
@@ -34,6 +35,7 @@ DockToolBar::DockToolBar(const QString &title, QWidget *parent)
     setProperty("Movable", QVariant(false));
     updateStyle();
     connect(&Settings, SIGNAL(smallIconsChanged()), SLOT(updateStyle()));
+    connect(&Settings, SIGNAL(accentColorChanged()), SLOT(updateStyle()));
 }
 
 void DockToolBar::setAreaHint(Qt::ToolBarArea area)
@@ -77,8 +79,7 @@ bool DockToolBar::event(QEvent *event)
 
 bool DockToolBar::isGrafitoTimeline() const
 {
-    return objectName() == "timelineToolbar"
-           && palette().color(QPalette::Window).lightnessF() < 0.5;
+    return objectName() == "timelineToolbar" && Settings.isGrafito();
 }
 
 bool DockToolBar::isGrafitoFlat() const
@@ -87,7 +88,7 @@ bool DockToolBar::isGrafitoFlat() const
     static const QStringList kFlatBars{QStringLiteral("timelineToolbar"),
                                        QStringLiteral("playlistControlsToolbar"),
                                        QStringLiteral("playlistBinToolbar")};
-    return kFlatBars.contains(objectName()) && palette().color(QPalette::Window).lightnessF() < 0.5;
+    return kFlatBars.contains(objectName()) && Settings.isGrafito();
 }
 
 void DockToolBar::updateStyle()
@@ -148,5 +149,5 @@ void DockToolBar::updateStyle()
                              .arg(isGrafitoTimeline() ? 4 : 3)
                              .arg(isGrafitoTimeline() ? QStringLiteral("0px 8px")
                                                       : QStringLiteral("1px"));
-    setStyleSheet(styleSheet);
+    setStyleSheet(Util::accentStyleSheet(styleSheet));
 }

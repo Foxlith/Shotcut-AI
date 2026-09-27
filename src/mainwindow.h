@@ -353,6 +353,8 @@ private slots:
     void on_actionSystemTheme_triggered();
     void on_actionSystemFusion_triggered();
     void on_actionFusionDark_triggered();
+    void on_actionClassicFusionDark_triggered();
+    void onAccentColorChanged();
     void on_actionJobPriorityLow_triggered();
     void on_actionJobPriorityNormal_triggered();
     void on_actionFusionLight_triggered();

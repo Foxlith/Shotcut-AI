@@ -31,6 +31,8 @@ Rectangle {
     property alias clipCount: repeater.count
     property bool isMute: false
     property int layoutEpoch: 0
+    // Counts the clip items created, also when a model reset creates the same number again.
+    property int clipsEpoch: 0
     // Only blank space, no clips: the timeline shows a drop hint on empty tracks.
     readonly property bool isEmpty: {
         layoutEpoch;
@@ -339,6 +341,7 @@ Rectangle {
 
             model: trackModel
             onCountChanged: Qt.callLater(trackRoot.relayoutClips)
+            onItemAdded: trackRoot.clipsEpoch++
         }
     }
 }

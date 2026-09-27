@@ -140,7 +140,7 @@ class TestPhase5Timeline(unittest.TestCase):
                       "property color trackHeadActiveColor: grafito ? '#22252D'",
                       "property color dividerColor: grafito ? '#1F2229'",
                       "property int trackSpacing: 4",
-                      "readonly property bool grafito: activePalette.window.hsvValue < 0.5",
+                      "readonly property bool grafito: application.grafito",
                       "color: trackBgDark"):
             self.assertIn(token, self.timeline)
         # Headers, lanes and tracks keep the same 4 px spacing so they stay aligned.
@@ -160,9 +160,10 @@ class TestPhase5Timeline(unittest.TestCase):
         head = block(self.timeline, "Shotcut.TimelinePlayhead {")
         self.assertIn("width: 12", head)
         self.assertIn("height: 16", head)
+        # Phase 7: the accent color of the settings with Grafito, the classic red otherwise.
         color = block(read(QMLAPPLICATION_CPP), "QColor QmlApplication::playheadColor()")
-        self.assertIn("lightnessF() < 0.5", color)
-        self.assertIn("palette.color(QPalette::Highlight)", color)
+        self.assertIn("if (grafito())", color)
+        self.assertIn("return QColor(Settings.accentColor());", color)
         self.assertIn("QColor(0xe0, 0x46, 0x4e)", color)
         paint = block(read(TIMELINEITEMS_CPP), "class TimelinePlayhead : public QQuickPaintedItem")
         self.assertIn("path.quadTo(0, 0, radius, 0);", paint)

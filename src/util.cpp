@@ -134,6 +134,66 @@ void Util::repolish(QWidget *widget)
     widget->update();
 }
 
+QString Util::accentStyleSheet(const QString &styleSheet)
+{
+    static const QColor kOrange(0xFF, 0x7A, 0x45);
+    const QColor accent(Settings.accentColor());
+    if (accent == kOrange || styleSheet.isEmpty())
+        return styleSheet;
+
+    // The hover and pressed shades keep their lightness and saturation offsets from the
+    // orange of Grafito, applied to the accent color.
+    auto shade = [&](const QColor &orangeShade) {
+        if (orangeShade == kOrange)
+            return accent.name().toUpper();
+        const float saturation = accent.hslSaturationF() * orangeShade.hslSaturationF()
+                                 / kOrange.hslSaturationF();
+        const float lightness = accent.lightnessF() + orangeShade.lightnessF()
+                                - kOrange.lightnessF();
+        return QColor::fromHslF(accent.hslHueF(),
+                                qBound(0.0f, saturation, 1.0f),
+                                qBound(0.0f, lightness, 1.0f))
+            .name()
+            .toUpper();
+    };
+    static const QRegularExpression re(QStringLiteral(
+                                           "#(FF7A45|FF8F61|FF9366|E66835|E0622F|D96232)\\b"
+                                           "|255,\\s*122,\\s*69\\b"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    QString result;
+    result.reserve(styleSheet.size());
+    qsizetype last = 0;
+    auto it = re.globalMatch(styleSheet);
+    while (it.hasNext()) {
+        const auto match = it.next();
+        result += QStringView(styleSheet).mid(last, match.capturedStart() - last);
+        if (match.captured(1).isEmpty()) {
+            result += QStringLiteral("%1, %2, %3")
+                          .arg(accent.red())
+                          .arg(accent.green())
+                          .arg(accent.blue());
+        } else {
+            result += shade(QColor(QLatin1Char('#') + match.captured(1)));
+        }
+        last = match.capturedEnd();
+    }
+    result += QStringView(styleSheet).mid(last);
+    return result;
+}
+
+void Util::followAccentColor(QWidget *widget)
+{
+    static const char *kProperty = "_accentStyleSheet";
+    const bool following = widget->property(kProperty).isValid();
+    widget->setProperty(kProperty, widget->styleSheet());
+    auto apply = [widget]() {
+        widget->setStyleSheet(accentStyleSheet(widget->property(kProperty).toString()));
+    };
+    apply();
+    if (!following)
+        QObject::connect(&Settings, &ShotcutSettings::accentColorChanged, widget, apply);
+}
+
 void Util::showInFolder(const QString &path)
 {
     QFileInfo info(removeQueryString(path));

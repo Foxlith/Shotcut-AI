@@ -106,7 +106,7 @@ void PlaylistIconView::setCardMode(bool enabled)
 
 bool PlaylistIconView::isCardLayout() const
 {
-    return m_cardMode && palette().color(QPalette::Window).lightnessF() < 0.5;
+    return m_cardMode && Settings.isGrafito();
 }
 
 QRect PlaylistIconView::cardRect(const QRect &cell) const

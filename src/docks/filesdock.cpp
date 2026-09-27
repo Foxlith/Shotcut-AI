@@ -677,6 +677,7 @@ FilesDock::FilesDock(QWidget *parent)
         "QToolButton:disabled { color: #5F6672; background-color: transparent; border-color: "
         "transparent; }");
     toolbar2->setStyleSheet(styleSheet);
+    Util::followAccentColor(toolbar2);
     ui->filtersLayout->addItem(
         new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     toolbar2->addActions({Actions["filesFiltersVideo"],

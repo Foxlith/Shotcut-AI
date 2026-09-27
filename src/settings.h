@@ -104,6 +104,12 @@ public:
     void setProjects(const QStringList &);
     QString theme() const;
     void setTheme(const QString &);
+    /// The accent color of the Grafito theme as #RRGGBB (default #FF7A45).
+    QString accentColor() const;
+    void setAccentColor(const QString &);
+    /// Whether the Grafito theme is active (set by MainWindow::changeTheme()).
+    bool isGrafito() const { return m_isGrafito; }
+    void setGrafito(bool grafito) { m_isGrafito = grafito; }
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;
@@ -474,6 +480,7 @@ signals:
     void viewModeChanged();
     void filesViewModeChanged();
     void smallIconsChanged();
+    void accentColorChanged();
     void askOutputFilterChanged();
     void timelineScrollingChanged();
     void timelineAutoAddTracksChanged();
@@ -492,6 +499,7 @@ private:
     QSettings settings;
     QString m_appDataLocation;
     QSettings m_recent;
+    bool m_isGrafito{false};
 };
 
 #define Settings ShotcutSettings::singleton()

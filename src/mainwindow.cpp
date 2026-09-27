@@ -1920,15 +1920,68 @@ void MainWindow::setupSettingsMenu()
     group->addAction(ui->actionSystemTheme);
     group->addAction(ui->actionSystemFusion);
     group->addAction(ui->actionFusionDark);
+    group->addAction(ui->actionClassicFusionDark);
     group->addAction(ui->actionFusionLight);
     if (Settings.theme() == "dark")
         ui->actionFusionDark->setChecked(true);
+    else if (Settings.theme() == "classic-dark")
+        ui->actionClassicFusionDark->setChecked(true);
     else if (Settings.theme() == "light")
         ui->actionFusionLight->setChecked(true);
     else if (Settings.theme() == "system-fusion")
         ui->actionSystemFusion->setChecked(true);
     else
         ui->actionSystemTheme->setChecked(true);
+
+    // The accent color of the Grafito theme changes at once, without a restart.
+    ui->menuTheme->addSeparator();
+    auto accentMenu = ui->menuTheme->addMenu(tr("Accent Color"));
+    accentMenu->setObjectName("menuAccentColor");
+    accentMenu->setEnabled(Settings.isGrafito());
+    if (!Settings.isGrafito())
+        accentMenu->setToolTip(tr("Only the Grafito Modern theme uses an accent color."));
+    group = new QActionGroup(this);
+    const QList<QPair<QString, QString>> accents = {
+        {tr("Grafito Orange"), QStringLiteral("#FF7A45")},
+        {tr("Electric Blue"), QStringLiteral("#5B8CFF")},
+        {tr("Golden Amber"), QStringLiteral("#F5B83D")},
+        {tr("Neon Lavender"), QStringLiteral("#B08CFF")},
+    };
+    for (const auto &accent : accents) {
+        // A round swatch of the color; the checked one has a ring around it.
+        QIcon swatch;
+        for (const auto state : {QIcon::Off, QIcon::On}) {
+            QPixmap pixmap(16, 16);
+            pixmap.fill(Qt::transparent);
+            QPainter painter(&pixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(accent.second));
+            if (state == QIcon::On) {
+                painter.drawEllipse(QRectF(4, 4, 8, 8));
+                painter.setPen(QPen(QColor(accent.second), 1.5));
+                painter.setBrush(Qt::NoBrush);
+                painter.drawEllipse(QRectF(1, 1, 14, 14));
+            } else {
+                painter.drawEllipse(QRectF(2, 2, 12, 12));
+            }
+            painter.end();
+            swatch.addPixmap(pixmap, QIcon::Normal, state);
+        }
+        auto action = accentMenu->addAction(swatch, accent.first);
+        action->setCheckable(true);
+        action->setData(accent.second);
+        action->setChecked(Settings.accentColor() == accent.second);
+        group->addAction(action);
+        connect(action, &QAction::triggered, this, [action]() {
+            Settings.setAccentColor(action->data().toString());
+        });
+    }
+    connect(&Settings, &ShotcutSettings::accentColorChanged, this, [this, group]() {
+        for (auto action : group->actions())
+            action->setChecked(action->data().toString() == Settings.accentColor());
+        onAccentColorChanged();
+    });
 #else
     delete ui->menuTheme;
 #endif
@@ -4581,68 +4634,56 @@ static const auto kStyleFusion = QStringLiteral("Fusion");
 static const auto kIconsOxygen = QStringLiteral("oxygen");
 static const auto kIconsDarkOxygen = QStringLiteral("oxygen-dark");
 
-void MainWindow::changeTheme(const QString &theme)
-{
-    LOG_DEBUG() << "begin";
-    LOG_DEBUG() << "Available styles:" << QStyleFactory::keys();
-    auto mytheme = theme;
+static const auto kThemeClassicDark = QStringLiteral("classic-dark");
 
-#if !defined(SHOTCUT_THEME)
-    // Workaround Quick Controls not using our custom palette - temporarily?
-    std::unique_ptr<QStyle> style{QStyleFactory::create("fusion")};
-    auto brightness = style->standardPalette().color(QPalette::Text).lightnessF();
-    LOG_DEBUG() << brightness;
-    mytheme = brightness < 0.5f ? kThemeLight : kThemeDark;
-    QApplication::setStyle(kStyleFusion);
-    QIcon::setThemeName(mytheme);
-#if defined(Q_OS_MAC)
-    if (mytheme == kThemeDark) {
-        auto palette = QGuiApplication::palette();
-        palette.setColor(QPalette::AlternateBase, palette.color(QPalette::Base).lighter());
-        QGuiApplication::setPalette(palette);
+// Sets the palette of the Grafito theme with the accent color of the settings.
+static void setGrafitoPalette()
+{
+    const QColor accentColor(Settings.accentColor());
+    QPalette palette;
+    // --- SHOTCUT AI: Grafito Modern Dark Palette ---
+    palette.setColor(QPalette::Window, QColor("#0B0C0F"));     // #0B0C0F base canvas
+    palette.setColor(QPalette::WindowText, QColor("#E8EAEE")); // #E8EAEE primary text
+    palette.setColor(QPalette::Base, QColor("#0F1115"));       // #0F1115 text inputs/search
+    palette.setColor(QPalette::AlternateBase,
+                     QColor("#1D2027"));                // #1D2027 elevated cards/alt rows
+    palette.setColor(QPalette::Highlight, accentColor); // accent (#FF7A45 by default)
+    palette.setColor(QPalette::HighlightedText,
+                     QColor("#140A05"));                        // #140A05 text/icons on accent
+    palette.setColor(QPalette::ToolTipBase, QColor("#1D2027")); // #1D2027 tooltip base
+    palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE")); // #E8EAEE tooltip text
+    palette.setColor(QPalette::Text, QColor("#E8EAEE"));        // #E8EAEE primary text
+    palette.setColor(QPalette::BrightText, Qt::red);
+    palette.setColor(QPalette::Button, QColor("#15171C"));     // #15171C panels/button background
+    palette.setColor(QPalette::ButtonText, QColor("#E8EAEE")); // #E8EAEE button text
+    palette.setColor(QPalette::Link, accentColor);             // accent link
+    palette.setColor(QPalette::LinkVisited,
+                     QColor(Util::accentStyleSheet("#D96232")));    // visited link
+    palette.setColor(QPalette::PlaceholderText, QColor("#9AA1AD")); // #9AA1AD muted text
+    palette.setColor(QPalette::Disabled, QPalette::Base, QColor("#0F1115"));
+    palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor("#5F6672"));
+    palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#5F6672"));
+    palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#5F6672"));
+    palette.setColor(QPalette::Disabled, QPalette::Light, Qt::transparent);
+    QApplication::setPalette(palette);
+}
+
+// The style sheet of the Grafito theme (capcut_theme.qss, or the built-in copy when the
+// file is missing) with the accent color of the settings.
+static QString grafitoStyleSheet()
+{
+    // --- SHOTCUT AI: Grafito Authoritative Theme Loading ---
+    QFile themeFile("capcut_theme.qss");
+    if (!themeFile.exists()) {
+        themeFile.setFileName(qApp->applicationDirPath() + "/capcut_theme.qss");
     }
-#elif defined(Q_OS_WIN)
-    QGuiApplication::setPalette(style->standardPalette());
-#endif
-#else
-    if (mytheme == kThemeDark) {
-        QApplication::setStyle(kStyleFusion);
-        QPalette palette;
-        // --- SHOTCUT AI: Grafito Modern Dark Palette ---
-        palette.setColor(QPalette::Window, QColor("#0B0C0F"));     // #0B0C0F base canvas
-        palette.setColor(QPalette::WindowText, QColor("#E8EAEE")); // #E8EAEE primary text
-        palette.setColor(QPalette::Base, QColor("#0F1115"));       // #0F1115 text inputs/search
-        palette.setColor(QPalette::AlternateBase,
-                         QColor("#1D2027"));                      // #1D2027 elevated cards/alt rows
-        palette.setColor(QPalette::Highlight, QColor("#FF7A45")); // #FF7A45 primary accent
-        palette.setColor(QPalette::HighlightedText,
-                         QColor("#140A05"));                        // #140A05 text/icons on accent
-        palette.setColor(QPalette::ToolTipBase, QColor("#1D2027")); // #1D2027 tooltip base
-        palette.setColor(QPalette::ToolTipText, QColor("#E8EAEE")); // #E8EAEE tooltip text
-        palette.setColor(QPalette::Text, QColor("#E8EAEE"));        // #E8EAEE primary text
-        palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Button, QColor("#15171C")); // #15171C panels/button background
-        palette.setColor(QPalette::ButtonText, QColor("#E8EAEE"));      // #E8EAEE button text
-        palette.setColor(QPalette::Link, QColor("#FF7A45"));            // #FF7A45 accent link
-        palette.setColor(QPalette::LinkVisited, QColor("#D96232"));     // visited link
-        palette.setColor(QPalette::PlaceholderText, QColor("#9AA1AD")); // #9AA1AD muted text
-        palette.setColor(QPalette::Disabled, QPalette::Base, QColor("#0F1115"));
-        palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor("#5F6672"));
-        palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#5F6672"));
-        palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#5F6672"));
-        palette.setColor(QPalette::Disabled, QPalette::Light, Qt::transparent);
-        QApplication::setPalette(palette);
-        // --- SHOTCUT AI: Grafito Authoritative Theme Loading ---
-        QFile themeFile("capcut_theme.qss");
-        if (!themeFile.exists()) {
-            themeFile.setFileName(qApp->applicationDirPath() + "/capcut_theme.qss");
-        }
-        if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
-        } else if (qApp->styleSheet().isEmpty()) {
-            // Keep each style sheet rule on a single line.
-            // clang-format off
-            qApp->setStyleSheet(QStringLiteral(
+    QString qss;
+    if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qss = QString::fromUtf8(themeFile.readAll());
+    } else {
+        // Keep each style sheet rule on a single line.
+        // clang-format off
+        qss = QStringLiteral(
             "QMainWindow, QDialog { background-color: #0B0C0F; color: #E8EAEE; font-family: \"Geist\", \"Segoe UI\", sans-serif; }"
             "QMainWindow::separator { width: 8px; height: 8px; background: #0B0C0F; }"
             "QMainWindow::separator:hover { background: #FF7A45; }"
@@ -4805,9 +4846,81 @@ void MainWindow::changeTheme(const QString &theme)
             "QPushButton#inspectorAddFilterButton:pressed { background-color: #1F2229; color: #E8EAEE; border: 1px dashed #FF7A45; }"
             "QPushButton#inspectorAddFilterButton:focus { border: 1px dashed #FF7A45; }"
             "QPushButton#inspectorAddFilterButton:disabled { background-color: transparent; color: #5F6672; border: 1px dashed #1F2229; }"
-        ));
-            // clang-format on
-        }
+        );
+        // clang-format on
+    }
+    return Util::accentStyleSheet(qss);
+}
+
+void MainWindow::changeTheme(const QString &theme)
+{
+    LOG_DEBUG() << "begin";
+    LOG_DEBUG() << "Available styles:" << QStyleFactory::keys();
+    auto mytheme = theme;
+
+#if !defined(SHOTCUT_THEME)
+    // Workaround Quick Controls not using our custom palette - temporarily?
+    std::unique_ptr<QStyle> style{QStyleFactory::create("fusion")};
+    auto brightness = style->standardPalette().color(QPalette::Text).lightnessF();
+    LOG_DEBUG() << brightness;
+    mytheme = brightness < 0.5f ? kThemeLight : kThemeDark;
+    QApplication::setStyle(kStyleFusion);
+    QIcon::setThemeName(mytheme);
+#if defined(Q_OS_MAC)
+    if (mytheme == kThemeDark) {
+        auto palette = QGuiApplication::palette();
+        palette.setColor(QPalette::AlternateBase, palette.color(QPalette::Base).lighter());
+        QGuiApplication::setPalette(palette);
+    }
+#elif defined(Q_OS_WIN)
+    QGuiApplication::setPalette(style->standardPalette());
+#endif
+#else
+    // Only the Grafito theme uses the accent color; the classic themes keep their palettes.
+    Settings.setGrafito(mytheme == kThemeDark);
+    if (mytheme == kThemeDark) {
+        QApplication::setStyle(kStyleFusion);
+        setGrafitoPalette();
+        qApp->setStyleSheet(grafitoStyleSheet());
+        QIcon::setThemeName(kThemeDark);
+        ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
+    } else if (mytheme == kThemeClassicDark) {
+        // The dark theme of Shotcut before the Grafito redesign.
+        QApplication::setStyle(kStyleFusion);
+        QPalette palette;
+        palette.setColor(QPalette::Window, QColor(50, 50, 50));
+        palette.setColor(QPalette::WindowText, QColor(220, 220, 220));
+        palette.setColor(QPalette::Base, QColor(30, 30, 30));
+        palette.setColor(QPalette::AlternateBase, QColor(40, 40, 40));
+        palette.setColor(QPalette::Highlight, QColor(23, 92, 118));
+        palette.setColor(QPalette::HighlightedText, Qt::white);
+        palette.setColor(QPalette::ToolTipBase, palette.color(QPalette::Highlight));
+        palette.setColor(QPalette::ToolTipText, palette.color(QPalette::WindowText));
+        palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
+        palette.setColor(QPalette::BrightText, Qt::red);
+        palette.setColor(QPalette::Button, palette.color(QPalette::Window));
+        palette.setColor(QPalette::ButtonText, palette.color(QPalette::WindowText));
+        palette.setColor(QPalette::Link, palette.color(QPalette::Highlight).lighter());
+        palette.setColor(QPalette::LinkVisited, palette.color(QPalette::Highlight));
+        palette.setColor(QPalette::PlaceholderText, palette.color(QPalette::Text).darker());
+        palette.setColor(QPalette::Disabled, QPalette::Base, palette.color(QPalette::Base).darker());
+        palette.setColor(QPalette::Disabled, QPalette::Text, palette.color(QPalette::Text).darker());
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+        palette.setColor(QPalette::Disabled, QPalette::Light, Qt::transparent);
+        QApplication::setPalette(palette);
+        qApp->setStyleSheet(QStringLiteral(
+            "QTabBar::tab { background: #232323; color: #aaaaaa; padding: 4px 8px;"
+            " border: 1px solid #1a1a1a; }"
+            "QTabBar::tab:top { border-bottom: none;"
+            " border-top-left-radius: 4px; border-top-right-radius: 4px; }"
+            "QTabBar::tab:bottom { border-top: none;"
+            " border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }"
+            "QTabBar::tab:selected { background: #323232; color: #dcdcdc; }"
+            "QTabBar::tab:top:selected { background: #404040; border-top: 2px solid #175c76; }"
+            "QTabBar::tab:bottom:selected { border-bottom: 2px solid #175c76; }"
+            "QTabBar::tab:hover:!selected { background: #2a2a2a; }"
+            "QTabBar::tab:top:!selected { margin-top: 2px; }"
+            "QTabBar::tab:bottom:!selected { margin-bottom: 2px; }"));
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
     } else if (mytheme == "light") {
@@ -5883,6 +5996,22 @@ void MainWindow::on_actionFusionDark_triggered()
 {
     Settings.setTheme("dark");
     restartAfterChangeTheme();
+}
+
+void MainWindow::on_actionClassicFusionDark_triggered()
+{
+    Settings.setTheme("classic-dark");
+    restartAfterChangeTheme();
+}
+
+void MainWindow::onAccentColorChanged()
+{
+    // Apply the new accent color to the palette and the style sheet of the application;
+    // the widgets with their own style sheets use Util::followAccentColor().
+    if (!Settings.isGrafito())
+        return;
+    setGrafitoPalette();
+    qApp->setStyleSheet(grafitoStyleSheet());
 }
 
 void MainWindow::on_actionFusionLight_triggered()

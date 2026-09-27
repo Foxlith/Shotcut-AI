@@ -38,9 +38,22 @@ TimeSpinBox::TimeSpinBox(QWidget *parent)
     QFont font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     font.setPointSize(QGuiApplication::font().pointSize());
     setFont(font);
-    setFixedWidth(fontMetrics().boundingRect("_HHH:MM:SS;FFF_").width());
+    updateWidth();
 
     connect(&Settings, &ShotcutSettings::timeFormatChanged, this, [&]() { setValue(value()); });
+}
+
+void TimeSpinBox::updateWidth()
+{
+    setFixedWidth(fontMetrics().boundingRect("_HHH:MM:SS;FFF_").width());
+}
+
+void TimeSpinBox::changeEvent(QEvent *event)
+{
+    // A style sheet can change the font, for example when the accent color changes.
+    if (event->type() == QEvent::FontChange)
+        updateWidth();
+    QSpinBox::changeEvent(event);
 }
 
 QValidator::State TimeSpinBox::validate(QString &input, int &pos) const

@@ -86,7 +86,12 @@ QmlApplication &QmlApplication::singleton()
 
 QmlApplication::QmlApplication()
     : QObject()
-{}
+{
+    connect(&Settings,
+            &ShotcutSettings::accentColorChanged,
+            this,
+            &QmlApplication::accentColorChanged);
+}
 
 Qt::WindowModality QmlApplication::dialogModality()
 {
@@ -117,14 +122,24 @@ QPoint QmlApplication::mousePos()
     \qmlproperty color Application::playheadColor
     \brief The color of the timeline and keyframes playhead.
 
-    Dark (Grafito) themes use the accent color of the palette; others the classic red.
+    The Grafito theme uses its accent color; the classic themes the classic red.
+    Notifies \l accentColorChanged.
 */
 QColor QmlApplication::playheadColor()
 {
-    const auto palette = QApplication::palette();
-    if (palette.color(QPalette::Window).lightnessF() < 0.5)
-        return palette.color(QPalette::Highlight);
+    // The accent color with the Grafito theme, the classic red otherwise.
+    if (grafito())
+        return QColor(Settings.accentColor());
     return QColor(0xe0, 0x46, 0x4e);
+}
+
+/*!
+  Whether the Grafito theme is active. The theme changes after a restart, so it is
+  constant for the QML views.
+*/
+bool QmlApplication::grafito()
+{
+    return Settings.isGrafito();
 }
 
 QColor QmlApplication::toolTipBaseColor()

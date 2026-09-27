@@ -30,7 +30,7 @@ Rectangle {
     property int headerWidth: multitrack.trackHeaderWidth
     // Grafito timeline tokens (plan.md 2.1, 2.4 and 3.3) with dark themes; the classic
     // palette colors with light themes.
-    readonly property bool grafito: activePalette.window.hsvValue < 0.5
+    readonly property bool grafito: application.grafito
     property color trackBgDark: grafito ? '#111317' : activePalette.window
     property color laneColor: grafito ? '#15171C' : activePalette.base
     property color alternateLaneColor: grafito ? '#15171C' : activePalette.alternateBase
@@ -46,6 +46,8 @@ Rectangle {
     property color accentColor: application.playheadColor
     property color groupSelectionColor: '#E8EAEE'
     property int trackSpacing: 4
+    // Counts the track items created, also when a model reset creates the same number again.
+    property int tracksEpoch: 0
     property alias trackCount: tracksRepeater.count
     property bool stopScrolling: false
     property color adjustmentClipColor: Qt.rgba(92 / 255, 72 / 255, 23 / 255, 1)
@@ -672,6 +674,7 @@ Rectangle {
                                 id: tracksRepeater
 
                                 model: trackDelegateModel
+                                onItemAdded: root.tracksEpoch++
                             }
                         }
 
@@ -684,8 +687,11 @@ Rectangle {
                                 model: timeline.selection
 
                                 Rectangle {
-                                    property var track: trackAt(modelData.y)
-                                    property var clipN: track ? track.clipAt(modelData.x) : null
+                                    // The counts make the bindings update when the timeline
+                                    // reloads (for example after a palette change) and creates
+                                    // the tracks and clips again.
+                                    property var track: (tracksRepeater.count > modelData.y && root.tracksEpoch >= 0) ? trackAt(modelData.y) : null
+                                    property var clipN: (track && track.clipCount > modelData.x && track.clipsEpoch >= 0) ? track.clipAt(modelData.x) : null
 
                                     visible: !!clipN && !clipN.isBlank && !clipN.offScreen
                                     x: clipN ? clipN.x - 2 : 0

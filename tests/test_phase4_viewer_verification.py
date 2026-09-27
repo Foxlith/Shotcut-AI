@@ -71,6 +71,19 @@ LOOP_RANGE_ACTIONS = ["playerLoopRangeAllAction", "playerLoopRangeMarkerAction",
 TRANSPORT_ICONS = ["go-first", "go-previous", "go-next", "go-last", "go-down"]
 
 
+def render_1x(widget):
+    """Render `widget` into an image with a device pixel ratio of 1.
+
+    QWidget.grab() follows the screen scaling (for example 125 % on Windows): the image
+    is then larger than the widget and every sampled pixel misses its target.
+    """
+    image = QImage(widget.size(), QImage.Format_ARGB32_Premultiplied)
+    image.setDevicePixelRatio(1.0)
+    image.fill(Qt.transparent)
+    widget.render(image)
+    return image
+
+
 def read(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
@@ -124,8 +137,8 @@ def fallback_stylesheet():
     """The Grafito fallback style sheet of MainWindow::changeTheme() as plain QSS."""
     cpp = read(MAINWINDOW_CPP)
     marker = cpp.index("// Phase 4: Grafito viewer")
-    start = cpp.rindex("qApp->setStyleSheet(QStringLiteral(", 0, marker)
-    block = cpp[start:cpp.index("));", marker)]
+    start = cpp.rindex("qss = QStringLiteral(", 0, marker)
+    block = cpp[start:cpp.index("// clang-format on", marker)]
     lines = [line for line in block.splitlines() if not line.strip().startswith("//")]
     literals = re.findall(r'"((?:[^"\\]|\\.)*)"', "\n".join(lines))
     return "".join(literal.replace('\\"', '"').replace("\\\\", "\\") for literal in literals)
@@ -545,7 +558,7 @@ class TestPhase4StyleSheet(unittest.TestCase):
         stage.setAttribute(Qt.WA_StyledBackground)
         player.show()
         self.app.processEvents()
-        image = player.grab().toImage()
+        image = render_1x(player)
         self.addCleanup(player.close)
         self.assertEqual(image.pixelColor(200, 100).name().upper(), "#08090B")  # stage
         self.assertEqual(image.pixelColor(200, 152).name().upper(), "#15171C")  # panel
