@@ -54,7 +54,7 @@ El menú *Copy MCP Configuration* escribe la ruta real por ti. Reinicia Claude D
 
 ### Antigravity
 
-En Antigravity: *Agent > MCP Servers > Manage MCP Servers > View raw config* (`mcp_config.json`). Usa el mismo formato que Claude Desktop (el puente):
+En la gestión de servidores MCP de Antigravity (*Manage MCP Servers* → *View raw config*, que edita el archivo `mcp_config.json`) usa el mismo formato que Claude Desktop (el puente):
 
 ```json
 {
