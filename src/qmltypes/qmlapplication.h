@@ -36,6 +36,8 @@ class QmlApplication : public QObject
     Q_PROPERTY(Qt::WindowModality dialogModality READ dialogModality CONSTANT);
     Q_PROPERTY(QPoint mousePos READ mousePos);
     Q_PROPERTY(QColor playheadColor READ playheadColor CONSTANT)
+    Q_PROPERTY(QColor accentColor READ accentColor NOTIFY accentColorChanged)
+    Q_PROPERTY(bool grafito READ grafito NOTIFY themeChanged)
     Q_PROPERTY(QColor toolTipBaseColor READ toolTipBaseColor NOTIFY paletteChanged)
     Q_PROPERTY(QColor toolTipTextColor READ toolTipTextColor NOTIFY paletteChanged)
     Q_PROPERTY(QString OS READ OS CONSTANT)
@@ -55,6 +57,8 @@ public:
     static QString OS();
     static QRect mainWinRect();
     static bool hasFiltersOnClipboard();
+    static QColor accentColor();
+    static bool grafito();
     Q_INVOKABLE static void copyAllFilters();
     Q_INVOKABLE static void copyEnabledFilters();
     Q_INVOKABLE static void copyCurrentFilter();
@@ -78,6 +82,8 @@ public:
 
 signals:
     void paletteChanged();
+    void themeChanged();
+    void accentColorChanged();
     void filtersCopied();
     void filtersPasted(Mlt::Producer *);
 

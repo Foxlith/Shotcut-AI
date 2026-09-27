@@ -1917,18 +1917,62 @@ void MainWindow::setupSettingsMenu()
     // Setup the themes actions
 #if defined(SHOTCUT_THEME)
     group = new QActionGroup(this);
+    ui->actionFusionDark->setText(tr("Grafito Moderno"));
+    QAction* classicDarkAction = new QAction(tr("Clásico Fusion"), this);
+    classicDarkAction->setCheckable(true);
+    ui->menuTheme->insertAction(ui->actionFusionLight, classicDarkAction);
+    
     group->addAction(ui->actionSystemTheme);
     group->addAction(ui->actionSystemFusion);
     group->addAction(ui->actionFusionDark);
+    group->addAction(classicDarkAction);
     group->addAction(ui->actionFusionLight);
+    
     if (Settings.theme() == "dark")
         ui->actionFusionDark->setChecked(true);
+    else if (Settings.theme() == "classic-dark")
+        classicDarkAction->setChecked(true);
     else if (Settings.theme() == "light")
         ui->actionFusionLight->setChecked(true);
     else if (Settings.theme() == "system-fusion")
         ui->actionSystemFusion->setChecked(true);
     else
         ui->actionSystemTheme->setChecked(true);
+        
+    connect(classicDarkAction, &QAction::triggered, this, [this]() {
+        Settings.setTheme("classic-dark");
+        changeTheme("classic-dark");
+        emit QmlApplication::singleton().themeChanged();
+    });
+    
+    disconnect(ui->actionFusionDark, &QAction::triggered, this, nullptr);
+    connect(ui->actionFusionDark, &QAction::triggered, this, [this]() {
+        Settings.setTheme("dark");
+        changeTheme("dark");
+        emit QmlApplication::singleton().themeChanged();
+    });
+    
+    auto accentMenu = ui->menuTheme->addMenu(tr("Accent Color"));
+    auto accentGroup = new QActionGroup(this);
+    QStringList accents = {"Orange (#FF7A45)", "Electric Blue (#5B8CFF)", "Golden Amber (#F5B83D)", "Neon Lavender (#B08CFF)"};
+    QString currentAccent = Settings.accentColor();
+    for (const auto& a : accents) {
+        QString hex = a.split(" (").last().remove(")");
+        QString name = a.split(" (").first();
+        auto act = accentMenu->addAction(name);
+        act->setCheckable(true);
+        act->setData(hex);
+        if (currentAccent.toUpper() == hex.toUpper()) {
+            act->setChecked(true);
+        }
+        accentGroup->addAction(act);
+        connect(act, &QAction::triggered, this, [this, hex]() {
+            Settings.setAccentColor(hex);
+            changeTheme(Settings.theme());
+            emit QmlApplication::singleton().accentColorChanged();
+        });
+    }
+
 #else
     delete ui->menuTheme;
 #endif
@@ -4614,7 +4658,8 @@ void MainWindow::changeTheme(const QString &theme)
         palette.setColor(QPalette::Base, QColor("#0F1115"));       // #0F1115 text inputs/search
         palette.setColor(QPalette::AlternateBase,
                          QColor("#1D2027"));                      // #1D2027 elevated cards/alt rows
-        palette.setColor(QPalette::Highlight, QColor("#FF7A45")); // #FF7A45 primary accent
+        QColor accentColor(Settings.accentColor());
+        palette.setColor(QPalette::Highlight, accentColor); // primary accent
         palette.setColor(QPalette::HighlightedText,
                          QColor("#140A05"));                        // #140A05 text/icons on accent
         palette.setColor(QPalette::ToolTipBase, QColor("#1D2027")); // #1D2027 tooltip base
@@ -4623,7 +4668,7 @@ void MainWindow::changeTheme(const QString &theme)
         palette.setColor(QPalette::BrightText, Qt::red);
         palette.setColor(QPalette::Button, QColor("#15171C")); // #15171C panels/button background
         palette.setColor(QPalette::ButtonText, QColor("#E8EAEE"));      // #E8EAEE button text
-        palette.setColor(QPalette::Link, QColor("#FF7A45"));            // #FF7A45 accent link
+        palette.setColor(QPalette::Link, accentColor);            // accent link
         palette.setColor(QPalette::LinkVisited, QColor("#D96232"));     // visited link
         palette.setColor(QPalette::PlaceholderText, QColor("#9AA1AD")); // #9AA1AD muted text
         palette.setColor(QPalette::Disabled, QPalette::Base, QColor("#0F1115"));
@@ -4637,12 +4682,13 @@ void MainWindow::changeTheme(const QString &theme)
         if (!themeFile.exists()) {
             themeFile.setFileName(qApp->applicationDirPath() + "/capcut_theme.qss");
         }
+        QString qss;
         if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+            qss = QString::fromUtf8(themeFile.readAll());
         } else if (qApp->styleSheet().isEmpty()) {
             // Keep each style sheet rule on a single line.
             // clang-format off
-            qApp->setStyleSheet(QStringLiteral(
+            qss = QStringLiteral(
             "QMainWindow, QDialog { background-color: #0B0C0F; color: #E8EAEE; font-family: \"Geist\", \"Segoe UI\", sans-serif; }"
             "QMainWindow::separator { width: 8px; height: 8px; background: #0B0C0F; }"
             "QMainWindow::separator:hover { background: #FF7A45; }"
@@ -4808,6 +4854,39 @@ void MainWindow::changeTheme(const QString &theme)
         ));
             // clang-format on
         }
+
+        if (!qss.isEmpty()) {
+            QColor accentColor(Settings.accentColor());
+            QString rgbStr = QString("%1, %2, %3").arg(accentColor.red()).arg(accentColor.green()).arg(accentColor.blue());
+            qss.replace("#FF7A45", accentColor.name(QColor::HexRgb).toUpper());
+            qss.replace("#FF8F61", accentColor.lighter(115).name(QColor::HexRgb).toUpper());
+            qss.replace("#E66835", accentColor.darker(115).name(QColor::HexRgb).toUpper());
+            qss.replace("255, 122, 69", rgbStr);
+            qApp->setStyleSheet(qss);
+        }
+        QIcon::setThemeName(kThemeDark);
+        ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
+    } else if (mytheme == "classic-dark") {
+        qApp->setStyleSheet("");
+        QApplication::setStyle(kStyleFusion);
+        QPalette palette;
+        palette.setColor(QPalette::Window, QColor(53, 53, 53));
+        palette.setColor(QPalette::WindowText, Qt::white);
+        palette.setColor(QPalette::Base, QColor(25, 25, 25));
+        palette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+        palette.setColor(QPalette::ToolTipBase, Qt::white);
+        palette.setColor(QPalette::ToolTipText, Qt::white);
+        palette.setColor(QPalette::Text, Qt::white);
+        palette.setColor(QPalette::Button, QColor(53, 53, 53));
+        palette.setColor(QPalette::ButtonText, Qt::white);
+        palette.setColor(QPalette::BrightText, Qt::red);
+        palette.setColor(QPalette::Link, QColor(42, 130, 218));
+        palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        palette.setColor(QPalette::HighlightedText, Qt::black);
+        palette.setColor(QPalette::Disabled, QPalette::Text, Qt::darkGray);
+        palette.setColor(QPalette::Disabled, QPalette::WindowText, Qt::darkGray);
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+        QApplication::setPalette(palette);
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
     } else if (mytheme == "light") {

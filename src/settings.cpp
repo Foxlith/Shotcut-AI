@@ -271,6 +271,16 @@ void ShotcutSettings::setTheme(const QString &s)
     settings.setValue("theme", s);
 }
 
+QString ShotcutSettings::accentColor() const
+{
+    return settings.value("accentColor", "#FF7A45").toString();
+}
+
+void ShotcutSettings::setAccentColor(const QString &s)
+{
+    settings.setValue("accentColor", s);
+}
+
 QThread::Priority ShotcutSettings::jobPriority() const
 {
     const auto priority = settings.value("jobPriority", "low").toString();

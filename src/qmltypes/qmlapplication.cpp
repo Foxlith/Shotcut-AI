@@ -121,10 +121,22 @@ QPoint QmlApplication::mousePos()
 */
 QColor QmlApplication::playheadColor()
 {
+    if (grafito())
+        return QColor(Settings.accentColor());
     const auto palette = QApplication::palette();
     if (palette.color(QPalette::Window).lightnessF() < 0.5)
         return palette.color(QPalette::Highlight);
     return QColor(0xe0, 0x46, 0x4e);
+}
+
+QColor QmlApplication::accentColor()
+{
+    return QColor(Settings.accentColor());
+}
+
+bool QmlApplication::grafito()
+{
+    return Settings.theme() == "dark";
 }
 
 QColor QmlApplication::toolTipBaseColor()

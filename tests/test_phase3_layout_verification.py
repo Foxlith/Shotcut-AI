@@ -425,6 +425,7 @@ class TestPhase3Theme(unittest.TestCase):
         ok, window, docks = layout.restore(self.app, state, "Editing")
         self.addCleanup(window.close)
         self.assertTrue(ok)
+        window.resize(1920, 900)
         image = render_1x(window)
 
         def color_at(widget, x, y):

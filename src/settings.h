@@ -104,6 +104,8 @@ public:
     void setProjects(const QStringList &);
     QString theme() const;
     void setTheme(const QString &);
+    QString accentColor() const;
+    void setAccentColor(const QString &);
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;

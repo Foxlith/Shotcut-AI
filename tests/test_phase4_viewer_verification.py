@@ -137,7 +137,7 @@ def fallback_stylesheet():
     """The Grafito fallback style sheet of MainWindow::changeTheme() as plain QSS."""
     cpp = read(MAINWINDOW_CPP)
     marker = cpp.index("// Phase 4: Grafito viewer")
-    start = cpp.rindex("qApp->setStyleSheet(QStringLiteral(", 0, marker)
+    start = cpp.rindex("qss = QStringLiteral(", 0, marker)
     block = cpp[start:cpp.index("));", marker)]
     lines = [line for line in block.splitlines() if not line.strip().startswith("//")]
     literals = re.findall(r'"((?:[^"\\]|\\.)*)"', "\n".join(lines))

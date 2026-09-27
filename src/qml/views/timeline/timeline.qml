@@ -30,7 +30,7 @@ Rectangle {
     property int headerWidth: multitrack.trackHeaderWidth
     // Grafito timeline tokens (plan.md 2.1, 2.4 and 3.3) with dark themes; the classic
     // palette colors with light themes.
-    readonly property bool grafito: activePalette.window.hsvValue < 0.5
+    readonly property bool grafito: application.grafito
     property color trackBgDark: grafito ? '#111317' : activePalette.window
     property color laneColor: grafito ? '#15171C' : activePalette.base
     property color alternateLaneColor: grafito ? '#15171C' : activePalette.alternateBase
@@ -43,7 +43,7 @@ Rectangle {
     property color labelTextColor: grafito ? '#858C98' : activePalette.windowText
     property color disabledTextColor: grafito ? '#5F6672' : activePalette.mid
     property color dropZoneColor: grafito ? '#343944' : activePalette.mid
-    property color accentColor: application.playheadColor
+    property color accentColor: application.accentColor
     property color groupSelectionColor: '#E8EAEE'
     property int trackSpacing: 4
     property alias trackCount: tracksRepeater.count
