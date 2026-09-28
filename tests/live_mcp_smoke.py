@@ -152,6 +152,8 @@ def read_only_checks(client, url):
     check(actions["count"] > 50, "list_actions: %d actions" % actions["count"])
     filters, _ = tool(client, "list_filters", {"type": "video"})
     check(filters["count"] > 10, "list_filters: %d video filters" % filters["count"])
+    filters, _ = tool(client, "list_filters", {"type": "audio"})
+    check(filters["count"] > 5, "list_filters: %d audio filters" % filters["count"])
     tool(client, "seek", {"position": -1}, expect_error=True)
     print("  ok  invalid arguments are tool errors")
     if state["player"]["duration"]["frames"] > 0:
