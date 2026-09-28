@@ -129,6 +129,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     print("   8. tests.test_phase6_media_inspector_verification (Phase 6 Grafito Media panel & Inspector)")
     print("   9. tests.test_phase7_accent_theme_verification (Phase 7 accent colors & theme switch)")
     print("  10. tests.test_phase8_ai_mcp_verification (Phase 8 live AI system: MCP server & bridge)")
+    print("  11. tests.test_phase9_ai_analysis_verification (Phase 9 media analysis & MCP fixes)")
     print("=" * 78)
 
     import tests.test_adversarial_branding_m1_dark
@@ -141,6 +142,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     import tests.test_phase6_media_inspector_verification
     import tests.test_phase7_accent_theme_verification
     import tests.test_phase8_ai_mcp_verification
+    import tests.test_phase9_ai_analysis_verification
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -171,6 +173,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
 
     # 9. Phase 8 live AI system (MCP) verification (19 tests)
     suite.addTests(loader.loadTestsFromModule(tests.test_phase8_ai_mcp_verification))
+    suite.addTests(loader.loadTestsFromModule(tests.test_phase9_ai_analysis_verification))
 
     # 3. Runtime UI & stress recovery
     if no_gui:

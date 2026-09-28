@@ -60,3 +60,6 @@ shotcut.code-workspace
 __pycache__/
 *.pyc
 
+
+# Real media for the AI tests (docs/ROADMAP_SHOTCUT_AI.md, task 0.3): not in git.
+muestras/

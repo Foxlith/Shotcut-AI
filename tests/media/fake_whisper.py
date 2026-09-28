@@ -2,7 +2,8 @@
 """A stand-in for whisper-cli in the tests: it answers like whisper-cli -ojf with a
 fixed transcript (the JFK sample of whisper.cpp) without a model.
 
-FAKE_WHISPER_NEEDS_NO_GPU=1 makes it fail unless -ng is passed, like a broken GPU.
+FAKE_WHISPER_NEEDS_NO_GPU=1 makes it fail unless -ng is passed, like a broken GPU, and
+FAKE_WHISPER_LOG names a file that gets one line per run ("gpu" or "no-gpu").
 """
 
 import json
@@ -22,6 +23,9 @@ def main(arguments):
             continue
         flags.add(argument)
         index += 1
+    if os.environ.get("FAKE_WHISPER_LOG"):
+        with open(os.environ["FAKE_WHISPER_LOG"], "a", encoding="utf-8") as log:
+            log.write(("no-gpu" if "-ng" in flags else "gpu") + "\n")
     if os.environ.get("FAKE_WHISPER_NEEDS_NO_GPU") and "-ng" not in flags:
         print("ggml_vulkan: no device found", file=sys.stderr)
         return 1

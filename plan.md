@@ -511,6 +511,35 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 
 ---
 
+### FASE 9: Percepción de la IA — Entrega 1 de `docs/ROADMAP_SHOTCUT_AI.md` (Fase 0 + Fase 1)
+- **Objetivo:** que la IA **vea y oiga el material** antes de editar (primer paso del editor de vídeo por IA descrito en `docs/ROADMAP_SHOTCUT_AI.md`) y arreglar lo que Fox encontró al conectar Claude Code a Shotcut AI.
+- **Decisiones de Fox (28/09/2026):** avanzar por entregas con PR, todo en este repositorio, todo local (sin nube ni claves) y YouTube 16:9 como primer formato.
+- **Tareas Técnicas:**
+  1. **Problemas de las primeras pruebas:**
+     - respuestas compactas: los datos van una sola vez, los archivos se nombran con ids `m1`… más una tabla `media`, y `get_timeline` acepta `track`/`detail`;
+     - el perfil sale de sus valores (`video_mode`, `adapts_to_first_clip`) en lugar de *"PAL 4:3 DV or DVD"*;
+     - se encuentran los archivos que las apps de Microsoft Store guardan en `AppData` (`Mcp::unvirtualizedPath`);
+     - los dos `shotcut.exe` son el *watchdog* de arranque y la app.
+  2. **`scripts/shotcut_analysis.py`:** servidor MCP por stdio con solo la biblioteca estándar de Python y los programas del zip. Sus 11 herramientas: `check_setup`, `probe_media`, `describe_clip`, `detect_scenes`, `contact_sheet`, `analyze_audio`, `transcribe`, `analyze_folder`, `download_model`, `get_jobs` y `cancel_job`. Tiene trabajos en segundo plano y caché por archivo.
+  3. **whisper.cpp en el zip de Windows** (`whisper-cli.exe` y los backends de ggml): vuelve *Subtitles > Speech to Text* y la IA transcribe con los mismos modelos.
+  4. *Copy MCP Configuration* configura también `shotcut-analysis` en los 4 clientes.
+  5. `scripts/sc.py` (CLI MCP), `tests/media/make_samples.py` (medios de contenido conocido), `docs/build-windows.md`, `docs/ai-analysis.md` y el roadmap en `docs/`.
+- **Archivos Probables:**
+  - `src/ai/aitools.cpp`, `src/ai/mcpprotocol.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/CMakeLists.txt`
+  - `scripts/shotcut_analysis.py`, `scripts/sc.py` (nuevos), `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`
+  - `tests/test_phase9_ai_analysis_verification.py`, `tests/live_analysis_smoke.py`, `tests/media/*` (nuevos), `tests/test_mcp_protocol.cpp`, `tests/run_e2e_tests.py`
+  - `docs/ai-analysis.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md` (nuevos), `docs/ai-mcp.md`
+- **Criterios de Aceptación:**
+  - cortes de escena: el 90 % o más, con un margen de ±2 fotogramas;
+  - silencios con un margen de 0,1 s;
+  - volumen con un margen de 1 dB;
+  - tempo con un margen de ±2 BPM;
+  - transcripción con frases y palabras;
+  - todo sin instalar nada más que Python.
+- **Estado:** ✅ Completada. En pruebas encuentra los cortes en el fotograma exacto, los silencios exactos, 10,0 dB de diferencia de volumen y el tempo de 60 a 160 BPM con beats a ±10 ms. En el CI de Windows, con el whisper del zip y un modelo descargado por el propio servidor, transcribe la muestra de voz de whisper.cpp en 4,6 s para 11 s de audio. `--fast`: 777/777. Quedan abiertas del roadmap la 0.3 (material real de Fox) y la medición de la 1.5 en su PC. Detalle en `agent.md` (Fase 9).
+
+---
+
 ## 🌐 Consideraciones Técnicas Transversales
 
 ### Compatibilidad Multiplataforma (Windows, macOS, Linux)
@@ -611,6 +640,12 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Menú *Settings > AI Agent (MCP)* y puente stdio para Claude Desktop.
   - [x] Configuración y guía para OpenCode, Antigravity, Claude Code y Claude Desktop (`docs/ai-mcp.md`).
   - [x] Pruebas (`--fast`: 754/754; 19 nuevos en `tests/test_phase8_ai_mcp_verification.py`) y verificación en la app real; el build de Windows ejecuta `tests/live_mcp_smoke.py`.
+- [x] **Fase 9: Percepción de la IA (Entrega 1 del roadmap)**
+  - [x] Respuestas compactas, perfil real, archivos de apps de Microsoft Store y el *watchdog* explicado (los 4 problemas de las pruebas de Fox).
+  - [x] Servidor `shotcut-analysis` (11 herramientas) con solo la biblioteca estándar y los programas del zip.
+  - [x] whisper.cpp en el zip (vuelve *Speech to Text*) y comprobación en CI con un modelo real.
+  - [x] `sc.py`, muestras de prueba, guía de compilación y guía de análisis.
+  - [x] Pruebas (`--fast`: 777/777; 23 nuevos en `tests/test_phase9_ai_analysis_verification.py`; QtTest: 36) y `tests/live_analysis_smoke.py` en Linux y en el build de Windows.
 
 ---
 
