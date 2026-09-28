@@ -44,6 +44,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QHash>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -322,7 +323,46 @@ QString clipUuid(int trackIndex, int clipIndex)
     return uuid.isNull() ? QString() : uuid.toString(QUuid::WithoutBraces);
 }
 
-QJsonObject clipJson(int trackIndex, int clipIndex)
+// ---------------------------------------------------------------------------------------
+// Media files: each path gets a short id (m1, m2...) that stays the same while Shotcut
+// runs. Clips and playlist items refer to it, and every answer lists each path once in
+// its "media" table, so a long path is not repeated for every clip that uses it.
+
+QHash<QString, QString> &mediaIds()
+{
+    static QHash<QString, QString> ids;
+    return ids;
+}
+
+/// The "media" table of the answer being built, filled by mediaRef().
+QJsonObject *answerMedia = nullptr;
+
+QString mediaRef(const QString &resource)
+{
+    auto &ids = mediaIds();
+    auto id = ids.value(resource);
+    if (id.isEmpty()) {
+        id = QStringLiteral("m%1").arg(ids.size() + 1);
+        ids.insert(resource, id);
+    }
+    if (answerMedia)
+        answerMedia->insert(id, resource);
+    return id;
+}
+
+/// The path of a media id, or an empty string.
+QString mediaPath(const QString &id)
+{
+    return mediaIds().key(id.trimmed());
+}
+
+/// A name worth sending: the caption when it differs from the file name.
+bool isOwnName(const QString &name, const QString &resource)
+{
+    return !name.isEmpty() && name != QFileInfo(resource).fileName();
+}
+
+QJsonObject clipJson(int trackIndex, int clipIndex, bool full = false)
 {
     const auto index = clipModelIndex(trackIndex, clipIndex);
     const int start = index.data(MultitrackModel::StartRole).toInt();
@@ -333,18 +373,23 @@ QJsonObject clipJson(int trackIndex, int clipIndex)
                      {"duration", secondsOf(duration)}};
     if (index.data(MultitrackModel::IsBlankRole).toBool()) {
         clip["blank"] = true;
-        clip["frames"] = QJsonObject{{"start", start}, {"duration", duration}};
+        if (full)
+            clip["frames"] = QJsonObject{{"start", start}, {"duration", duration}};
         return clip;
     }
     const int in = index.data(MultitrackModel::InPointRole).toInt();
     const int out = index.data(MultitrackModel::OutPointRole).toInt();
-    clip["name"] = index.data(MultitrackModel::NameRole).toString();
-    clip["in"] = secondsOf(in);
-    clip["out"] = secondsOf(out);
-    clip["frames"] = QJsonObject{{"start", start}, {"duration", duration}, {"in", in}, {"out", out}};
+    const auto name = index.data(MultitrackModel::NameRole).toString();
     const auto resource = index.data(MultitrackModel::ResourceRole).toString();
     if (!resource.isEmpty())
-        clip["resource"] = resource;
+        clip["media"] = mediaRef(resource);
+    if (full || resource.isEmpty() || isOwnName(name, resource))
+        clip["name"] = name;
+    clip["in"] = secondsOf(in);
+    clip["out"] = secondsOf(out);
+    if (full)
+        clip["frames"]
+            = QJsonObject{{"start", start}, {"duration", duration}, {"in", in}, {"out", out}};
     if (index.data(MultitrackModel::IsTransitionRole).toBool())
         clip["transition"] = true;
     const int fadeIn = index.data(MultitrackModel::FadeInRole).toInt();
@@ -367,7 +412,7 @@ QJsonObject clipJson(int trackIndex, int clipIndex)
     return clip;
 }
 
-QJsonObject trackJson(int trackIndex, bool withClips, bool withBlanks)
+QJsonObject trackJson(int trackIndex, bool withClips, bool withBlanks, bool full = false)
 {
     const auto index = multitrack()->index(trackIndex);
     const bool audio = index.data(MultitrackModel::IsAudioRole).toBool();
@@ -384,18 +429,21 @@ QJsonObject trackJson(int trackIndex, bool withClips, bool withBlanks)
         QJsonArray clips;
         for (int i = 0; i < clipCountOf(trackIndex); ++i) {
             if (withBlanks || !isBlank(trackIndex, i))
-                clips.append(clipJson(trackIndex, i));
+                clips.append(clipJson(trackIndex, i, full));
         }
         track["clips"] = clips;
     }
     return track;
 }
 
-QJsonObject timelineJson(bool withBlanks)
+/// The timeline; \a onlyTrack limits the tracks to one (-1: all).
+QJsonObject timelineJson(bool withBlanks, bool full = false, int onlyTrack = -1)
 {
     QJsonArray tracks;
-    for (int i = 0; i < trackCount(); ++i)
-        tracks.append(trackJson(i, true, withBlanks));
+    for (int i = 0; i < trackCount(); ++i) {
+        if (onlyTrack < 0 || i == onlyTrack)
+            tracks.append(trackJson(i, true, withBlanks, full));
+    }
     int duration = 0;
     if (MAIN.multitrack() && MAIN.multitrack()->is_valid())
         duration = MAIN.multitrack()->get_length();
@@ -444,7 +492,7 @@ QString mediaTypeName(int type)
     }
 }
 
-QJsonObject playlistItemJson(int row)
+QJsonObject playlistItemJson(int row, bool full = false)
 {
     QJsonObject item{{"index", row}};
     std::unique_ptr<Mlt::ClipInfo> info(MAIN.playlist()->clip_info(row));
@@ -454,8 +502,10 @@ QJsonObject playlistItemJson(int row)
     const auto resource = ProxyManager::resource(*info->producer);
     if (name.isEmpty())
         name = QFileInfo(resource).fileName();
-    item["name"] = name;
-    item["resource"] = resource;
+    if (!resource.isEmpty())
+        item["media"] = mediaRef(resource);
+    if (full || resource.isEmpty() || isOwnName(name, resource))
+        item["name"] = name;
     item["duration"] = secondsOf(info->frame_count);
     item["in"] = secondsOf(info->frame_in);
     item["out"] = secondsOf(info->frame_out);
@@ -470,10 +520,13 @@ QJsonObject producerJson(Mlt::Producer *producer)
 {
     if (!producer || !producer->is_valid())
         return QJsonObject();
-    return QJsonObject{{"name", Util::producerTitle(*producer)},
-                       {"resource", ProxyManager::resource(*producer)},
-                       {"duration", secondsOf(producer->get_playtime())},
-                       {"service", QString::fromUtf8(producer->get("mlt_service"))}};
+    QJsonObject json{{"name", Util::producerTitle(*producer)},
+                     {"duration", secondsOf(producer->get_playtime())},
+                     {"service", QString::fromUtf8(producer->get("mlt_service"))}};
+    const auto resource = ProxyManager::resource(*producer);
+    if (!resource.isEmpty())
+        json["media"] = mediaRef(resource);
+    return json;
 }
 
 QJsonObject undoJson()
@@ -503,9 +556,44 @@ QJsonObject playerJson()
     return player;
 }
 
+/// "16:9" for a common aspect ratio, else like "2.39:1".
+QString aspectText(double ratio)
+{
+    static const int common[][2]
+        = {{16, 9}, {9, 16}, {4, 3}, {3, 4}, {1, 1}, {4, 5}, {21, 9}, {2, 1}};
+    for (const auto &pair : common) {
+        if (qAbs(ratio - double(pair[0]) / pair[1]) < 0.01)
+            return QStringLiteral("%1:%2").arg(pair[0]).arg(pair[1]);
+    }
+    return QStringLiteral("%1:1").arg(QString::number(ratio, 'f', 2));
+}
+
+QJsonObject profileJson()
+{
+    auto &profile = MLT.profile();
+    const auto aspect = aspectText(profile.dar());
+    // MLT keeps the description of the default profile while the automatic video mode
+    // adapts the size and frame rate, so the description is built from the values.
+    QJsonObject json{{"width", profile.width()},
+                     {"height", profile.height()},
+                     {"fps", round3(framesPerSecond())},
+                     {"aspect", aspect},
+                     {"progressive", profile.progressive() != 0},
+                     {"description",
+                      QStringLiteral("%1x%2, %3 fps, %4")
+                          .arg(profile.width())
+                          .arg(profile.height())
+                          .arg(QString::number(framesPerSecond(), 'g', 4), aspect)}};
+    const bool automatic = Settings.playerProfile().isEmpty();
+    json["video_mode"] = automatic ? QStringLiteral("Automatic")
+                                   : QString::fromUtf8(profile.description());
+    // In the automatic mode the format follows the first clip added to an empty project.
+    json["adapts_to_first_clip"] = automatic && !profile.is_explicit();
+    return json;
+}
+
 QJsonObject stateJson()
 {
-    const auto &profile = MLT.profile();
     QJsonObject timelineInfo{{"tracks", trackCount()},
                              {"video_tracks", videoTrackCount()},
                              {"audio_tracks", trackCount() - videoTrackCount()}};
@@ -522,26 +610,65 @@ QJsonObject stateJson()
                        {"project",
                         QJsonObject{{"file", MAIN.fileName()},
                                     {"modified", MAIN.isWindowModified()}}},
-                       {"profile",
-                        QJsonObject{{"width", profile.width()},
-                                    {"height", profile.height()},
-                                    {"fps", round3(framesPerSecond())},
-                                    {"description", QString::fromUtf8(profile.description())}}},
+                       {"profile", profileJson()},
                        {"player", playerJson()},
                        {"timeline", timelineInfo},
                        {"playlist", QJsonObject{{"items", playlistCount()}}},
                        {"undo", undoJson()}};
 }
 
-/// The MLT XML of a clip from the playlist ("playlist_index") or a file ("path").
-bool sourceXml(const QJsonObject &arguments, QString &xml, QString &error)
+/// \a path, or the private copy that an app from the Microsoft Store (such as Claude
+/// Desktop) keeps of the files it writes under AppData.
+QString localPath(const QString &path)
 {
+#ifdef Q_OS_WIN
+    return QDir::fromNativeSeparators(Mcp::unvirtualizedPath(path,
+                                                             qEnvironmentVariable("APPDATA"),
+                                                             qEnvironmentVariable("LOCALAPPDATA")));
+#else
+    return path;
+#endif
+}
+
+/// The error for a file that does not exist, with the usual cause on Windows.
+QString fileNotFound(const QString &path)
+{
+    auto message = QStringLiteral("File not found: %1").arg(path);
+    if (path.contains(QLatin1String("/AppData/"), Qt::CaseInsensitive)
+        || path.contains(QLatin1String("\\AppData\\"), Qt::CaseInsensitive)) {
+        message += QStringLiteral(
+            ". Apps from the Microsoft Store (such as Claude Desktop) keep the files they write "
+            "in AppData in a private folder that other programs cannot see: save the file in "
+            "Documents, Videos or Desktop instead.");
+    }
+    return message;
+}
+
+/// The MLT XML of a clip from the playlist ("playlist_index"), a file ("path") or a media
+/// id from get_timeline or get_playlist ("media").
+bool sourceXml(QJsonObject arguments, QString &xml, QString &error)
+{
+    if (!arguments.value("media").toString().isEmpty()) {
+        const auto path = mediaPath(arguments.value("media").toString());
+        if (path.isEmpty()) {
+            error = QStringLiteral("Unknown media id \"%1\": use an id from the \"media\" table of "
+                                   "get_timeline or get_playlist.")
+                        .arg(arguments.value("media").toString());
+            return false;
+        }
+        if (!arguments.value("path").toString().isEmpty()
+            || !arguments.value("playlist_index").isUndefined()) {
+            error = QStringLiteral("Pass only one of \"playlist_index\", \"path\" and \"media\".");
+            return false;
+        }
+        arguments.insert("path", path);
+    }
     const bool hasIndex = arguments.contains("playlist_index")
                           && !arguments.value("playlist_index").isNull();
     const bool hasPath = !arguments.value("path").toString().isEmpty();
     if (hasIndex == hasPath) {
-        error = QStringLiteral("Pass either \"playlist_index\" (from get_playlist) or \"path\" "
-                               "(a media file).");
+        error = QStringLiteral("Pass one of \"playlist_index\" (from get_playlist), \"path\" (a "
+                               "media file) or \"media\" (an id such as \"m1\").");
         return false;
     }
     if (hasIndex) {
@@ -564,10 +691,10 @@ bool sourceXml(const QJsonObject &arguments, QString &xml, QString &error)
         xml = MLT.XML(&producer);
         return true;
     }
-    const auto path = QDir::fromNativeSeparators(arguments.value("path").toString());
+    const auto path = localPath(QDir::fromNativeSeparators(arguments.value("path").toString()));
     const QFileInfo file(path);
     if (!file.isFile()) {
-        error = QStringLiteral("File not found: %1").arg(path);
+        error = fileNotFound(path);
         return false;
     }
     if (MLT.checkFile(file.absoluteFilePath())) {
@@ -772,7 +899,12 @@ Mcp::ToolResult AiTools::run(const std::function<Mcp::ToolResult()> &body)
             "Shotcut AI is busy with another request, probably waiting for a dialog in the "
             "application. Try again after the user closes it."));
     QScopedValueRollback<bool> busy(m_busy, true);
-    return body();
+    QJsonObject media;
+    QScopedValueRollback<QJsonObject *> table(answerMedia, &media);
+    auto result = body();
+    if (!result.isError && !media.isEmpty())
+        result.data.insert("media", media);
+    return result;
 }
 
 Mcp::ToolResult AiTools::edit(const QString &title, const std::function<Mcp::ToolResult()> &body)
@@ -833,34 +965,55 @@ void AiTools::registerTools(Mcp::Server &server)
     add("get_timeline",
         "Get timeline",
         "The tracks of the timeline from top to bottom (index, code such as V1 or A1, name, "
-        "type, muted, hidden, locked) with their clips (index within the track, name, "
-        "resource, start, end, duration, in and out points in seconds and frames, fades, "
-        "whether it has filters, uuid), the playhead and the selection. Gaps are left out "
-        "unless include_gaps is true, so clip indices can skip numbers.",
+        "type, muted, hidden, locked) with their clips (index within the track, start, end, "
+        "duration, in and out points in seconds, media id, fades, whether it has filters, "
+        "uuid), the playhead and the selection. Each clip refers to its file by a media id "
+        "(m1, m2...); the \"media\" table of the answer gives the path of each id once. A "
+        "clip has a name only when it differs from its file name. Gaps are left out unless "
+        "include_gaps is true, so clip indices can skip numbers.",
         R"json({"type": "object",
-                "properties": {"include_gaps": {"type": "boolean",
-                    "description": "Also list the gaps (blank items) between clips."}},
+                "properties": {
+                  "include_gaps": {"type": "boolean",
+                    "description": "Also list the gaps (blank items) between clips."},
+                  "track": {"type": ["integer", "string"],
+                    "description": "Only this track (index or code such as V1)."},
+                  "detail": {"type": "string", "enum": ["compact", "full"],
+                    "description": "full adds frame numbers and every clip name (default compact)."}},
                 "additionalProperties": false})json",
         readOnly(),
         [this](const QJsonObject &arguments) {
             return run([&]() {
+                int track = -1;
+                if (arguments.contains("track")) {
+                    QString error;
+                    if (!resolveTrack(arguments.value("track"), track, error))
+                        return failure(error);
+                }
                 return Mcp::ToolResult::success(
-                    timelineJson(arguments.value("include_gaps").toBool()));
+                    timelineJson(arguments.value("include_gaps").toBool(),
+                                 arguments.value("detail").toString() == QLatin1String("full"),
+                                 track));
             });
         });
 
     add("get_playlist",
         "Get playlist",
-        "The media in the playlist (the Media panel): index, name, file, type (video, image, "
-        "audio, other), duration and in/out points in seconds. Use the index as "
-        "playlist_index in append_clip, insert_clip or overwrite_clip.",
-        R"json({"type": "object", "properties": {}, "additionalProperties": false})json",
+        "The media in the playlist (the Media panel): index, media id, type (video, image, "
+        "audio, other), duration and in/out points in seconds; the \"media\" table of the "
+        "answer gives the path of each id. Use the index as playlist_index, or the id as "
+        "media, in append_clip, insert_clip or overwrite_clip.",
+        R"json({"type": "object",
+                "properties": {
+                  "detail": {"type": "string", "enum": ["compact", "full"],
+                    "description": "full adds every item name (default compact)."}},
+                "additionalProperties": false})json",
         readOnly(),
-        [this](const QJsonObject &) {
-            return run([]() {
+        [this](const QJsonObject &arguments) {
+            return run([&]() {
+                const bool full = arguments.value("detail").toString() == QLatin1String("full");
                 QJsonArray items;
                 for (int row = 0; row < playlistCount(); ++row)
-                    items.append(playlistItemJson(row));
+                    items.append(playlistItemJson(row, full));
                 return Mcp::ToolResult::success(QJsonObject{{"items", items}});
             });
         });
@@ -1238,10 +1391,11 @@ void AiTools::registerTools(Mcp::Server &server)
         editing(),
         [this](const QJsonObject &arguments) {
             return run([&]() {
-                const auto path = QDir::fromNativeSeparators(arguments.value("path").toString());
+                const auto path = localPath(
+                    QDir::fromNativeSeparators(arguments.value("path").toString()));
                 const QFileInfo file(path);
                 if (!file.isFile())
-                    return failure(QStringLiteral("File not found: %1").arg(path));
+                    return failure(fileNotFound(path));
                 if (file.suffix().toLower() == QLatin1String("mlt"))
                     return failure(
                         QStringLiteral(
@@ -1272,9 +1426,9 @@ void AiTools::registerTools(Mcp::Server &server)
             return edit(tr("Add to playlist"), [&]() {
                 QStringList paths;
                 for (const auto &value : arguments.value("paths").toArray()) {
-                    const auto path = QDir::fromNativeSeparators(value.toString());
+                    const auto path = localPath(QDir::fromNativeSeparators(value.toString()));
                     if (!QFileInfo::exists(path))
-                        return failure(QStringLiteral("File not found: %1").arg(path));
+                        return failure(fileNotFound(path));
                     paths << QFileInfo(path).absoluteFilePath();
                 }
                 const int before = playlistCount();
@@ -1302,10 +1456,11 @@ void AiTools::registerTools(Mcp::Server &server)
         editing(false, true),
         [this](const QJsonObject &arguments) {
             return run([&]() {
-                const auto path = QDir::fromNativeSeparators(arguments.value("path").toString());
+                const auto path = localPath(
+                    QDir::fromNativeSeparators(arguments.value("path").toString()));
                 const QFileInfo file(path);
                 if (!file.isFile())
-                    return failure(QStringLiteral("File not found: %1").arg(path));
+                    return failure(fileNotFound(path));
                 if (file.suffix().toLower() != QLatin1String("mlt"))
                     return failure(QStringLiteral("A project is a .mlt file."));
                 if (MAIN.isWindowModified()) {
@@ -1372,15 +1527,17 @@ void AiTools::registerTools(Mcp::Server &server)
 
     add("append_clip",
         "Append clip",
-        "Adds a clip at the end of a track, from the playlist (playlist_index) or a file "
-        "(path). An empty timeline gets its first tracks. Returns the new clip.",
+        "Adds a clip at the end of a track, from the playlist (playlist_index), a file (path) "
+        "or a media id (media). An empty timeline gets its first tracks. Returns the new clip.",
         R"json({"type": "object",
                 "properties": {
                   "track": {"type": ["integer", "string"],
                     "description": "Track index or code (V1, A1...); default: the current track."},
                   "playlist_index": {"type": "integer", "minimum": 0,
                     "description": "A playlist item (get_playlist)."},
-                  "path": {"type": "string", "description": "Or a media file (absolute path)."}},
+                  "path": {"type": "string", "description": "Or a media file (absolute path)."},
+                  "media": {"type": "string",
+                    "description": "Or a media id (m1...) from get_timeline or get_playlist."}},
                 "additionalProperties": false})json",
         editing(),
         [this](const QJsonObject &arguments) {
@@ -1416,17 +1573,21 @@ void AiTools::registerTools(Mcp::Server &server)
             insert ? tr("Insert clip") : tr("Overwrite clip"),
             insert ? QStringLiteral(
                 "Inserts a clip into a track at a time, moving the later clips of that track "
-                "to the right (ripple), from the playlist (playlist_index) or a file (path).")
+                "to the right (ripple), from the playlist (playlist_index), a file (path) or a "
+                "media id (media).")
                    : QStringLiteral(
                        "Places a clip on a track at a time, replacing what is there (the other "
-                       "clips do not move), from the playlist (playlist_index) or a file (path)."),
+                       "clips do not move), from the playlist (playlist_index), a file (path) "
+                       "or a media id (media)."),
             R"json({"type": "object",
                     "properties": {
                       "track": {"type": ["integer", "string"], "description": "Track index or code (V1, A1...)."},
                       "position": {"type": ["number", "string"], "description": "Seconds or timecode."},
                       "playlist_index": {"type": "integer", "minimum": 0,
                         "description": "A playlist item (get_playlist)."},
-                      "path": {"type": "string", "description": "Or a media file (absolute path)."}},
+                      "path": {"type": "string", "description": "Or a media file (absolute path)."},
+                      "media": {"type": "string",
+                        "description": "Or a media id (m1...) from get_timeline or get_playlist."}},
                     "required": ["track", "position"], "additionalProperties": false})json",
             editing(),
             [this, insert](const QJsonObject &arguments) {
