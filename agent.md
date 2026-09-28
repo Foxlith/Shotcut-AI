@@ -19,6 +19,7 @@
 - **Fase 6 (Inspector y Panel de Medios):** Completada — `--fast` sube a 715 tests (30 nuevos de Fase 6). Verificada en la app real con un proyecto con vídeos, imagen y audio en la playlist: cuadrícula de 2 columnas, búsqueda, Escala desde el Inspector (añade el filtro y se deshace), interruptores de filtros, doble clic → Filtros y cambio de clip.
 - **Fase 7 (Acentos y Tema Clásico):** Completada — `--fast` sube a 735 tests (20 nuevos de Fase 7). Verificada en la app real cambiando el acento en vivo entre los 4 colores, reiniciando con el acento guardado y con el tema *Classic Fusion Dark*. Con esta fase quedan completadas todas las fases del rediseño.
 - **Fase 8 (Sistema de IA en vivo, MCP):** Completada — `--fast` sube a 754 tests (19 nuevos de Fase 8) y el CI de Linux ejecuta además las pruebas C++ (`tests/test_mcp_protocol.cpp`, 34 comprobaciones). Verificada en la app real controlándola por MCP (HTTP y puente stdio) y por WebSocket: dividir, mover, recortar, fundidos, pistas, filtros, fotogramas, deshacer y seguridad (solo local, orígenes web rechazados). Guía: `docs/ai-mcp.md`.
+- **Fase 9 (Percepción de la IA, Entrega 1 de `docs/ROADMAP_SHOTCUT_AI.md`):** Completada — `--fast` sube a 777 tests (23 nuevos) y QtTest a 36 comprobaciones. Nuevo servidor MCP `shotcut-analysis` (escenas, miniaturas, volumen, silencios, tempo y transcripción con whisper.cpp) y arreglos de las primeras pruebas de Fox con Claude Code (respuestas compactas, perfil real, rutas de apps de Microsoft Store). Guías: `docs/ai-analysis.md`, `docs/build-windows.md`.
 - **Lanzador de Pruebas en Escritorio:** `C:\Users\Fox\Desktop\Probar Shotcut AI.lnk` (ejecuta con `capcut_theme.qss` y proyecto demo).
 
 ---
@@ -79,8 +80,20 @@
 - Un solo puerto (`9999`, clave `aiServer/port`), **solo en 127.0.0.1 y ::1**: MCP en `http://127.0.0.1:9999/mcp` (Claude Code, OpenCode, Antigravity) y el WebSocket `ws://127.0.0.1:9999` de siempre (comandos `{"command": ...}` que ahora sí se ejecutan). Claude Desktop usa el puente stdio instalado en `share/shotcut/mcp/`.
 - Se crea al final del constructor de `MainWindow` si *Settings > AI Agent (MCP) > Enable AI Agent Server* está activado (clave `aiServer/enabled`, por defecto sí).
 
+### 7. 👂 Análisis de medios para la IA (`shotcut-analysis`) — Fase 9
+- Archivo: `scripts/shotcut_analysis.py`, instalado en `share/shotcut/mcp/` junto al puente. Es un servidor MCP por stdio con **solo la biblioteca estándar de Python** y los programas del zip (`bin/ffmpeg`, `ffprobe`, `whisper-cli`; se pueden cambiar con `SHOTCUT_FFMPEG`/`SHOTCUT_FFPROBE`/`SHOTCUT_WHISPER`). Guía: `docs/ai-analysis.md`.
+- 11 herramientas:
+  - `check_setup`, `probe_media`, `describe_clip`;
+  - `detect_scenes` (puntuación de escena de ffmpeg), `contact_sheet` (tile + drawtext; imagen MCP);
+  - `analyze_audio` (ebur128, silencedetect y tempo/beats propios: dos envolventes de *onsets*, graves y ataques, y tempo por suma de armónicos de la autocorrelación sobre los graves, con beats por programación dinámica);
+  - `transcribe` (`whisper-cli -ojf`: frases, palabras y SRT; repite sin GPU si falla);
+  - `analyze_folder`, `download_model` (la lista y la carpeta de modelos de Shotcut, `extensions/whispermodel`), `get_jobs` y `cancel_job`.
+- Trabajos largos en hilos: cada llamada espera hasta `wait` segundos y, si no, devuelve un id de trabajo. La caché va por archivo (ruta, tamaño y fecha) en `%LOCALAPPDATA%\Meltytech\Shotcut\analysis`.
+- `scripts/sc.py`: CLI para las herramientas de Shotcut AI (HTTP) o, con `--analysis`, las de este servidor.
+
 ### 6. 🧪 Infraestructura de Pruebas (E2E & Adversarial)
-- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (754 tests tras la Fase 8: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py`).
+- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (777 tests tras la Fase 9: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py` + 23 de `tests/test_phase9_ai_analysis_verification.py`).
+- Prueba en vivo del servidor de análisis con los programas reales: `python tests/live_analysis_smoke.py` (genera medios de contenido conocido con `tests/media/make_samples.py`; `--speech archivo --expect texto` y `--download-model nombre` para la transcripción). El build de Windows la ejecuta con el zip, un modelo `tiny-q5_1` descargado por el servidor y la muestra `jfk.wav` de whisper.cpp. En `--fast`, ffmpeg, ffprobe y whisper-cli están simulados (`tests/media/fake_ffmpeg.py`, `fake_whisper.py`).
 - Pruebas C++ (QtTest, `-DSHOTCUT_BUILD_TESTS=ON` y `ctest`, también en el CI de Linux): `tests/test_mcp_protocol.cpp` y las dos de upstream.
 - Prueba en vivo del servidor de IA con la app abierta: `python tests/live_mcp_smoke.py` (`--read-only`, `--media archivo`, `--bridge ruta`); el build de Windows la ejecuta con la app recién compilada.
 - Validador AST: Escaneo de 436 archivos QML/JS con 0 errores de sintaxis.
@@ -283,17 +296,68 @@
   - **Verificación en la app real (Qt 6.10.2 + MLT 7.36.1, Xvfb 1440×900, proyecto de la Fase 6):** por MCP (`curl` y cliente Python) se dividió Toma_01 en el segundo 3 (se ve al momento, el visor muestra *AI: Split clip*), se añadió *Sepia Tone* (el panel Filtros lo abre con sus valores por defecto) y se cambiaron sus parámetros, se ocultó V2 para ver el efecto con `get_frame`, fundidos, recortes (la herramienta encuentra el clip aunque cambie de índice), mover a otra pista, añadir al final de una pista vacía, insertar/sobrescribir, pista nueva, acciones, abrir medio y proyecto, guardar (y negarse a sobrescribir), deshacer/rehacer; el Historial muestra un paso *AI: …* por llamada. Seguridad: solo escucha en 127.0.0.1 (la interfaz de red rechaza la conexión), `Origin` y `Host` externos → 403 (HTTP y WebSocket). WebSocket: `play`/`pause` reproducen de verdad y un comando inventado da error con la lista de comandos. `tests/live_mcp_smoke.py --media … --bridge …` pasa entero, también a través del puente.
   - **Windows:** el workflow arranca `shotcut.exe` y ejecuta `tests/live_mcp_smoke.py --read-only --bridge …` contra la app recién compilada (MCP por HTTP y por el puente del zip); un fallo hace fallar el build.
 
+- **Fase 9: Percepción de la IA — Entrega 1 de `docs/ROADMAP_SHOTCUT_AI.md` (`scripts/shotcut_analysis.py`, `scripts/sc.py`, `tests/test_phase9_ai_analysis_verification.py`, `tests/live_analysis_smoke.py`, `tests/media/make_samples.py`, `tests/media/fake_ffmpeg.py`, `tests/media/fake_whisper.py`, `docs/ai-analysis.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md` (nuevos), `src/ai/aitools.cpp`, `src/ai/mcpprotocol.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/CMakeLists.txt`, `tests/test_mcp_protocol.cpp`, `tests/run_e2e_tests.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`, `docs/ai-mcp.md`, `.gitignore`, `plan.md`):** [COMPLETADO — VERIFICADO EN LINUX Y EN EL BUILD DE WINDOWS CON WHISPER REAL]
+  - **Contexto:** Fox conectó Claude Code (Windows) al MCP de la Fase 8 y escribió `docs/ROADMAP_SHOTCUT_AI.md`: un editor de vídeo por IA en 6 fases. Decidió avanzar por entregas con PR, con todo en este repositorio, todo local y YouTube 16:9 primero. Esta es la Entrega 1: la Fase 0 (preparación) y la Fase 1 (percepción).
+  - **Los 4 problemas de sus pruebas:**
+    - *Respuestas largas:* `ToolResult::toJson()` enviaba los datos dos veces (texto JSON y `structuredContent`); ahora van una sola vez. Clips, elementos de la playlist y el clip fuente nombran su archivo con un id estable (`mediaRef()`: `m1`, `m2`…), y `AiTools::run()` añade a la respuesta la tabla `media` con cada ruta una vez. Los nombres solo aparecen si difieren del archivo, y los fotogramas solo con `detail: "full"`. `get_timeline` acepta `track`, y `append_clip`/`insert_clip`/`overwrite_clip` aceptan `media`.
+    - *Perfil:* `profileJson()` construye la descripción con los valores (`"1920x1080, 25 fps, 16:9"`) y añade `aspect`, `progressive`, `video_mode` (*Automatic* o el modo elegido) y `adapts_to_first_clip`. Antes daba el `description()` de MLT, que en modo automático se queda en el del perfil por defecto (*PAL 4:3 DV or DVD*).
+    - *Rutas de Claude Desktop (Microsoft Store):* `Mcp::unvirtualizedPath()` busca `Packages/<paquete>/LocalCache/{Roaming,Local}/…` (primero los paquetes de Claude). `localPath()` la usa en Windows al abrir, añadir o insertar archivos, y `fileNotFound()` explica el caso. Tiene prueba unitaria en QtTest.
+    - *Dos `shotcut.exe`:* el *watchdog* de arranque de `src/main.cpp`. Está documentado, y el paso *Screenshot and stop* cierra el árbol con `taskkill /T`, así que ya no queda un proceso huérfano en el CI.
+  - ***Copy MCP Configuration*:** configura `shotcut-ai` y `shotcut-analysis` en los 4 clientes; en Claude Code usa `--scope user`. `AIAgentServer::analysisPath()` solo lo incluye si el script está instalado.
+  - **Servidor de análisis:** ver el componente 7.
+  - **Precisión:**
+    - tempo: se ajustó con pistas sintéticas (bombo + *hi-hat* a corcheas y patrón pop). Acierta de 60 a 160 BPM con beats a ±10 ms; por encima de ~165 BPM puede dar la mitad (los beats siguen alineados);
+    - cortes de escena exactos;
+    - silencios exactos;
+    - volumen a ±0,1 dB en la diferencia de 10 dB.
+  - **Windows:**
+    - `mingw-w64-ucrt-x86_64-whisper.cpp` en el workflow; el script de empaquetado copia `whisper-cli.exe` y los backends `ggml-cpu*`/`ggml-vulkan` (los carga en tiempo de ejecución, así que `ldd` no los ve). Con ello vuelve *Subtitles > Speech to Text*, que faltaba en el zip;
+    - el zip pasa de 187 a 208 MB;
+    - nuevos pasos del CI: `whisper-cli.exe --help` sin MSYS2 y *Check the media analysis server*. Este último ejecuta `tests/live_analysis_smoke.py` con el servidor del zip, un modelo `tiny-q5_1` que descarga el propio servidor y la muestra `jfk.wav`.
+  - **Verificación:**
+    - *Linux:* app real (Qt 6.10.2 + MLT 7.36.1).
+      - Proyecto vacío: `get_state` da `"1920x1080, 25 fps, 16:9"`, `video_mode` *Automatic* y `adapts_to_first_clip`.
+      - Proyecto de la Fase 6: `get_timeline` compacto con la tabla `media`, `track`, `detail: "full"`, `get_playlist` con los mismos ids, `append_clip` por id (se deshace con un paso), errores de id desconocido o fuentes dobles, y aviso de `AppData`.
+      - `tests/live_mcp_smoke.py --media … --bridge …` pasa entero con el nuevo formato.
+      - `tests/live_analysis_smoke.py` pasa con ffmpeg 6.1.
+    - *Build de Windows (run 36380033493):* las 11 herramientas; cortes [2.0, 4.4, 6.0] exactos; hoja de miniaturas con los tiempos encima (las fuentes funcionan); silencios exactos; −27,1/−37,1 LUFS; 120 BPM. Además, `download_model tiny-q5_1` en 1,3 s y `transcribe` de `jfk.wav`: *"And so, my fellow Americans, ask not what your country can do for you…"*, en 4,6 s para 11 s de audio, 22 palabras con tiempos y SRT.
+  - **Pruebas:**
+    - `tests/test_phase9_ai_analysis_verification.py` (23 tests, Tier 5):
+      - lectura de ffprobe, escenas, ebur128/silencedetect y whisper;
+      - tempo y beats con audio generado en la prueba (120, 96 y 70 BPM con *hi-hat*);
+      - servidor por stdio con ffmpeg y whisper simulados: todas las herramientas, errores, reintento sin GPU, SRT, caché y trabajos;
+      - solo biblioteca estándar, modelos de Shotcut, instalación y empaquetado;
+      - arreglos de la app, `sc.py`, guías y roadmap.
+    - Mutaciones comprobadas: quitar el reintento sin GPU o calcular el tempo con la envolvente combinada hacen fallar la suite.
+    - QtTest: 36 comprobaciones (+2: `messageAndDataAreSeparateTexts`, `findsFilesOfStoreApps`).
+    - `python tests/run_e2e_tests.py --fast`: **777/777 (exit code 0)** a escala 100 % y 125 %. clang-format-14 limpio.
+  - **Roadmap:** marcadas 0.1, 0.2, 0.4, 0.5 y 1.1–1.4, 1.6–1.8, con notas; respondidas las preguntas abiertas que dependían del código; nuevas secciones *Entregas* y registro. Siguen abiertas la 0.3 (material real de Fox en `muestras/`, ya en `.gitignore`) y la 1.5 (medir 5 min de entrevista en el PC de Fox).
+
 ---
 
-## 🚀 Próxima Etapa: Pulido y siguientes entregas
-- **Estado del plan:** las 8 fases de `plan.md` están completadas y verificadas en la app real (Linux); el build de Windows comprueba además el servidor de IA.
-- **Pendiente:** probar en el equipo de Fox el zip `Shotcut-AI-windows-x64` (el del run 36361788945 o posterior, que ya carga todos los módulos de MLT) y conectar sus IA (OpenCode, Antigravity, Claude Code, Claude Desktop) siguiendo `docs/ai-mcp.md`; siguiente entrega de la IA: exportar vídeo (hará falta un método público en `EncodeDock`, cuyo `encode()` es privado); opcionalmente distribuir las fuentes Geist / Geist Mono (OFL) y, para igualar al instalador oficial en Windows, compilar MLT desde el código con OpenCV, libspatialaudio y movit, más bigsh0t y ntsc-rs, como hace `scripts/build-shotcut-msys2.sh`.
+## 🚀 Próxima Etapa: Hoja de ruta del editor de vídeo por IA
+- **Guía de trabajo:** `docs/ROADMAP_SHOTCUT_AI.md` (el roadmap de Fox), que se hace por entregas con PR:
+  - **Entrega 1** (Fase 0 + Fase 1): ✅ es la Fase 9 de `plan.md`.
+  - **Entrega 2:**
+    - exportar con perfiles YouTube 1080p/4K y borrador, con un método público en `EncodeDock` sobre su `encode()` privado y el progreso con `get_jobs`;
+    - transiciones (`AddTransitionCommand`);
+    - títulos (clip transparente + filtro de texto);
+    - volumen y normalización;
+    - marcadores (comandos de `markercommands.h`).
+  - **Entrega 3:** EditPlan v1, con `apply_edit_plan` en C++ como un solo paso de deshacer.
+  - **Entrega 4:** revisión, subtítulos, velocidad, reencuadre 9:16, color y *ducking*.
+  - **Entrega 5:** Skill, estilos y plugin de Claude Code.
+  - **Entrega 6:** evaluación.
+- **Pendiente de Fox:**
+  - probar el zip de la Entrega 1 en su PC y conectar `shotcut-analysis` (*Copy MCP Configuration*);
+  - medir la tarea 1.5 (entrevista de 5 min en menos de 2 min) y aportar material real en `muestras/` (tarea 0.3).
+- **Opcional para Windows:** distribuir las fuentes Geist / Geist Mono (OFL). Para igualar al instalador oficial, compilar MLT desde el código con OpenCV, libspatialaudio y movit, más bigsh0t y ntsc-rs, como hace `scripts/build-shotcut-msys2.sh`.
 
 ---
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 754 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 777 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).
@@ -303,4 +367,9 @@
 8. **Pruebas con colores renderizados:** para comprobar el color de un píxel, renderizar con `render_1x(widget)` (imagen con `devicePixelRatio` 1), nunca con `widget.grab()`: en Windows con la escala de pantalla al 125 % la imagen de `grab()` no coincide con las coordenadas del widget.
 9. **Color de acento:** en hojas de estilo nuevas, escribir el acento como `#FF7A45` (hover `#FF8F61`, pressed `#E66835`, translúcido `rgba(255, 122, 69, a)`): `Util::accentStyleSheet()` lo sustituye. La hoja de la app ya lo hace; una hoja propia de un widget necesita `Util::followAccentColor(widget)` justo después de `setStyleSheet()` (o, en un `DockToolBar`, pasar por `updateStyle()`). Para saber si el tema es Grafito usar `Settings.isGrafito()` (C++) o `application.grafito` (QML), nunca la luminosidad de la paleta.
 10. **Herramientas de IA (MCP):** una herramienta nueva se registra en `AiTools::registerTools()` con un esquema JSON cerrado (`"additionalProperties": false`), `readOnly()` o `editing()`, y, si cambia el proyecto, dentro de `edit(tr("..."), ...)` para que sea un solo paso *AI: …*; debe usar el mismo código que la interfaz (métodos de los docks, comandos de deshacer) y nunca abrir diálogos si puede evitarlos. Añadirla a la tabla de `docs/ai-mcp.md` y a `TOOLS` en `tests/test_phase8_ai_mcp_verification.py` (la suite comprueba que coinciden). El servidor debe seguir escuchando solo en local.
-11. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.
+11. **Servidor de análisis (`shotcut-analysis`):**
+    - solo biblioteca estándar de Python (la suite lo comprueba) y los programas del zip, nunca `pip install`;
+    - las herramientas nuevas van en `TOOLS` de `scripts/shotcut_analysis.py` con un esquema cerrado, en la tabla de `docs/ai-analysis.md` y en `ANALYSIS_TOOLS` de `tests/test_phase9_ai_analysis_verification.py`;
+    - el trabajo que tarde más de unos segundos va en `JOBS.start()` + `wait_for()`, y sus resultados van a la caché;
+    - las respuestas de las dos IA deben ser compactas: ids de medios, sin repetir rutas, listas en lugar de objetos para datos largos.
+12. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.

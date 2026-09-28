@@ -373,6 +373,7 @@ if(WIN32)
 
   install(DIRECTORY qml DESTINATION ${CMAKE_INSTALL_PREFIX}/share/shotcut/)
   install(FILES ${CMAKE_SOURCE_DIR}/scripts/shotcut_mcp_bridge.py
+    ${CMAKE_SOURCE_DIR}/scripts/shotcut_analysis.py
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/shotcut/mcp)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/filter-sets DESTINATION ${CMAKE_INSTALL_PREFIX}/share/shotcut/)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/voices DESTINATION ${CMAKE_INSTALL_PREFIX}/share/shotcut/)
@@ -408,6 +409,7 @@ if(APPLE)
   install(TARGETS shotcut BUNDLE DESTINATION ${CMAKE_INSTALL_PREFIX})
   install(DIRECTORY qml DESTINATION ${CMAKE_INSTALL_PREFIX}/Shotcut.app/Contents/Resources/shotcut/)
   install(FILES ${CMAKE_SOURCE_DIR}/scripts/shotcut_mcp_bridge.py
+    ${CMAKE_SOURCE_DIR}/scripts/shotcut_analysis.py
     DESTINATION ${CMAKE_INSTALL_PREFIX}/Shotcut.app/Contents/Resources/shotcut/mcp)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/filter-sets DESTINATION ${CMAKE_INSTALL_PREFIX}/Shotcut.app/Contents/Resources/shotcut/)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/voices DESTINATION ${CMAKE_INSTALL_PREFIX}/Shotcut.app/Contents/Resources/shotcut/)
@@ -424,6 +426,7 @@ if(UNIX AND NOT APPLE)
   install(TARGETS shotcut RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(DIRECTORY qml DESTINATION ${CMAKE_INSTALL_DATADIR}/shotcut/)
   install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/shotcut_mcp_bridge.py
+    ${CMAKE_SOURCE_DIR}/scripts/shotcut_analysis.py
     DESTINATION ${CMAKE_INSTALL_DATADIR}/shotcut/mcp)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/filter-sets DESTINATION ${CMAKE_INSTALL_DATADIR}/shotcut/)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/voices DESTINATION ${CMAKE_INSTALL_DATADIR}/shotcut/)

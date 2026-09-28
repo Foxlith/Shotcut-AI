@@ -17,7 +17,10 @@
 
 #include "mcpprotocol.h"
 
+#include <algorithm>
 #include <cmath>
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QUrl>
 
@@ -41,18 +44,19 @@ ToolResult ToolResult::failure(const QString &message)
 
 QJsonObject ToolResult::toJson() const
 {
+    // The data goes once, as compact JSON text: some clients give the model both the text
+    // and structuredContent, which would double every answer.
     QJsonArray content;
-    QString message = text;
-    if (message.isEmpty() && !data.isEmpty())
-        message = QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Compact));
-    if (!message.isEmpty())
-        content.append(QJsonObject{{"type", "text"}, {"text", message}});
+    if (!text.isEmpty())
+        content.append(QJsonObject{{"type", "text"}, {"text", text}});
+    if (!isError && !data.isEmpty())
+        content.append(
+            QJsonObject{{"type", "text"},
+                        {"text",
+                         QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Compact))}});
     for (const auto &block : extraContent)
         content.append(block);
-    QJsonObject result{{"content", content}, {"isError", isError}};
-    if (!isError && !data.isEmpty())
-        result["structuredContent"] = data;
-    return result;
+    return QJsonObject{{"content", content}, {"isError", isError}};
 }
 
 QJsonObject Tool::toJson() const
@@ -609,33 +613,85 @@ QByteArray reasonPhrase(int status)
 QString clientConfiguration(Client client,
                             quint16 port,
                             const QString &bridgePath,
+                            const QString &analysisPath,
                             const QString &python)
 {
     const auto url = QStringLiteral("http://127.0.0.1:%1/mcp").arg(port);
     QJsonObject config;
     switch (client) {
-    case Client::ClaudeCode:
-        return QStringLiteral("claude mcp add --transport http shotcut-ai %1").arg(url);
-    case Client::OpenCode:
+    case Client::ClaudeCode: {
+        // For every folder (user scope), not only the current project.
+        auto commands
+            = QStringLiteral("claude mcp add --scope user --transport http shotcut-ai %1").arg(url);
+        if (!analysisPath.isEmpty())
+            commands += QStringLiteral("\nclaude mcp add --scope user shotcut-analysis %1 \"%2\"")
+                            .arg(python, analysisPath);
+        return commands;
+    }
+    case Client::OpenCode: {
         // opencode.json
-        config = QJsonObject{{"$schema", "https://opencode.ai/config.json"},
-                             {"mcp",
-                              QJsonObject{{"shotcut-ai",
-                                           QJsonObject{{"type", "remote"},
-                                                       {"url", url},
-                                                       {"enabled", true}}}}}};
+        QJsonObject servers{
+            {"shotcut-ai", QJsonObject{{"type", "remote"}, {"url", url}, {"enabled", true}}}};
+        if (!analysisPath.isEmpty())
+            servers["shotcut-analysis"] = QJsonObject{{"type", "local"},
+                                                      {"command", QJsonArray{python, analysisPath}},
+                                                      {"enabled", true}};
+        config = QJsonObject{{"$schema", "https://opencode.ai/config.json"}, {"mcp", servers}};
         break;
+    }
     case Client::ClaudeDesktop:
     case Client::Antigravity: {
-        // claude_desktop_config.json and mcp_config.json start a local process: the bridge.
+        // claude_desktop_config.json and mcp_config.json start local processes: the bridge
+        // and the media analysis server.
         QJsonObject stdio{{"command", python}, {"args", QJsonArray{bridgePath}}};
         if (port != 9999)
             stdio["env"] = QJsonObject{{"SHOTCUT_AI_URL", url}};
-        config = QJsonObject{{"mcpServers", QJsonObject{{"shotcut-ai", stdio}}}};
+        QJsonObject servers{{"shotcut-ai", stdio}};
+        if (!analysisPath.isEmpty())
+            servers["shotcut-analysis"] = QJsonObject{{"command", python},
+                                                      {"args", QJsonArray{analysisPath}}};
+        config = QJsonObject{{"mcpServers", servers}};
         break;
     }
     }
     return QString::fromUtf8(QJsonDocument(config).toJson(QJsonDocument::Indented));
+}
+
+QString unvirtualizedPath(const QString &path,
+                          const QString &roamingAppData,
+                          const QString &localAppData)
+{
+    const auto clean = QDir::cleanPath(QDir::fromNativeSeparators(path));
+    if (clean.isEmpty() || QFileInfo::exists(clean) || localAppData.isEmpty())
+        return path;
+    const auto roaming = QDir::cleanPath(QDir::fromNativeSeparators(roamingAppData));
+    const auto local = QDir::cleanPath(QDir::fromNativeSeparators(localAppData));
+    QString folder, relative;
+    if (!roaming.isEmpty() && clean.startsWith(roaming + QLatin1Char('/'), Qt::CaseInsensitive)) {
+        folder = QStringLiteral("Roaming");
+        relative = clean.mid(roaming.size() + 1);
+    } else if (clean.startsWith(local + QLatin1Char('/'), Qt::CaseInsensitive)) {
+        folder = QStringLiteral("Local");
+        relative = clean.mid(local.size() + 1);
+        if (relative.startsWith(QLatin1String("Packages/"), Qt::CaseInsensitive))
+            return path;
+    } else {
+        return path;
+    }
+    // A packaged app writes there instead: Packages/<package>/LocalCache/<folder>/<relative>.
+    QDir packages(local + QStringLiteral("/Packages"));
+    auto names = packages.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    std::stable_sort(names.begin(), names.end(), [](const QString &a, const QString &b) {
+        return a.contains(QLatin1String("Claude"), Qt::CaseInsensitive)
+               && !b.contains(QLatin1String("Claude"), Qt::CaseInsensitive);
+    });
+    for (const auto &name : names) {
+        const auto candidate = packages.filePath(name + QStringLiteral("/LocalCache/") + folder
+                                                 + QLatin1Char('/') + relative);
+        if (QFileInfo::exists(candidate))
+            return candidate;
+    }
+    return path;
 }
 
 QByteArray httpResponse(int status,

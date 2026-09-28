@@ -58,6 +58,8 @@ public:
 
     /// The installed stdio bridge for clients that only start local processes.
     static QString bridgePath();
+    /// The installed media analysis server (stdio), or an empty string.
+    static QString analysisPath();
     /// What to paste in the configuration of an AI client to connect it to Shotcut AI.
     static QString clientConfiguration(Mcp::Client client, quint16 port);
 

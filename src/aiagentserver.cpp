@@ -23,6 +23,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -136,6 +137,12 @@ QString AIAgentServer::bridgePath()
         QmlApplication::dataDir().absoluteFilePath("shotcut/mcp/shotcut_mcp_bridge.py"));
 }
 
+QString AIAgentServer::analysisPath()
+{
+    const auto path = QmlApplication::dataDir().absoluteFilePath("shotcut/mcp/shotcut_analysis.py");
+    return QFileInfo::exists(path) ? QDir::toNativeSeparators(path) : QString();
+}
+
 QString AIAgentServer::clientConfiguration(Mcp::Client client, quint16 port)
 {
 #if defined(Q_OS_WIN)
@@ -143,7 +150,7 @@ QString AIAgentServer::clientConfiguration(Mcp::Client client, quint16 port)
 #else
     const auto python = QStringLiteral("python3");
 #endif
-    return Mcp::clientConfiguration(client, port, bridgePath(), python);
+    return Mcp::clientConfiguration(client, port, bridgePath(), analysisPath(), python);
 }
 
 void AIAgentServer::onNewTcpConnection()

@@ -51,8 +51,8 @@ enum ErrorCode {
 /// The result of a tool call, sent to the client as a CallToolResult.
 struct ToolResult
 {
-    QJsonObject data;        ///< structuredContent, also sent as JSON text
-    QString text;            ///< a message for the model; the JSON of data when empty
+    QJsonObject data;        ///< sent to the client once, as compact JSON text
+    QString text;            ///< a message for the model, before the data
     QJsonArray extraContent; ///< more content blocks, such as images
     bool isError = false;
 
@@ -163,13 +163,23 @@ QByteArray reasonPhrase(int status);
 
 /// The AI clients whose configuration Shotcut AI can copy.
 enum class Client { ClaudeCode, ClaudeDesktop, OpenCode, Antigravity };
-/// What to paste in the configuration of an AI client: a command for Claude Code, JSON
-/// with the HTTP endpoint for OpenCode, and JSON that starts the stdio bridge with
-/// \a python for Claude Desktop and Antigravity.
+/// What to paste in the configuration of an AI client: commands for Claude Code, JSON with
+/// the HTTP endpoint for OpenCode, and JSON that starts the stdio bridge with \a python for
+/// Claude Desktop and Antigravity. Each one also starts the media analysis server at
+/// \a analysisPath with \a python, unless it is empty.
 QString clientConfiguration(Client client,
                             quint16 port,
                             const QString &bridgePath,
+                            const QString &analysisPath,
                             const QString &python);
+/// Apps from the Microsoft Store (MSIX), such as Claude Desktop, save the files that they
+/// write under AppData in their package folder
+/// (<localAppData>/Packages/<package>/LocalCache/Roaming or Local), where other programs do
+/// not look. Returns that copy of \a path when \a path does not exist and a package has it
+/// (Claude packages first), else \a path.
+QString unvirtualizedPath(const QString &path,
+                          const QString &roamingAppData,
+                          const QString &localAppData);
 /// A complete response that closes the connection.
 QByteArray httpResponse(int status,
                         const QByteArray &contentType = QByteArray(),
