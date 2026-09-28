@@ -77,6 +77,9 @@ public:
     void getSelectionRange(int *start, int *end);
     Mlt::Playlist *binPlaylist();
     static void sortBins(QTreeWidget *treeWidget);
+    /// Adds media files to the end of the playlist without a file dialog (used by the AI
+    /// tools), like dropping them on the panel.
+    void appendFiles(const QStringList &paths);
 
 signals:
     void clipOpened(Mlt::Producer *producer, bool play = false);

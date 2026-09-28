@@ -31,6 +31,18 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
+      - name: Check out the LADSPA audio plugins
+        uses: actions/checkout@v4
+        with:
+          repository: ddennedy/ladspa-swh
+          ref: shotcut
+          path: deps/ladspa-swh
+
+      # The libraries of the MLT modules are optional dependencies of the MLT package, so
+      # they are listed here: without them the modules plus (Size, Position & Rotate,
+      # Text: Simple, Sepia, Loudness...), resample, rnnoise, rtaudio, rubberband (Pitch)
+      # and sox do not load and their Shotcut filters disappear. Autotools and the Perl
+      # modules build the LADSPA plugins.
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -55,6 +67,19 @@ jobs:
             mingw-w64-ucrt-x86_64-ffmpeg
             mingw-w64-ucrt-x86_64-fftw
             mingw-w64-ucrt-x86_64-frei0r-plugins
+            mingw-w64-ucrt-x86_64-gdk-pixbuf2
+            mingw-w64-ucrt-x86_64-libebur128
+            mingw-w64-ucrt-x86_64-libsamplerate
+            mingw-w64-ucrt-x86_64-libvorbis
+            mingw-w64-ucrt-x86_64-pango
+            mingw-w64-ucrt-x86_64-rnnoise
+            mingw-w64-ucrt-x86_64-rtaudio
+            mingw-w64-ucrt-x86_64-rubberband
+            mingw-w64-ucrt-x86_64-sox
+            mingw-w64-ucrt-x86_64-vid.stab
+            mingw-w64-ucrt-x86_64-autotools
+            perl-xml-parser
+            perl-list-moreutils
 
       - name: Versions
         run: |
@@ -77,32 +102,82 @@ jobs:
       - name: Install
         run: cmake --install build
 
+      - name: Build the LADSPA audio plugins
+        run: |
+          # The SWH plugins of the official Shotcut build, for the Compressor, Limiter,
+          # Reverb, Delay, Expander, Noise Gate, Equalizer and pass filters. MLT loads them
+          # from lib/ladspa.
+          cd deps/ladspa-swh
+          mkdir -p m4
+          ./autogen.sh --disable-nls
+          make -j"$(nproc)" LDFLAGS=-no-undefined
+          mkdir -p ../../dist/Shotcut-AI/lib/ladspa
+          cp .libs/*.dll ../../dist/Shotcut-AI/lib/ladspa/
+          echo "$(ls ../../dist/Shotcut-AI/lib/ladspa | wc -l) LADSPA plugins"
+
       - name: Bundle the runtime
         run: bash scripts/bundle-windows-msys2.sh dist/Shotcut-AI
 
       - name: Check MLT in the bundle
         run: |
           # Run the bundled melt with a PATH that does not reach MSYS2.
-          cd dist/Shotcut-AI/bin
-          PATH=/c/Windows/system32:/c/Windows ./melt.exe -query producers | tee ../../melt-producers.txt
-          grep -q avformat ../../melt-producers.txt
+          query() { (cd dist/Shotcut-AI/bin && PATH=/c/Windows/system32:/c/Windows ./melt.exe -query "$1"); }
+          query producers > dist/melt-producers.txt 2> dist/melt-errors.txt
+          query filters > dist/melt-filters.txt 2> /dev/null
+          query links > dist/melt-links.txt 2> /dev/null || true
+          cat dist/melt-producers.txt dist/melt-errors.txt
+          grep -q avformat dist/melt-producers.txt || { echo "::error::No avformat producer"; exit 1; }
+          # Shotcut hides the filters whose MLT service is missing.
+          grep -rhoE "mlt_service: *[\"'][^\"']+[\"']" src/qml/filters \
+            | sed -E "s/.*[\"']([^\"']+)[\"']$/\1/" | sort -u > dist/shotcut-services.txt
+          sed -n 's/^  - //p' dist/melt-filters.txt dist/melt-links.txt | sort -u > dist/mlt-services.txt
+          missing=$(comm -23 dist/shotcut-services.txt dist/mlt-services.txt | tr '\n' ' ')
+          if [ -n "$missing" ]; then
+            echo "::warning::Shotcut filters hidden in this build (MLT service missing): $missing"
+          else
+            echo "Every MLT service of the Shotcut filters is in this build."
+          fi
+          # A module whose DLLs are missing does not load.
+          if grep -q "failed to dlopen" dist/melt-errors.txt; then
+            echo "::error::MLT modules that do not load (DLLs missing from the bundle):"
+            grep -A1 "failed to dlopen" dist/melt-errors.txt
+            exit 1
+          fi
 
-      - name: Smoke test and screenshot
-        continue-on-error: true
+      - name: Start Shotcut AI
         shell: pwsh
         run: |
+          # Python of the runner for the MCP check; the application runs without MSYS2.
+          $python = (Get-Command python).Source
+          "PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           $env:PATH = "C:\Windows\system32;C:\Windows"
           $exe = Join-Path $PWD "dist\Shotcut-AI\bin\shotcut.exe"
           $process = Start-Process -FilePath $exe -ArgumentList "--noupgrade" -PassThru
+          "SHOTCUT_PID=$($process.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Start-Sleep -Seconds 60
+          "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
+          if ($process.HasExited) { throw "Shotcut AI closed during startup" }
+
+      - name: Check the AI agent server (MCP)
+        shell: pwsh
+        run: |
+          # MCP over HTTP (Claude Code, OpenCode) and through the bundled stdio bridge
+          # (Claude Desktop, Antigravity), without changing the project.
+          & $env:PYTHON tests\live_mcp_smoke.py --read-only --bridge dist\Shotcut-AI\share\shotcut\mcp\shotcut_mcp_bridge.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Screenshot and stop
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
           $bitmap.Save("screenshot.png")
-          "Running after 60 s: $(-not $process.HasExited)" | Tee-Object smoke.txt
-          if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          if ($env:SHOTCUT_PID) { Stop-Process -Id $env:SHOTCUT_PID -Force -ErrorAction SilentlyContinue }
           $log = Join-Path $env:LOCALAPPDATA "Meltytech\Shotcut\shotcut-log.txt"
           if (Test-Path $log) {
             Copy-Item $log shotcut-log.txt
@@ -119,7 +194,8 @@ jobs:
             screenshot.png
             smoke.txt
             shotcut-log.txt
-            dist/melt-producers.txt
+            dist/melt-*.txt
+            dist/*-services.txt
           if-no-files-found: ignore
 
       - name: Upload the portable folder (downloads as a zip)

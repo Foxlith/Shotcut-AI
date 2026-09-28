@@ -485,6 +485,32 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 
 ---
 
+### FASE 8: Sistema de IA en Vivo (MCP)
+- **Objetivo:** Que las IA de Fox (OpenCode, Antigravity, Claude Code y Claude Desktop) controlen Shotcut AI **abierto** mediante MCP (Model Context Protocol), con los cambios visibles al instante, deshacibles y accesibles solo desde el propio equipo.
+- **Punto de partida:** `src/aiagentserver.cpp` abría un WebSocket en `0.0.0.0:9999`, respondía `"success"` a cualquier comando (incluso inventados) y no ejecutaba nada (`play`/`pause` comentados con un `TODO`). No existía servidor MCP. Prueba en vivo: 5 comandos, 0 píxeles cambiados.
+- **Arquitectura:**
+  - MCP **dentro de la app** con el transporte oficial *Streamable HTTP* en `http://127.0.0.1:9999/mcp` (Claude Code, OpenCode y Antigravity se conectan sin instalar nada).
+  - **Puente stdio** `share/shotcut/mcp/shotcut_mcp_bridge.py` (Python, solo biblioteca estándar) para clientes que solo admiten stdio (Claude Desktop); puede arrancar antes que la app.
+  - Un solo puerto (9999): las peticiones `Upgrade: websocket` pasan al `QWebSocketServer` de siempre (sus comandos JSON ahora sí se ejecutan) y `POST /mcp` al protocolo MCP. Todo corre en el hilo de la interfaz.
+- **Tareas Técnicas:**
+  1. `src/ai/mcpprotocol.*`: JSON-RPC 2.0 puro (`initialize` con negociación de versión, `ping`, `tools/list`, `tools/call`), registro de herramientas con validación de argumentos, lectura de peticiones HTTP y regla de `Origin`; probado con QtTest (`tests/test_mcp_protocol.cpp`).
+  2. `src/aiagentserver.*`: escucha solo en `127.0.0.1` y `::1`, rechaza orígenes web (403 / WebSocket rechazado), comandos antiguos mapeados a herramientas y error real para comandos desconocidos; se activa desde Ajustes.
+  3. `src/ai/aitools.*`: herramientas de estado (`get_state`, `get_timeline`, `get_playlist`, `get_frame`, `list_actions`, `list_filters`, `get_clip_filters`), reproducción (`play`, `pause`, `seek`, `step`), `undo`/`redo`, `run_action` (acciones con nombre de Shotcut), proyecto y medios (`open_media`, `add_to_playlist`, `open_project`, `save_project`), timeline (`append_clip`, `insert_clip`, `overwrite_clip`, `split_clip`, `remove_clip`, `move_clip`, `trim_clip`, `set_fade`, `add_track`, `set_track`, `select_clips`) y filtros (`add_filter`, `set_filter_param`, `set_filter_enabled`, `remove_filter`). Cada llamada que edita es **un solo paso de deshacer** llamado *AI: …* y se anuncia en la barra de estado del visor.
+  4. Menú **Settings > AI Agent (MCP)**: activar/desactivar, estado del servidor y *Copy MCP configuration* para los 4 clientes.
+  5. Pruebas: QtTest del protocolo (también en el CI de Linux), `tests/test_phase8_ai_mcp_verification.py` (Tier 5, incluye el puente de extremo a extremo) y `tests/live_mcp_smoke.py` contra la app abierta (chroot y build de Windows).
+  6. Guía `docs/ai-mcp.md` en español (configuración de cada cliente, herramientas, seguridad y problemas comunes).
+- **Archivos Probables:**
+  - `src/aiagentserver.cpp/.h`, `src/ai/mcpprotocol.cpp/.h`, `src/ai/aitools.cpp/.h` (nuevos), `src/CMakeLists.txt`
+  - `src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/docks/timelinedock.cpp/.h`, `src/docks/playlistdock.cpp/.h`
+  - `scripts/shotcut_mcp_bridge.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/*.yml`
+  - `tests/test_mcp_protocol.cpp`, `tests/test_phase8_ai_mcp_verification.py`, `tests/live_mcp_smoke.py`, `docs/ai-mcp.md`
+- **Riesgos:** diálogos modales dentro de una herramienta (se evitan con `skipConvert`/`discard_changes`; si aparecen, la respuesta espera al usuario y un indicador de ocupado evita la reentrada); cambios en las versiones del protocolo MCP y en el formato de configuración de cada cliente; tamaño de las imágenes de `get_frame` (JPEG con ancho máximo).
+- **Fuera de alcance (entrega posterior):** exportar vídeo desde la IA.
+- **Criterios de Aceptación:** con la app abierta, una IA conectada por MCP lee el estado, reproduce, divide/mueve/recorta clips, añade filtros y ve el fotograma; cada cambio aparece al instante y se deshace con un Ctrl+Z; el servidor no acepta conexiones de otros equipos ni de páginas web.
+- **Estado:** ✅ Completada. Servidor MCP en `http://127.0.0.1:9999/mcp` con 33 herramientas, puente stdio para Claude Desktop, WebSocket que ejecuta de verdad, menú *Settings > AI Agent (MCP)* con la configuración de los 4 clientes y guía `docs/ai-mcp.md`. Verificada en la app real (Qt 6.10 + MLT 7.36) editando por MCP, por el puente y por WebSocket, con cada cambio visible al momento y deshacible como *AI: …*, y comprobando que solo acepta conexiones locales. 19 tests nuevos en `--fast` (754/754) y 34 comprobaciones QtTest en el CI de Linux; el build de Windows ejecuta la prueba MCP contra la app compilada. Detalle en `agent.md` (Fase 8).
+
+---
+
 ## 🌐 Consideraciones Técnicas Transversales
 
 ### Compatibilidad Multiplataforma (Windows, macOS, Linux)
@@ -578,6 +604,13 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Añadir selector de color de acento (#FF7A45, #5B8CFF, #F5B83D, #B08CFF) en *Ajustes > Tema > Color de acento*, con cambio instantáneo sin reiniciar.
   - [x] Implementar opción para alternar entre tema Grafito y tema clásico (*Grafito Modern* / *Classic Fusion Dark*).
   - [x] Validar que las pruebas E2E continúan pasando (20 tests nuevos en `tests/test_phase7_accent_theme_verification.py`; 735/735 en `--fast`).
+- [x] **Fase 8: Sistema de IA en Vivo (MCP)**
+  - [x] Protocolo MCP (JSON-RPC 2.0 + Streamable HTTP) en la app, probado con QtTest (34 comprobaciones, también en el CI de Linux).
+  - [x] Servidor seguro solo local (127.0.0.1 / ::1, comprobación de `Origin` y `Host`) con el WebSocket antiguo funcionando de verdad.
+  - [x] 33 herramientas de estado, reproducción, deshacer, acciones, proyecto/medios, timeline, filtros y fotograma, deshacibles como *AI: …*.
+  - [x] Menú *Settings > AI Agent (MCP)* y puente stdio para Claude Desktop.
+  - [x] Configuración y guía para OpenCode, Antigravity, Claude Code y Claude Desktop (`docs/ai-mcp.md`).
+  - [x] Pruebas (`--fast`: 754/754; 19 nuevos en `tests/test_phase8_ai_mcp_verification.py`) y verificación en la app real; el build de Windows ejecuta `tests/live_mcp_smoke.py`.
 
 ---
 

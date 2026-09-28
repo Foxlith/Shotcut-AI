@@ -201,7 +201,6 @@ MainWindow::MainWindow()
     , m_upgradeUrl("https://www.shotcut.org/download/")
     , m_keyframesDock(0)
 {
-    m_aiAgentServer = new AIAgentServer(9999, this);
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
     QLibrary libSDL("libSDL2-2.0.so.0");
     if (!libSDL.load()) {
@@ -308,6 +307,10 @@ MainWindow::MainWindow()
                 registerMenuShortcuts(action->menu());
         }
     }
+
+    // The live AI agent server (MCP and WebSocket), once every panel exists.
+    if (Settings.aiServerEnabled())
+        m_aiAgentServer = new AIAgentServer(Settings.aiServerPort(), this);
 
     LOG_DEBUG() << "end";
 }
@@ -2109,6 +2112,51 @@ void MainWindow::setupSettingsMenu()
 #else
     ui->actionPreviewHardwareDecoder->setVisible(false);
 #endif
+
+    // The AI agent server (MCP): on or off, its state and the configuration of AI clients.
+    auto aiMenu = new QMenu(tr("AI Agent (MCP)"), this);
+    aiMenu->setObjectName("menuAiAgent");
+    auto aiEnabled = aiMenu->addAction(tr("Enable AI Agent Server"));
+    aiEnabled->setObjectName("actionAiServerEnabled");
+    aiEnabled->setCheckable(true);
+    aiEnabled->setChecked(Settings.aiServerEnabled());
+    aiEnabled->setToolTip(tr("Let AI agents on this computer control %1 (MCP and WebSocket).")
+                              .arg(qApp->applicationName()));
+    connect(aiEnabled, &QAction::toggled, this, [this](bool checked) {
+        Settings.setAiServerEnabled(checked);
+        showStatusMessage(tr("Restart %1 to turn the AI agent server %2.")
+                              .arg(qApp->applicationName(), checked ? tr("on") : tr("off")));
+    });
+    auto aiStatus = aiMenu->addAction(QString());
+    aiStatus->setObjectName("actionAiServerStatus");
+    aiStatus->setEnabled(false);
+    connect(aiMenu, &QMenu::aboutToShow, this, [this, aiStatus]() {
+        if (m_aiAgentServer && m_aiAgentServer->isListening())
+            aiStatus->setText(tr("Listening on %1").arg(m_aiAgentServer->mcpUrl()));
+        else if (m_aiAgentServer)
+            aiStatus->setText(tr("Not running: %1").arg(m_aiAgentServer->errorString()));
+        else if (Settings.aiServerEnabled())
+            aiStatus->setText(tr("Starts after a restart"));
+        else
+            aiStatus->setText(tr("Off"));
+    });
+    aiMenu->addSeparator();
+    auto copyMenu = aiMenu->addMenu(tr("Copy MCP Configuration"));
+    copyMenu->setObjectName("menuAiCopyConfiguration");
+    const QList<QPair<QString, Mcp::Client>> clients
+        = {{QStringLiteral("Claude Code"), Mcp::Client::ClaudeCode},
+           {QStringLiteral("Claude Desktop"), Mcp::Client::ClaudeDesktop},
+           {QStringLiteral("OpenCode"), Mcp::Client::OpenCode},
+           {QStringLiteral("Antigravity"), Mcp::Client::Antigravity}};
+    for (const auto &client : clients) {
+        auto action = copyMenu->addAction(client.first);
+        connect(action, &QAction::triggered, this, [this, client]() {
+            QGuiApplication::clipboard()->setText(
+                AIAgentServer::clientConfiguration(client.second, Settings.aiServerPort()));
+            showStatusMessage(tr("Copied the MCP configuration for %1.").arg(client.first));
+        });
+    }
+    ui->menuSettings->insertMenu(ui->menuData_Directory->menuAction(), aiMenu);
 
     LOG_DEBUG() << "end";
 }
