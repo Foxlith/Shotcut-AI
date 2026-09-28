@@ -830,68 +830,98 @@ def parse_silences(text, duration):
     return silences
 
 
-def onset_envelope(samples, rate, hop):
-    """Onset strength per hop: the rise of the log energy of the pre-emphasized signal."""
+def band_onsets(signal, hop, window, count):
+    """The rise of the log energy of a signal, per hop, scaled to a mean of 1. Energy under
+    1% of the average counts as silence, so that quiet sounds after silence do not look like
+    strong beats."""
+    prefix = list(itertools.accumulate(map(operator.mul, signal, signal), initial=0.0))
+    raw = [prefix[frame * hop + window] - prefix[frame * hop] for frame in range(count)]
+    floor = max(1e3, 0.01 * sum(raw) / len(raw))
+    energies = [math.log(value + floor) for value in raw]
+    rises = [0.0] + [max(0.0, energies[i] - energies[i - 1]) for i in range(1, count)]
+    mean = sum(rises) / len(rises) if rises else 0.0
+    return [rise / mean for rise in rises] if mean > 0 else rises
+
+
+def onset_envelopes(samples, rate, hop):
+    """Onset strength per hop, as two envelopes: the rise of the energy of the bass, where
+    kick drums mark the beats, and the rise of the pre-emphasized signal, where attacks
+    such as hi-hats and snares stand out. Each keeps only sudden rises (the local mean over
+    one second is removed)."""
     window = hop * 2
-    if len(samples) < window + 1:
-        return []
-    # Pre-emphasis boosts attacks (drums, plucks) over sustained sounds.
+    if len(samples) < window + 3:
+        return [], []
+    # The bass: two one-pole low-pass filters at about 150 Hz (kick drums, bass notes).
+    alpha = min(1.0, 2 * math.pi * 150.0 / rate)
+    low = list(itertools.accumulate(samples[1:], lambda y, x: y + alpha * (x - y)))
+    low = list(itertools.accumulate(low, lambda y, x: y + alpha * (x - y)))
     emphasized = list(map(lambda value, last: value - 0.97 * last, samples[1:], samples[:-1]))
-    squares = itertools.accumulate(map(operator.mul, emphasized, emphasized), initial=0.0)
-    prefix = list(squares)
     count = (len(emphasized) - window) // hop
-    energies = [math.log(prefix[frame * hop + window] - prefix[frame * hop] + 1e3)
-                for frame in range(count)]
-    onsets = [0.0] + [max(0.0, energies[i] - energies[i - 1]) for i in range(1, len(energies))]
-    # Remove the local mean (half a second each way), so that only sudden rises count.
-    frames_per_second = rate / hop
-    radius = max(1, int(frames_per_second / 2))
-    prefix = [0.0]
-    for value in onsets:
-        prefix.append(prefix[-1] + value)
+    if count < 2:
+        return [], []
+    radius = max(1, int(rate / hop / 2))
     result = []
-    for i, value in enumerate(onsets):
-        lo, hi = max(0, i - radius), min(len(onsets), i + radius + 1)
-        mean = (prefix[hi] - prefix[lo]) / (hi - lo)
-        result.append(max(0.0, value - mean))
-    return result
+    for signal in (low, emphasized):
+        onsets = band_onsets(signal, hop, window, count)
+        prefix = list(itertools.accumulate(onsets, initial=0.0))
+        cleaned = []
+        for i, value in enumerate(onsets):
+            lo, hi = max(0, i - radius), min(len(onsets), i + radius + 1)
+            cleaned.append(max(0.0, value - (prefix[hi] - prefix[lo]) / (hi - lo)))
+        result.append(cleaned)
+    return result[0], result[1]
+
+
+def onset_envelope(samples, rate, hop):
+    """Both envelopes of onset_envelopes() added."""
+    bass, attacks = onset_envelopes(samples, rate, hop)
+    return [a + b for a, b in zip(bass, attacks)]
+
+
+def smooth(values):
+    """A light triangular blur, so that beats that fall between frames still line up."""
+    kernel = (1.0, 2.0, 3.0, 2.0, 1.0)
+    total = sum(kernel)
+    padded = [0.0, 0.0] + list(values) + [0.0, 0.0]
+    return [sum(weight * padded[i + k] for k, weight in enumerate(kernel)) / total
+            for i in range(len(values))]
 
 
 def estimate_tempo(envelope, frames_per_second, low_bpm=60.0, high_bpm=200.0):
-    """(bpm, confidence 0-1) from the autocorrelation of the onset envelope, weighted
-    towards common tempos (around 120 BPM)."""
-    limit = min(len(envelope), int(frames_per_second * 90))
-    values = envelope[:limit]
-    min_lag = max(1, int(frames_per_second * 60 / high_bpm))
-    max_lag = min(len(values) - 1, int(math.ceil(frames_per_second * 60 / low_bpm)))
-    if max_lag <= min_lag + 2:
+    """(bpm, confidence 0-1): the period whose multiples (1 to 4 periods) line up best with
+    the autocorrelation of the onset envelope, weighted towards common tempos (around 120
+    BPM). Adding the multiples keeps a beat from being taken for its half or double."""
+    values = smooth(envelope[:min(len(envelope), int(frames_per_second * 90))])
+    count = len(values)
+    min_lag = frames_per_second * 60.0 / high_bpm
+    max_lag = frames_per_second * 60.0 / low_bpm
+    top = min(count - 2, int(math.ceil(max_lag * 4)) + 2)
+    if top < max_lag + 2:
         return None, 0.0
-    correlations = {}
-    for lag in range(min_lag - 1, max_lag + 2):
-        if lag <= 0 or lag >= len(values):
-            continue
-        correlations[lag] = sum(map(operator.mul, values, values[lag:])) / (len(values) - lag)
-    weighted = {}
-    for lag in range(min_lag, max_lag + 1):
-        if lag not in correlations:
-            continue
+    correlations = [0.0] + [sum(map(operator.mul, values, values[lag:])) / (count - lag)
+                            for lag in range(1, top + 1)]
+
+    def at(lag):
+        index = int(lag)
+        if index + 1 > top:
+            return 0.0
+        fraction = lag - index
+        return correlations[index] * (1 - fraction) + correlations[index + 1] * fraction
+
+    best, best_score = None, 0.0
+    lag = min_lag
+    while lag <= max_lag:
+        score = sum(at(k * lag) / k for k in range(1, 5))
         bpm = 60.0 * frames_per_second / lag
-        weight = math.exp(-0.5 * (math.log2(bpm / 120.0) / 1.0) ** 2)
-        weighted[lag] = correlations[lag] * weight
-    if not weighted:
+        score *= math.exp(-0.5 * math.log2(bpm / 120.0) ** 2)
+        if score > best_score:
+            best, best_score = lag, score
+        lag += 0.25
+    if best is None:
         return None, 0.0
-    best = max(weighted, key=weighted.get)
-    # Refine the lag between frames with a parabola through its neighbours.
-    lag = float(best)
-    left, right = correlations.get(best - 1), correlations.get(best + 1)
-    center = correlations[best]
-    if left is not None and right is not None:
-        denominator = left - 2 * center + right
-        if denominator < 0:
-            lag += 0.5 * (left - right) / denominator
-    mean = sum(correlations.values()) / len(correlations)
-    confidence = 0.0 if mean <= 0 else max(0.0, min(1.0, (center / mean - 1.0) / 3.0))
-    return 60.0 * frames_per_second / lag, confidence
+    mean = sum(correlations[1:]) / top
+    confidence = 0.0 if mean <= 0 else max(0.0, min(1.0, (at(best) / mean - 1.0) / 3.0))
+    return 60.0 * frames_per_second / best, confidence
 
 
 def track_beats(envelope, frames_per_second, bpm, tightness=100.0):
@@ -937,9 +967,14 @@ def read_pcm(data):
 
 def rhythm(samples, rate):
     hop = rate // 100
-    envelope = onset_envelope(samples, rate, hop)
+    bass, attacks = onset_envelopes(samples, rate, hop)
+    envelope = [a + b for a, b in zip(bass, attacks)]
     frames_per_second = rate / hop
-    bpm, confidence = estimate_tempo(envelope, frames_per_second)
+    # The tempo from the loudest pulse (kick drums): hi-hats on every half beat would
+    # otherwise double it. Without a clear pulse there, from both envelopes.
+    bpm, confidence = estimate_tempo(bass, frames_per_second)
+    if not bpm or confidence < 0.2:
+        bpm, confidence = estimate_tempo(envelope, frames_per_second)
     if not bpm:
         return {"bpm": None, "confidence": 0.0, "beats": []}
     beats = track_beats(envelope, frames_per_second, bpm)
