@@ -3,7 +3,8 @@
 # (-DWINDOWS_DEPLOY=OFF) in an MSYS2 UCRT64 shell. The folder mirrors the MSYS2
 # prefix, which is the layout that MLT and Shotcut expect with NODEPLOY:
 #
-#   bin/shotcut.exe, melt.exe, ffmpeg.exe, ffprobe.exe and every DLL they need
+#   bin/shotcut.exe, melt.exe, ffmpeg.exe, ffprobe.exe, whisper-cli.exe and every DLL
+#                   they need
 #   bin/qt.conf     Qt plugins and QML modules in share/qt6
 #   lib/mlt         MLT modules          lib/frei0r-1  frei0r plugins
 #   share/mlt       MLT data             share/shotcut QML, filter sets, resources
@@ -53,6 +54,17 @@ fi
 
 echo "== Grafito theme next to the program"
 cp -v "$SOURCE_DIR/capcut_theme.qss" "$DIST/bin/"
+
+echo "== Speech to text (whisper.cpp)"
+# Shotcut runs bin/whisper-cli.exe for Subtitles > Speech to Text, and so does the media
+# analysis server. ggml loads its CPU and Vulkan backends at run time, so ldd does not see
+# them; their own DLLs are found below.
+if [ -f "$PREFIX/bin/whisper-cli.exe" ]; then
+    cp -v "$PREFIX/bin/whisper-cli.exe" "$DIST/bin/"
+    for dll in "$PREFIX"/bin/*ggml-cpu*.dll "$PREFIX"/bin/*ggml-vulkan*.dll; do
+        if [ -e "$dll" ]; then cp -v "$dll" "$DIST/bin/"; fi
+    done
+fi
 
 echo "== DLLs"
 # ldd lists the whole dependency tree of each binary; keep the ones from the MSYS2

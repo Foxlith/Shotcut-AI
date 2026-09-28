@@ -41,8 +41,9 @@ jobs:
       # The libraries of the MLT modules are optional dependencies of the MLT package, so
       # they are listed here: without them the modules plus (Size, Position & Rotate,
       # Text: Simple, Sepia, Loudness...), resample, rnnoise, rtaudio, rubberband (Pitch)
-      # and sox do not load and their Shotcut filters disappear. Autotools and the Perl
-      # modules build the LADSPA plugins.
+      # and sox do not load and their Shotcut filters disappear. whisper.cpp is the speech to
+      # text of Shotcut (Subtitles > Speech to Text) and of the media analysis server.
+      # Autotools and the Perl modules build the LADSPA plugins.
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -77,6 +78,7 @@ jobs:
             mingw-w64-ucrt-x86_64-rubberband
             mingw-w64-ucrt-x86_64-sox
             mingw-w64-ucrt-x86_64-vid.stab
+            mingw-w64-ucrt-x86_64-whisper.cpp
             mingw-w64-ucrt-x86_64-autotools
             perl-xml-parser
             perl-list-moreutils
@@ -143,6 +145,9 @@ jobs:
             grep -A1 "failed to dlopen" dist/melt-errors.txt
             exit 1
           fi
+          # Speech to text starts without MSYS2 too.
+          (cd dist/Shotcut-AI/bin && PATH=/c/Windows/system32:/c/Windows ./whisper-cli.exe --help > /dev/null 2>&1) \
+            || { echo "::error::whisper-cli.exe does not start"; exit 1; }
 
       - name: Start Shotcut AI
         shell: pwsh
@@ -166,6 +171,16 @@ jobs:
           & $env:PYTHON tests\live_mcp_smoke.py --read-only --bridge dist\Shotcut-AI\share\shotcut\mcp\shotcut_mcp_bridge.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check the media analysis server
+        shell: pwsh
+        run: |
+          # The server of the zip with its ffmpeg and whisper-cli: scenes, contact sheets,
+          # silences, loudness, tempo, a Whisper model that it downloads itself and the
+          # speech of the JFK sample of whisper.cpp.
+          Invoke-WebRequest https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav -OutFile jfk.wav
+          & $env:PYTHON tests\live_analysis_smoke.py --server dist\Shotcut-AI\share\shotcut\mcp\shotcut_analysis.py --download-model tiny-q5_1 --speech jfk.wav --expect "ask not what your country can do for you"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Screenshot and stop
         if: always()
         continue-on-error: true
@@ -177,7 +192,8 @@ jobs:
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
           $bitmap.Save("screenshot.png")
-          if ($env:SHOTCUT_PID) { Stop-Process -Id $env:SHOTCUT_PID -Force -ErrorAction SilentlyContinue }
+          # Shotcut runs as two processes: a startup watchdog and the application.
+          if ($env:SHOTCUT_PID) { taskkill /PID $env:SHOTCUT_PID /T /F 2>&1 | Out-Null }
           $log = Join-Path $env:LOCALAPPDATA "Meltytech\Shotcut\shotcut-log.txt"
           if (Test-Path $log) {
             Copy-Item $log shotcut-log.txt
