@@ -460,18 +460,21 @@
     - `main.cpp` busca en `../share/shotcut/translations` con `NODEPLOY`, como `QmlApplication::dataDir()`;
     - el workflow falla si falta `shotcut_es.qm` en el zip o en la instalación.
   - **Pruebas:** `tests/test_windows_translations_verification.py` (7 tests, Tier 5). Deshacer cualquiera de los dos arreglos la hace fallar. `--fast`: **816/816 (exit 0)**. clang-format-14 limpio.
-- **Cambiar de idioma sin molestias (`src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/main.cpp`, `translations/shotcut_es.ts`, `tests/test_windows_translations_verification.py`):** [COMPLETADO]
+- **Cambiar de idioma sin molestias (`src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/main.cpp`, `translations/shotcut_es.ts`, `src/docks/playlistdock.ui`, `tests/test_windows_translations_verification.py`):** [COMPLETADO — VERIFICADO EN LA APP REAL]
   - **Contexto:** Fox pidió que el idioma cambiara sin cerrar la app. Shotcut no está hecho para eso: unos 1.900 textos en C++ (128 archivos), 41 formularios y 375 archivos QML, y nada atiende `QEvent::LanguageChange`. Fox eligió el «reinicio sin molestias».
   - **Cómo funciona:**
     - elegir un idioma ya no pregunta; elegir el idioma actual no hace nada;
     - `restartForLanguage()` guarda los cambios sin guardar en el archivo de autoguardado (`doAutosave()`) y lo «suelta» para que `AutoSaveFile` no lo borre al cerrarse;
     - después anota en los ajustes (`restart/project`, `restart/position`, `restart/modified`) el proyecto y el cabezal, y reinicia (`EXIT_RESTART`) sin la pregunta de guardar (`m_restartKeepsProject` en `closeEvent`);
-    - al arrancar, `main.cpp` llama primero a `restoreAfterLanguageRestart()`: borra la nota (solo una vez), reabre el proyecto, recupera el autoguardado sin preguntar (`m_recoverWithoutAsking` en `checkAutoSave`), devuelve el cabezal y avisa «Idioma cambiado a Español».
+    - al arrancar, `main.cpp` llama primero a `restoreAfterLanguageRestart()`: borra la nota (solo una vez), reabre el proyecto, recupera el autoguardado sin preguntar (`m_recoverWithoutAsking` en `checkAutoSave`), devuelve el cabezal y avisa «Idioma: Español».
   - **Casos especiales:**
     - con trabajos en marcha sigue la pregunta de siempre;
     - si el autoguardado falla, pregunta si guardar como al cerrar;
     - si algo para el reinicio, todo vuelve a la normalidad.
-  - **Pruebas:** 4 tests más en `tests/test_windows_translations_verification.py` (11 en total). `--fast`: **820/820 (exit 0)**. clang-format-14 limpio.
+  - **Tarjeta vacía de la Lista de reproducción:** sus textos («Importar Archivos», «Arrastra videos, fotos o audios aquí», el tooltip y los formatos) estaban escritos en español dentro de `src/docks/playlistdock.ui` (Fase 1), así que salían en español también con la app en inglés. Ahora están en inglés, con su traducción en `shotcut_es.ts`.
+  - **Verificado en la app real (Xvfb):** con un proyecto sin guardar de dos clips, de inglés a español y de vuelta, la app volvió en el otro idioma con los dos clips, «Modificado» y el cabezal en su sitio (00:00:07.520 y 00:00:03.200), sin ninguna pregunta, y con el aviso en el visor. A 1270 px de ancho el aviso se corta («Idiom…»), pero el tooltip lo muestra entero.
+  - **Nota de compilación:** tras cambiar un `.ui`, ninja a veces regenera `ui_*.h` sin recompilar el `.cpp` (AUTOUIC). Si un texto no cambia, basta con compilar otra vez.
+  - **Pruebas:** 5 tests más en `tests/test_windows_translations_verification.py` (12 en total). `--fast`: **821/821 (exit 0)**. clang-format-14 limpio.
 
 ---
 
@@ -499,7 +502,7 @@
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 820 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 821 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).

@@ -5687,8 +5687,7 @@ bool MainWindow::restoreAfterLanguageRestart()
         if (position > 0 && MLT.producer() && MLT.producer()->is_valid())
             m_player->seek(position);
         const auto language = QLocale(Settings.language()).nativeLanguageName();
-        showStatusMessage(
-            tr("Language changed to %1").arg(language.left(1).toUpper() + language.mid(1)));
+        showStatusMessage(tr("Language: %1").arg(language.left(1).toUpper() + language.mid(1)));
     });
     return true;
 }

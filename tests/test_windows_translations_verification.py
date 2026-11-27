@@ -13,7 +13,7 @@ only the standard Qt buttons followed the language.
 - T3: The Windows workflow fails if shotcut_es.qm is missing from the bundle or the install
 - R1: Choosing a language restarts at once, without a question, and comes back with the same
       project, its unsaved changes (recovered from the auto-save file without asking) and the
-      playhead, and says "Language changed to ..."
+      playhead, and says "Language: ..."
 """
 
 import re
@@ -141,7 +141,7 @@ class TestR1RestartWithoutFuss(unittest.TestCase):
                         "restored only once")
         self.assertIn("m_recoverWithoutAsking = project;", body)
         self.assertIn("m_player->seek(position)", body)
-        self.assertIn('tr("Language changed to %1")', body)
+        self.assertIn('tr("Language: %1")', body)
         check = function(self.main_window, "bool MainWindow::checkAutoSave")
         self.assertIn("m_recoverWithoutAsking != url", check)
         self.assertLess(check.index("m_recoverWithoutAsking != url"), check.index("dialog.exec()"))
@@ -153,7 +153,24 @@ class TestR1RestartWithoutFuss(unittest.TestCase):
         for key in ("restart/project", "restart/position", "restart/modified"):
             self.assertIn('"%s"' % key, settings)
         self.assertIn('settings.remove("restart")', settings)
-        self.assertIn("<translation>Idioma cambiado a %1</translation>", read(SPANISH))
+        self.assertIn("<translation>Idioma: %1</translation>", read(SPANISH))
+
+
+
+class TestP1PlaylistEmptyState(unittest.TestCase):
+    """The empty Playlist card was written in Spanish, so it stayed Spanish in English."""
+
+    def test_written_in_english_and_translated(self):
+        form = read(PROJECT_ROOT / "src" / "docks" / "playlistdock.ui")
+        spanish = read(SPANISH)
+        for english, translation in (
+                ("Import Files", "Importar Archivos"),
+                ("Drag videos, photos or audio here", "Arrastra videos, fotos o audios aquí"),
+                ("Open the file browser to import", "Abrir explorador de archivos para importar")):
+            self.assertIn("<string>%s</string>" % english, form)
+            self.assertNotIn("<string>%s</string>" % translation, form)
+            self.assertIn("<source>%s</source>\n        <translation>%s</translation>"
+                          % (english, translation), spanish)
 
 
 if __name__ == "__main__":

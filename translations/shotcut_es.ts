@@ -7108,8 +7108,8 @@ Do you want to restart now?</source>
     </message>
     <message>
         <location filename="../src/mainwindow.cpp" line="4708"/>
-        <source>Language changed to %1</source>
-        <translation>Idioma cambiado a %1</translation>
+        <source>Language: %1</source>
+        <translation>Idioma: %1</translation>
     </message>
     <message>
         <location filename="../src/mainwindow.cpp" line="4751"/>
@@ -8696,6 +8696,26 @@ Inténtelo de nuevo con una carpeta distinta.</translation>
 </context>
 <context>
     <name>PlaylistDock</name>
+    <message>
+        <location filename="../src/docks/playlistdock.ui" line="266"/>
+        <source>Import Files</source>
+        <translation>Importar Archivos</translation>
+    </message>
+    <message>
+        <location filename="../src/docks/playlistdock.ui" line="266"/>
+        <source>Drag videos, photos or audio here</source>
+        <translation>Arrastra videos, fotos o audios aquí</translation>
+    </message>
+    <message>
+        <location filename="../src/docks/playlistdock.ui" line="266"/>
+        <source>Open the file browser to import</source>
+        <translation>Abrir explorador de archivos para importar</translation>
+    </message>
+    <message>
+        <location filename="../src/docks/playlistdock.ui" line="266"/>
+        <source>Supported formats: MP4, MOV, MKV, MP3, WAV, PNG, JPG, MLT and more</source>
+        <translation>Formatos compatibles: MP4, MOV, MKV, MP3, WAV, PNG, JPG, MLT y más</translation>
+    </message>
     <message>
         <location filename="../src/docks/playlistdock.ui" line="17"/>
         <location filename="../src/docks/playlistdock.cpp" line="384"/>
