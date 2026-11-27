@@ -238,8 +238,11 @@ jobs:
           $running = Get-Process shotcut -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*Shotcut-AI\bin\shotcut.exe" }
           if (-not $running) { throw "Shotcut AI.exe did not start bin\shotcut.exe" }
           "Shotcut AI.exe started bin\shotcut.exe"
+          # The watchdog and the app: ending the first one with /T also ends the second, so
+          # taskkill may fail for it; that is not a failure of the check.
           $running | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }
           Start-Sleep -Seconds 3
+          exit 0
 
       - name: Build the installer
         shell: pwsh
@@ -274,6 +277,7 @@ jobs:
           Start-Sleep -Seconds 3
           if (Test-Path $shortcut) { throw "The uninstaller left the desktop shortcut" }
           "Installed, checked and uninstalled."
+          exit 0
 
       - name: Upload the screenshot
         if: always()
