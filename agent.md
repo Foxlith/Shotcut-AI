@@ -363,7 +363,7 @@
     - `python tests/run_e2e_tests.py --fast`: **777/777 (exit code 0)** a escala 100 % y 125 %. clang-format-14 limpio.
   - **Roadmap:** marcadas 0.1, 0.2, 0.4, 0.5 y 1.1–1.4, 1.6–1.8, con notas; respondidas las preguntas abiertas que dependían del código; nuevas secciones *Entregas* y registro. Siguen abiertas la 0.3 (material real de Fox en `muestras/`, ya en `.gitignore`) y la 1.5 (medir 5 min de entrevista en el PC de Fox).
 
-- **Fase 10: Shotcut AI para quien no sabe editar — Entrega UX (`src/docks/aiassistantdock.cpp/.h`, `src/ai/clientsetup.cpp/.h`, `packaging/windows/shotcut-ai-launcher.c/.rc`, `packaging/windows/shotcut-ai.iss`, `docs/guia-principiante.md`, `tests/test_phase10_ai_beginner_ux_verification.py` (nuevos), `src/ai/mcpprotocol.cpp/.h`, `src/ai/aitools.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/CMakeLists.txt`, `translations/shotcut_es.ts`, `scripts/shotcut_mcp_bridge.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`, `tests/test_mcp_protocol.cpp`, `tests/CMakeLists.txt`, `tests/live_mcp_smoke.py`, `tests/live_analysis_smoke.py`, `tests/test_phase8_ai_mcp_verification.py`, `tests/run_e2e_tests.py`, `docs/ai-mcp.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md`, `plan.md`):** [COMPLETADO — VERIFICADO EN LA APP REAL EN LINUX; PENDIENTE DEL CI DE WINDOWS Y DE LA PRUEBA CON USUARIOS]
+- **Fase 10: Shotcut AI para quien no sabe editar — Entrega UX (`src/docks/aiassistantdock.cpp/.h`, `src/ai/clientsetup.cpp/.h`, `packaging/windows/shotcut-ai-launcher.c/.rc`, `packaging/windows/shotcut-ai.iss`, `docs/guia-principiante.md`, `tests/test_phase10_ai_beginner_ux_verification.py` (nuevos), `src/ai/mcpprotocol.cpp/.h`, `src/ai/aitools.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/CMakeLists.txt`, `translations/shotcut_es.ts`, `scripts/shotcut_mcp_bridge.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`, `tests/test_mcp_protocol.cpp`, `tests/CMakeLists.txt`, `tests/live_mcp_smoke.py`, `tests/live_analysis_smoke.py`, `tests/test_phase8_ai_mcp_verification.py`, `tests/run_e2e_tests.py`, `docs/ai-mcp.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md`, `plan.md`):** [COMPLETADO — VERIFICADO EN LA APP REAL EN LINUX Y EN EL BUILD DE WINDOWS; PENDIENTE LA PRUEBA CON USUARIOS]
   - **Contexto:** Fox pidió (27/11/2026) validar mejoras para que alguien que no sabe editar pueda hacerlo, más el icono en el ejecutable y un instalador que pregunte por el acceso directo. El zip se abría con `Shotcut AI.bat`, sin icono; `bin\shotcut.exe` ya tenía el logo nuevo.
   - **Barreras encontradas en el código:**
     - conectar pedía instalar Python y pegar JSON;
@@ -395,7 +395,14 @@
   - **Arreglos del CI (fallaban por cambios del entorno, no del código):**
     - las imágenes nuevas de `ubuntu-latest` ya no traen el paquete `clang-format-14`: `check-code-format.yml` instala la misma versión (14.0.6) desde PyPI y la enlaza como `clang-format-14`;
     - MSYS2 pasó a MLT 7.42, cuyo módulo `ladspa` (LADSPA, LV2 y VST2) enlaza con `lilv`, una dependencia opcional del paquete. El workflow la instala y, si otro módulo no carga, lista las DLL que le faltan.
-  - **Pendiente:** el CI de Windows (Python incluido, lanzador e instalador) y la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
+  - **Build de Windows (run 46038840297, todo en verde):**
+    - el Python incluido (3.12.10) arranca sin MSYS2;
+    - el puente y el servidor de análisis pasan sus pruebas en vivo con ese Python, incluidas las recetas;
+    - `Shotcut AI.exe` abre `bin\shotcut.exe`;
+    - el instalador (`Shotcut-AI-Setup.exe`, unos 150 MB) instala para el usuario, crea los accesos directos del escritorio y del menú Inicio hacia `bin\shotcut.exe`, y el desinstalador los quita.
+
+    Artefactos: `Shotcut-AI-Setup` y `Shotcut-AI-windows-x64`.
+  - **Pendiente:** la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
 
 ---
 

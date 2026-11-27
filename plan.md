@@ -586,7 +586,7 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - cada paso de la IA se deshace con un clic;
   - *Exportar* nunca queda fuera de la barra por el botón **IA**;
   - todas las funciones de la Fase 8 se conservan.
-- **Estado:** ✅ Completada. Probada en la app real (Linux, Qt 6.10.2 + MLT 7.36.1) en inglés y en español. Detalle en `agent.md` (Fase 10).
+- **Estado:** ✅ Completada. Probada en la app real (Linux, Qt 6.10.2 + MLT 7.36.1) en inglés y en español, y en el build de Windows: Python incluido, lanzador, instalación con accesos directos y desinstalación (run 46038840297). Detalle en `agent.md` (Fase 10).
 
 ---
 
