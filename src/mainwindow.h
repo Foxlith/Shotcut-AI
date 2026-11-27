@@ -87,6 +87,9 @@ public:
     void doAutosave();
     void setFullScreen(bool isFullScreen);
     QString untitledFileName() const;
+    /// After a restart to apply a new language: reopens the project, with its unsaved
+    /// changes and the playhead where they were. Returns false after a normal start.
+    bool restoreAfterLanguageRestart();
     void setProfile(const QString &profile_name);
     QString fileName() const { return m_currentFile; }
     bool isSourceClipMyProject(QString resource = MLT.resource(), bool withDialog = true);
@@ -255,6 +258,11 @@ private:
     QToolButton *m_projectButton{nullptr};
     QLabel *m_projectMetaLabel{nullptr};
     bool m_altKeyAlone{false};
+    /// The project whose auto-save file is recovered without asking (language restart).
+    QString m_recoverWithoutAsking;
+    /// Restarting for a language: the unsaved changes are kept in the auto-save file.
+    bool m_restartKeepsProject{false};
+    void restartForLanguage();
 
 public slots:
     bool isCompatibleWithProcessingMode(MltXmlChecker &checker, QString &fileName, bool &converted);

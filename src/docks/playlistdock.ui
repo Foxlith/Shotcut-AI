@@ -263,7 +263,7 @@ QPushButton#importButton:pressed {
               </font>
              </property>
              <property name="text">
-              <string>Importar Archivos</string>
+              <string>Import Files</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -281,7 +281,7 @@ QPushButton#importButton:pressed {
               </font>
              </property>
              <property name="text">
-              <string>Arrastra videos, fotos o audios aquí</string>
+              <string>Drag videos, photos or audio here</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -334,10 +334,10 @@ QPushButton#importButton:pressed {
                 <bool>true</bool>
                </property>
                <property name="toolTip">
-                <string>Abrir explorador de archivos para importar</string>
+                <string>Open the file browser to import</string>
                </property>
                <property name="text">
-                <string>Importar Archivos</string>
+                <string>Import Files</string>
                </property>
                <property name="icon">
                 <iconset theme="list-add" resource="../../icons/resources.qrc">
@@ -374,7 +374,7 @@ QPushButton#importButton:pressed {
               </font>
              </property>
              <property name="text">
-              <string>Formatos compatibles: MP4, MOV, MKV, MP3, WAV, PNG, JPG, MLT y más</string>
+              <string>Supported formats: MP4, MOV, MKV, MP3, WAV, PNG, JPG, MLT and more</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignCenter</set>

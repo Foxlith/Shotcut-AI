@@ -69,4 +69,15 @@ if(UNIX AND NOT APPLE)
   include(GNUInstallDirs)
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ DESTINATION ${CMAKE_INSTALL_DATADIR}/shotcut/translations
     FILES_MATCHING PATTERN "*.qm" PATTERN CMakeFiles EXCLUDE)
+elseif(WIN32)
+  # Where src/main.cpp looks for them: share/translations next to shotcut.exe when
+  # WINDOWS_DEPLOY is on, and share/shotcut/translations beside bin/ (the MSYS2 layout
+  # of Shotcut AI) when it is off.
+  if(WINDOWS_DEPLOY)
+    set(SHOTCUT_QM_DESTINATION ${CMAKE_INSTALL_PREFIX}/share/translations)
+  else()
+    set(SHOTCUT_QM_DESTINATION ${CMAKE_INSTALL_PREFIX}/share/shotcut/translations)
+  endif()
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ DESTINATION ${SHOTCUT_QM_DESTINATION}
+    FILES_MATCHING PATTERN "*.qm" PATTERN CMakeFiles EXCLUDE)
 endif()

@@ -132,6 +132,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     print("  11. tests.test_phase9_ai_analysis_verification (Phase 9 media analysis & MCP fixes)")
     print("  12. tests.test_phase10_ai_beginner_ux_verification (Phase 10 AI for people who do not edit)")
     print("  13. tests.test_phase11_capcut_timeline_verification (Phase 11 CapCut-style timeline)")
+    print("  14. tests.test_windows_translations_verification (Windows: the chosen language loads)")
     print("=" * 78)
 
     import tests.test_adversarial_branding_m1_dark
@@ -147,6 +148,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     import tests.test_phase9_ai_analysis_verification
     import tests.test_phase10_ai_beginner_ux_verification
     import tests.test_phase11_capcut_timeline_verification
+    import tests.test_windows_translations_verification
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -180,6 +182,7 @@ def run_tier5_adversarial(verbose=False, no_gui=False):
     suite.addTests(loader.loadTestsFromModule(tests.test_phase9_ai_analysis_verification))
     suite.addTests(loader.loadTestsFromModule(tests.test_phase10_ai_beginner_ux_verification))
     suite.addTests(loader.loadTestsFromModule(tests.test_phase11_capcut_timeline_verification))
+    suite.addTests(loader.loadTestsFromModule(tests.test_windows_translations_verification))
 
     # 3. Runtime UI & stress recovery
     if no_gui:
