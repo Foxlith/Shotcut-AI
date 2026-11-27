@@ -1,8 +1,10 @@
 name: Build Windows (Shotcut AI)
 
 # Builds this repository for Windows x64 with the Qt 6 and MLT packages of MSYS2
-# (UCRT64) and uploads a portable zip: download it from the run page (Artifacts),
-# extract it and run "Shotcut AI.bat" or bin\shotcut.exe.
+# (UCRT64) and uploads, from the run page (Artifacts):
+# - Shotcut-AI-Setup: the installer (it asks whether to put a shortcut on the desktop);
+# - Shotcut-AI-windows-x64: the portable folder as a zip; extract it and run
+#   "Shotcut AI.exe".
 
 on:
   workflow_dispatch:
@@ -120,6 +122,19 @@ jobs:
       - name: Bundle the runtime
         run: bash scripts/bundle-windows-msys2.sh dist/Shotcut-AI
 
+      - name: Add Python for the MCP servers
+        shell: pwsh
+        run: |
+          # The embeddable Python of python.org runs the stdio bridge (Claude Desktop) and the
+          # media analysis server, so people do not need to install Python. Both scripts use
+          # only its standard library.
+          $version = "3.12.10"
+          Invoke-WebRequest "https://www.python.org/ftp/python/$version/python-$version-embed-amd64.zip" -OutFile python-embed.zip
+          Expand-Archive python-embed.zip -DestinationPath dist\Shotcut-AI\python -Force
+          $env:PATH = "C:\Windows\system32;C:\Windows"
+          & dist\Shotcut-AI\python\python.exe -c "import json, ssl, threading, urllib.request; print('Python', __import__('sys').version)"
+          if ($LASTEXITCODE -ne 0) { throw "The bundled Python does not start" }
+
       - name: Check MLT in the bundle
         run: |
           # Run the bundled melt with a PATH that does not reach MSYS2.
@@ -168,7 +183,9 @@ jobs:
         run: |
           # MCP over HTTP (Claude Code, OpenCode) and through the bundled stdio bridge
           # (Claude Desktop, Antigravity), without changing the project.
-          & $env:PYTHON tests\live_mcp_smoke.py --read-only --bridge dist\Shotcut-AI\share\shotcut\mcp\shotcut_mcp_bridge.py
+          # The bridge runs with the Python of the zip, like Claude Desktop after "Connect to
+          # Claude"; the checks include the prompts (ready-made requests) of Phase 10.
+          & $env:PYTHON tests\live_mcp_smoke.py --read-only --bridge dist\Shotcut-AI\share\shotcut\mcp\shotcut_mcp_bridge.py --python dist\Shotcut-AI\python\python.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the media analysis server
@@ -178,7 +195,7 @@ jobs:
           # silences, loudness, tempo, a Whisper model that it downloads itself and the
           # speech of the JFK sample of whisper.cpp.
           Invoke-WebRequest https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav -OutFile jfk.wav
-          & $env:PYTHON tests\live_analysis_smoke.py --server dist\Shotcut-AI\share\shotcut\mcp\shotcut_analysis.py --download-model tiny-q5_1 --speech jfk.wav --expect "ask not what your country can do for you"
+          & $env:PYTHON tests\live_analysis_smoke.py --server dist\Shotcut-AI\share\shotcut\mcp\shotcut_analysis.py --download-model tiny-q5_1 --speech jfk.wav --expect "ask not what your country can do for you" --python dist\Shotcut-AI\python\python.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Screenshot and stop
@@ -201,6 +218,53 @@ jobs:
             Get-Content $log -Tail 40
           }
 
+      - name: Check the launcher with the icon
+        shell: pwsh
+        run: |
+          # "Shotcut AI.exe" at the top of the folder starts bin\shotcut.exe.
+          $launcher = Get-Item "dist\Shotcut-AI\Shotcut AI.exe"
+          Start-Process -FilePath $launcher.FullName -ArgumentList "--noupgrade"
+          Start-Sleep -Seconds 30
+          $running = Get-Process shotcut -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*Shotcut-AI\bin\shotcut.exe" }
+          if (-not $running) { throw "Shotcut AI.exe did not start bin\shotcut.exe" }
+          "Shotcut AI.exe started bin\shotcut.exe"
+          $running | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }
+          Start-Sleep -Seconds 3
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          # Inno Setup comes with the Windows images of GitHub; install it if it is missing.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress | Out-Null
+          }
+          & $iscc /Qp "/DAppVersion=$env:VERSION" packaging\windows\shotcut-ai.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Get-Item dist\Shotcut-AI-Setup.exe | Format-List Name, Length
+
+      - name: Check the installer
+        shell: pwsh
+        run: |
+          # Install for this user without questions, with the desktop shortcut, then remove it.
+          $dir = Join-Path $env:RUNNER_TEMP "ShotcutAI-install"
+          $setup = Start-Process dist\Shotcut-AI-Setup.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/CURRENTUSER", "/NORESTART", "/DIR=`"$dir`"", "/TASKS=desktopicon", "/LOG=`"installer.log`"" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "The installer failed ($($setup.ExitCode))" }
+          if (-not (Test-Path "$dir\bin\shotcut.exe")) { throw "bin\shotcut.exe is not installed" }
+          if (-not (Test-Path "$dir\python\python.exe")) { throw "python\python.exe is not installed" }
+          $desktop = [Environment]::GetFolderPath("Desktop")
+          $shortcut = Join-Path $desktop "Shotcut AI.lnk"
+          if (-not (Test-Path $shortcut)) { throw "No desktop shortcut" }
+          $target = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut).TargetPath
+          "Desktop shortcut: $shortcut -> $target"
+          if ($target -ne "$dir\bin\shotcut.exe") { throw "The shortcut points to $target" }
+          $startMenu = Join-Path ([Environment]::GetFolderPath("Programs")) "Shotcut AI.lnk"
+          if (-not (Test-Path $startMenu)) { throw "No Start menu shortcut" }
+          $remove = Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
+          Start-Sleep -Seconds 3
+          if (Test-Path $shortcut) { throw "The uninstaller left the desktop shortcut" }
+          "Installed, checked and uninstalled."
+
       - name: Upload the screenshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -212,9 +276,19 @@ jobs:
             shotcut-log.txt
             dist/melt-*.txt
             dist/*-services.txt
+            installer.log
           if-no-files-found: ignore
 
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shotcut-AI-Setup
+          path: dist/Shotcut-AI-Setup.exe
+          compression-level: 0
+
       - name: Upload the portable folder (downloads as a zip)
+        # Also when a check above failed, so the zip can still be tried.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Shotcut-AI-windows-x64

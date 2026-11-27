@@ -50,7 +50,7 @@ profesional** dentro de Shotcut AI y entregue un vídeo terminado.
 | Puente stdio | `share\shotcut\mcp\shotcut_mcp_bridge.py` (Python). Variables `SHOTCUT_AI_URL` y `SHOTCUT_AI_TIMEOUT` |
 | Registro en Claude Code | ✅ Servidor `shotcut-ai` en `~/.claude.json` (alcance de usuario) |
 | Prueba de conexión | ✅ 33 herramientas visibles. Se añadieron 3 vídeos a la lista de medios y a la pista V1 |
-| Binarios incluidos | `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\melt.exe`, `bin\shotcut.exe` y, desde la Entrega 1, `bin\whisper-cli.exe` |
+| Binarios incluidos | `bin\ffmpeg.exe`, `bin\ffprobe.exe`, `bin\melt.exe`, `bin\shotcut.exe`; desde la Entrega 1, `bin\whisper-cli.exe`; desde la Entrega UX, `Shotcut AI.exe` (con icono), `python\python.exe` (Python *embeddable*) y el instalador `Shotcut-AI-Setup.exe` |
 | Código fuente | ✅ [github.com/Foxlith/Shotcut-AI](https://github.com/Foxlith/Shotcut-AI): *fork* de Shotcut (C++/Qt 6 + MLT 7). Compilación: [build-windows.md](build-windows.md) (workflow *Build Windows (Shotcut AI)* o MSYS2 en local) |
 | Servidor de análisis | ✅ Entrega 1: `share\shotcut\mcp\shotcut_analysis.py` (`shotcut-analysis`), ver [ai-analysis.md](ai-analysis.md) |
 
@@ -195,6 +195,7 @@ usa.
 | Entrega | Tareas | Estado |
 |---|---|---|
 | **Entrega 1** | Fase 0 + Fase 1 (y los 4 problemas de la sección 2) | ✅ PR en revisión |
+| **Entrega UX** | Para quien no sabe editar (pedida por Fox el 27/11/2026): panel *Asistente IA*, *Conectar con Claude* en un clic, recetas MCP, instrucciones para principiantes, Python incluido, `Shotcut AI.exe` con icono e instalador con acceso directo. Guía: [guia-principiante.md](guia-principiante.md) | ✅ Hecha (Fase 10 de `plan.md`) |
 | Entrega 2 | 3.1 exportar (YouTube 1080p/4K y borrador), 3.2 transiciones, 3.3 títulos, 3.5 volumen y normalización, 3.9 marcadores | Pendiente |
 | Entrega 3 | Fase 2: EditPlan v1, validador, `apply_edit_plan` (un *undo*), `export_edit_plan`, `dry_run` | Pendiente |
 | Entrega 4 | Fase 4 + 3.4 subtítulos, 3.6 velocidad, 3.7 reencuadre (9:16), 3.8 color, *ducking* | Pendiente |
@@ -415,3 +416,4 @@ Puntos de partida que el Skill `editor-video` debe aplicar salvo que el brief di
 | 28/09/2026 | Decisiones | Por entregas con PR; todo en `Shotcut-AI`; todo local; YouTube 16:9 primero; EditPlan en C++ |
 | 28/09/2026 | Entrega 1 (Fase 0) | `docs/build-windows.md`, `scripts/sc.py`, muestras sintéticas y los 4 problemas de la sección 2 resueltos |
 | 28/09/2026 | Entrega 1 (Fase 1) | `shotcut-analysis` con 11 herramientas. En pruebas: cortes al fotograma exacto, silencios a ±0,1 s, tempo ±2 BPM, volumen ±1 dB. `whisper-cli` en el zip (vuelve *Speech to Text*) |
+| 27/11/2026 | Entrega UX | Panel *Asistente IA* (estado de la IA con colores, *Conectar con Claude* en un clic, 7 peticiones para copiar y *Lo que cambió la IA* con *Deshacer este paso*), 7 recetas MCP e instrucciones para principiantes, encender y apagar sin reiniciar, botón **IA** que nunca deja fuera a *Exportar*, Python incluido, `Shotcut AI.exe` con icono en lugar del `.bat` e instalador que pregunta por el acceso directo en el escritorio. Probado en la app real en Linux. Queda la prueba con alguien que no edita ([guia-principiante.md](guia-principiante.md)) |

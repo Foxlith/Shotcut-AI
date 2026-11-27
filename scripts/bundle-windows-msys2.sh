@@ -8,6 +8,8 @@
 #   bin/qt.conf     Qt plugins and QML modules in share/qt6
 #   lib/mlt         MLT modules          lib/frei0r-1  frei0r plugins
 #   share/mlt       MLT data             share/shotcut QML, filter sets, resources
+#   Shotcut AI.exe  starts bin/shotcut.exe and has the icon (the workflow then adds
+#                   python/, the embeddable Python of the MCP bridge and analysis server)
 set -euo pipefail
 
 DIST=${1:?usage: bundle-windows-msys2.sh <install dir>}
@@ -84,10 +86,15 @@ while true; do
 done
 echo "$(ls "$DIST/bin" | wc -l) files in bin"
 
-echo "== Launcher"
-cat > "$DIST/Shotcut AI.bat" <<'EOF'
-@echo off
-start "" "%~dp0bin\shotcut.exe" %*
-EOF
+echo "== Launcher with the icon of Shotcut AI"
+# "Shotcut AI.exe" starts bin\shotcut.exe; unlike a .bat file it shows the icon.
+rm -f "$DIST/Shotcut AI.bat"
+WORK=$(mktemp -d)
+windres -I "$SOURCE_DIR/packaging/windows" "$SOURCE_DIR/packaging/windows/shotcut-ai-launcher.rc" \
+    -O coff -o "$WORK/launcher.res"
+gcc -municode -mwindows -O2 -s "$SOURCE_DIR/packaging/windows/shotcut-ai-launcher.c" \
+    "$WORK/launcher.res" -o "$DIST/Shotcut AI.exe"
+rm -rf "$WORK"
+ls -l "$DIST/Shotcut AI.exe"
 
 du -sh "$DIST"

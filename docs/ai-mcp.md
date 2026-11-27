@@ -4,11 +4,17 @@ Shotcut AI incluye un servidor **MCP** (Model Context Protocol) para que una IA 
 
 - **Dirección:** `http://127.0.0.1:9999/mcp` (MCP con el transporte *Streamable HTTP*).
 - **Solo este equipo:** escucha únicamente en `127.0.0.1` y `::1`, y rechaza las peticiones que vienen de páginas web (cabeceras `Origin`/`Host`, HTTP 403). Otros ordenadores de la red no pueden conectarse.
-- **Activarlo o desactivarlo:** *Settings > AI Agent (MCP) > Enable AI Agent Server* (activado por defecto; el cambio se aplica al reiniciar). En ese menú se ve también el estado (*Listening on …*).
+- **Activarlo o desactivarlo:** *Settings > AI Agent (MCP) > Enable AI Agent Server*, o **Activar** en el panel *Asistente IA*. Viene activado y el cambio es inmediato, sin reiniciar. En ese menú se ve también el estado (*Listening on …*).
+- **Para quien no sabe editar:** el panel **Asistente IA** y el botón **IA** de la barra superior muestran si hay una IA conectada, peticiones listas para copiar y lo que cambió la IA, con *Deshacer este paso*. Guía paso a paso: [guia-principiante.md](guia-principiante.md).
 
 ## Conectar tu IA
 
-La forma más rápida: *Settings > AI Agent (MCP) > Copy MCP Configuration* y elige tu cliente. Se copia al portapapeles la configuración con las rutas de tu instalación; pégala donde se indica abajo. Incluye también `shotcut-analysis`, el servidor que analiza tus medios (escenas, audio, voz); ver [ai-analysis.md](ai-analysis.md).
+**En un clic (Claude Desktop y Claude Code):** en el panel *Asistente IA*, **Conectar con Claude**, o *Settings > AI Agent (MCP) > Connect to Claude Desktop / Connect to Claude Code*.
+- **Claude Desktop:** Shotcut AI añade `shotcut-ai` y `shotcut-analysis` a `claude_desktop_config.json` sin tocar lo demás. También funciona con la copia privada de la versión de Microsoft Store (`AppData\Local\Packages\Claude_…\LocalCache\Roaming\Claude`). Antes guarda una copia en `claude_desktop_config.json.bak`, y si el archivo está roto no lo cambia y lo explica. Después hay que cerrar Claude Desktop del todo y volver a abrirlo.
+- **Claude Code:** ejecuta `claude mcp add --scope user …` por ti. Si `claude` no está instalado, copia los comandos.
+- En Windows usa el **Python que viene con Shotcut AI** (`python\python.exe`), así que no hay que instalar Python.
+
+**Copiando la configuración:** *Settings > AI Agent (MCP) > Copy MCP Configuration* y elige tu cliente. Se copia al portapapeles la configuración con las rutas de tu instalación; pégala donde se indica abajo. Incluye también `shotcut-analysis`, el servidor que analiza tus medios (escenas, audio, voz); ver [ai-analysis.md](ai-analysis.md).
 
 ### Claude Code
 
@@ -37,7 +43,7 @@ Se conecta directo por HTTP. En `opencode.json` (el global, `~/.config/opencode/
 
 ### Claude Desktop
 
-Claude Desktop solo arranca servidores locales por stdio, así que usa el **puente** `shotcut_mcp_bridge.py` que viene con Shotcut AI (en `share\shotcut\mcp\`). Necesita **Python 3.8 o posterior** (solo la biblioteca estándar, sin `pip install`). En `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
+Claude Desktop solo arranca servidores locales por stdio, así que usa el **puente** `shotcut_mcp_bridge.py` que viene con Shotcut AI (en `share\shotcut\mcp\`). Necesita **Python 3.8 o posterior**, solo con la biblioteca estándar, sin `pip install`. El paquete de Windows ya lo trae en `python\python.exe`, y *Conectar con Claude* lo usa. En `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
 
 ```json
 {
@@ -71,13 +77,31 @@ Si tu versión de Antigravity admite servidores remotos por URL, también puedes
 
 ### El puente (para cualquier cliente stdio)
 
-- Puede arrancar **antes** que Shotcut AI: mientras la app está cerrada responde que no está abierta y, en cuanto la abres, avisa al cliente (`notifications/tools/list_changed`) para que cargue las herramientas.
+- Puede arrancar **antes** que Shotcut AI. Mientras la app está cerrada responde que no está abierta y, en cuanto la abres, avisa al cliente (`notifications/tools/list_changed` y `notifications/prompts/list_changed`) para que cargue las herramientas y las recetas.
 - Otra dirección o puerto: variable de entorno `SHOTCUT_AI_URL` (por ejemplo `http://127.0.0.1:8765/mcp`).
 - Si una herramienta espera a que cierres un diálogo, la llamada puede tardar; el límite es `SHOTCUT_AI_TIMEOUT` (300 s por defecto).
 
 ### Análisis de medios
 
 Para que la IA **vea y oiga** el material antes de editar (escenas, hojas de miniaturas, volumen, silencios, tempo y transcripción con tiempos) está el servidor `shotcut-analysis`, que viene en la misma carpeta (`share\shotcut\mcp\shotcut_analysis.py`). Todo corre en tu equipo con el ffmpeg y el whisper.cpp de Shotcut AI. Configuración, herramientas y modelos: [ai-analysis.md](ai-analysis.md).
+
+## Recetas (prompts)
+
+El servidor ofrece **peticiones listas** para trabajos comunes, pensadas para quien no sabe editar. En Claude Desktop salen en el botón **+** del chat; en Claude Code, como comandos `/mcp__shotcut-ai__…`. El panel *Asistente IA* tiene las mismas para copiarlas. Están en el idioma de Shotcut AI.
+
+| Receta | Qué pide | Argumentos (opcionales) |
+|---|---|---|
+| Hacer un vídeo con mis clips (`make_video`) | Un vídeo con los mejores momentos de tus clips, en buen orden. | `folder`, `duration`, `style` |
+| Quitar silencios y pausas (`remove_silences`) | Quitar silencios y pausas largas, cortando entre palabras. | |
+| Poner música y cortar al ritmo (`cut_to_music`) | Añadir música con los cortes al ritmo y la música más baja cuando alguien habla. | `music` |
+| Escribir lo que se dice (`transcribe_speech`) | El texto de lo que se dice, con tiempos, y un archivo SRT. | |
+| Explicar mi proyecto (`explain_project`) | Explicar qué hay en el proyecto, sin cambiar nada. | |
+| Revisar mi vídeo (`review_video`) | Revisar el vídeo como un editor y proponer arreglos, sin cambiar nada. | |
+| Prepararlo para YouTube (`prepare_for_youtube`) | Comprobar formato, sonido (-14 LUFS), inicio y huecos para YouTube, y explicar cómo exportar. | |
+
+Las que actúan sobre el proyecto piden a la IA que primero mire el material, proponga un plan de 3 a 5 puntos y espere el «sí».
+
+Además, el servidor envía **instrucciones** a la IA. Le dicen que el usuario puede no saber editar: debe hablar con palabras sencillas, explicar los términos, pedir confirmación antes de cambios grandes, no borrar archivos ni sobrescribir proyectos sin preguntar y, al final, decir qué cambió y qué se puede pedir después.
 
 ## Cómo trabaja la IA
 
@@ -87,7 +111,7 @@ Para que la IA **vea y oiga** el material antes de editar (escenas, hojas de min
 - **Archivos:** para ahorrar contexto, cada clip y cada elemento de la playlist nombra su archivo con un id (`"media": "m1"`), y la respuesta trae una tabla `media` con la ruta de cada id una sola vez. El id de un archivo no cambia mientras Shotcut AI está abierto, y `append_clip`, `insert_clip` y `overwrite_clip` lo aceptan en lugar de la ruta. `get_timeline` acepta `track` (solo una pista) y `detail: "full"` (añade fotogramas y todos los nombres).
 - **Formato del proyecto:** `get_state` da el tamaño, los fps y la relación de aspecto (`"1920x1080, 25 fps, 16:9"`), el modo de vídeo (`video_mode`: *Automatic* o el elegido en *Settings > Video Mode*) y `adapts_to_first_clip`: en modo automático, un proyecto vacío toma el formato del primer clip que se añade.
 - **Deshacer:** cada llamada que edita es **un solo paso** llamado *AI: …* en el panel Historial (por ejemplo *AI: Split clip*); Ctrl+Z o la herramienta `undo` lo revierte. Las llamadas que no cambian nada no dejan paso.
-- **Aviso visible:** el visor muestra *AI: …* unos segundos con cada edición.
+- **Aviso visible:** el visor muestra *AI: … (Ctrl+Z para deshacer)* unos segundos con cada edición, y el paso aparece en *Lo que cambió la IA* del panel *Asistente IA*. Ahí, **Deshacer este paso** vuelve a como estaba antes de ese paso.
 - **Una cosa a la vez:** si una llamada está esperando (por ejemplo, un diálogo abierto), otra llamada responde "busy" en lugar de mezclarse.
 - **Errores útiles:** los argumentos incorrectos devuelven un mensaje que la IA puede leer para corregirse (por ejemplo, qué argumentos son válidos o qué pistas existen).
 
@@ -152,16 +176,17 @@ Cualquier herramienta de la tabla sirve como `command` (`open` equivale a `open_
 
 ## Problemas comunes
 
-- **La IA dice que Shotcut AI no está abierto:** ábrelo y comprueba *Settings > AI Agent (MCP)*: debe decir *Listening on http://127.0.0.1:9999/mcp*.
+- **La IA dice que Shotcut AI no está abierto:** ábrelo y mira el botón **IA** de la barra superior: en amarillo o verde, el servidor escucha. En *Settings > AI Agent (MCP)* debe decir *Listening on http://127.0.0.1:9999/mcp*.
 - **"Not running: …" en ese menú:** otro programa (u otra ventana de Shotcut AI) ya usa el puerto 9999. Cierra la otra instancia, o cambia el puerto con la clave `aiServer/port` de la configuración y usa esa dirección en tu cliente (o `SHOTCUT_AI_URL` para el puente).
-- **Claude Desktop o Antigravity no encuentran `python`:** instala Python 3 desde python.org (marcando *Add python.exe to PATH*) o pon la ruta completa de `python.exe` en `command`.
+- **Claude Desktop o Antigravity no encuentran `python`:** usa *Conectar con Claude*, que apunta al `python\python.exe` de Shotcut AI. Si no, instala Python 3 desde python.org (marcando *Add python.exe to PATH*) o pon la ruta completa de `python.exe` en `command`.
 - **Usa `127.0.0.1`, no `localhost`:** algunos programas resuelven `localhost` a IPv6 primero; el servidor escucha en los dos cuando el sistema lo permite, pero `127.0.0.1` evita dudas.
 - **«File not found» con una ruta de `AppData`:** Claude Desktop instalado desde Microsoft Store guarda los archivos que escribe en `AppData` dentro de su propia carpeta privada (`AppData\Local\Packages\…\LocalCache`). Shotcut AI los busca ahí automáticamente; si aun así no aparece, guarda el archivo en Documentos, Vídeos o el Escritorio.
 - **Dos procesos `shotcut.exe`:** es normal. Shotcut arranca un vigilante (*watchdog*) que abre la aplicación como segundo proceso y la vuelve a abrir con otro modo gráfico si se cuelga al arrancar.
 
 ## Pruebas
 
-- `tests/test_mcp_protocol.cpp` (QtTest, en el CI de Linux): protocolo, HTTP, reglas de origen y configuraciones de los clientes.
+- `tests/test_mcp_protocol.cpp` (QtTest, en el CI de Linux): protocolo, HTTP, reglas de origen, configuraciones de los clientes, recetas y la configuración de Claude Desktop (fusión, copia `.bak`, archivo roto, Microsoft Store).
+- `tests/test_phase10_ai_beginner_ux_verification.py`: recetas, instrucciones, panel *Asistente IA*, *Conectar con Claude*, lanzador, instalador y traducciones.
 - `tests/test_phase8_ai_mcp_verification.py` (en `python tests/run_e2e_tests.py --fast`): seguridad, herramientas, esquemas, pasos de deshacer, menú y el puente de extremo a extremo contra un Shotcut AI simulado.
 - `tests/live_mcp_smoke.py`: prueba contra la app abierta (`--read-only`, o `--media archivo` para editar y deshacer; `--bridge` para probar también el puente). El build de Windows la ejecuta con la app recién compilada.
 - `scripts/sc.py`: llama a cualquier herramienta desde una terminal, por ejemplo `python scripts/sc.py call get_timeline track=V1` o `python scripts/sc.py call split_clip track=V1 clip=0 position=3`.

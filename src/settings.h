@@ -114,6 +114,9 @@ public:
     bool aiServerEnabled() const;
     void setAiServerEnabled(bool);
     int aiServerPort() const;
+    /// Whether the AI Assistant panel already opened by itself once (first run).
+    bool aiAssistantShown() const;
+    void setAiAssistantShown(bool shown);
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;

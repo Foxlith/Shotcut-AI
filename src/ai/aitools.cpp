@@ -917,15 +917,22 @@ Mcp::ToolResult AiTools::edit(const QString &title, const std::function<Mcp::Too
         stack->endMacro();
         // Drop the step when nothing changed.
         const int index = stack->index();
+        const QUndoCommand *step = nullptr;
         if (index > 0) {
             auto command = const_cast<QUndoCommand *>(stack->command(index - 1));
             if (command && command->text() == text && command->childCount() == 0) {
                 command->setObsolete(true);
                 stack->undo();
+            } else if (command && command->text() == text) {
+                step = command;
             }
         }
-        if (!result.isError)
-            MAIN.showStatusMessage(text, 3);
+        if (!result.isError) {
+            // Long enough to read, and say how to go back.
+            MAIN.showStatusMessage(tr("%1 (Ctrl+Z to undo)").arg(text), 6);
+        }
+        if (step)
+            emit stepDone(step);
         return result;
     });
 }
@@ -2087,4 +2094,151 @@ void AiTools::registerTools(Mcp::Server &server)
                     QJsonObject{{"removed", name}, {"filters", clipFiltersJson()}});
             });
         });
+}
+
+// ---------------------------------------------------------------------------------------
+// For people who do not edit video: what the server tells the AI, and ready-made requests.
+
+QString AiTools::stepPrefix()
+{
+    return tr("AI: %1").arg(QString());
+}
+
+QString AiTools::instructions()
+{
+    return QStringLiteral(
+        "Shotcut AI is a video editor that is open on this computer: every tool acts on it "
+        "live and the user sees the result at once. Start with get_state, then get_timeline "
+        "or get_playlist. Times are seconds (or a timecode such as 00:01:02.500). Tracks are "
+        "0-based indices from the top of the timeline, or names such as \"V1\" or \"A1\"; "
+        "clips are 0-based indices within their track from get_timeline, or their uuid. Each "
+        "edit is one undoable step named \"AI: ...\" (the undo tool reverts it). Use get_frame "
+        "to look at the video after a change, and list_actions with run_action for anything "
+        "else that Shotcut can do.\n\n"
+        "The user may never have edited a video. Answer in the user's language, in plain "
+        "words, and explain any editing term that you use. Look at the material before "
+        "editing (with the shotcut-analysis server when it is connected). Before a big "
+        "change (more than a few clips, removing material, starting over) say your plan in 3 "
+        "to 5 short points and wait for the user's OK. Never delete the user's files and "
+        "never overwrite a project file without asking. Every step can be undone with Ctrl+Z "
+        "in Shotcut AI or from its AI Assistant panel; say so when it helps. When you finish, "
+        "say in a few lines what changed and suggest what the user could ask next. The "
+        "prompts of this server are ready-made requests for common jobs.");
+}
+
+namespace {
+
+QString argumentOr(const QJsonObject &arguments, const char *name, const QString &fallback)
+{
+    const auto value = arguments.value(QLatin1String(name)).toString().trimmed();
+    return value.isEmpty() ? fallback : value;
+}
+
+/// How the AI works with someone who does not edit video, added to every recipe.
+QString beginnerWay()
+{
+    return AiTools::tr(
+        "I do not know how to edit video: talk to me in plain words. First look at the "
+        "material, then tell me your plan in 3 to 5 short points and wait for my OK. When "
+        "you finish, tell me what changed and what I could ask next.");
+}
+
+} // namespace
+
+QList<AiTools::Recipe> AiTools::recipes()
+{
+    QList<Recipe> list;
+    list.append({QStringLiteral("make_video"),
+                 tr("Make a video with my clips"),
+                 tr("Picks the best moments of your clips and puts them in order."),
+                 {{QStringLiteral("folder"),
+                   tr("The folder with the clips (empty: the clips already in the project)"),
+                   false},
+                  {QStringLiteral("duration"), tr("How long, for example 1 minute"), false},
+                  {QStringLiteral("style"), tr("The feel, for example calm, fast or funny"), false}},
+                 [](const QJsonObject &arguments) {
+                     return tr("Make a video of %1 with %2. Style: %3. Pick the best moments, put "
+                               "them in a good order and leave out what does not work (shaky, too "
+                               "dark, long silences).")
+                                .arg(argumentOr(arguments, "duration", tr("about 1 minute")),
+                                     arguments.contains("folder")
+                                         ? tr("the clips in the folder %1")
+                                               .arg(arguments.value("folder").toString())
+                                         : tr("the clips in my project"),
+                                     argumentOr(arguments, "style", tr("natural")))
+                            + QLatin1Char(' ') + beginnerWay();
+                 }});
+    list.append({QStringLiteral("remove_silences"),
+                 tr("Remove silences and pauses"),
+                 tr("Cuts out long pauses when people speak, between words."),
+                 {},
+                 [](const QJsonObject &) {
+                     return tr("Remove the long silences and pauses from the speech in my "
+                               "project. Cut between words, never in the middle of one, and "
+                               "keep short natural pauses.")
+                            + QLatin1Char(' ') + beginnerWay();
+                 }});
+    list.append(
+        {QStringLiteral("cut_to_music"),
+         tr("Add music and cut to the beat"),
+         tr("Adds a song and makes the cuts follow its rhythm."),
+         {{QStringLiteral("music"), tr("The music file (empty: the one in the project)"), false}},
+         [](const QJsonObject &arguments) {
+             return tr("Add the music %1 to my video and make the cuts follow its beat. When "
+                       "someone speaks, the music must be quieter so the voice is clear.")
+                        .arg(argumentOr(arguments, "music", tr("that is in my project")))
+                    + QLatin1Char(' ') + beginnerWay();
+         }});
+    list.append({QStringLiteral("transcribe_speech"),
+                 tr("Write down what is said"),
+                 tr("Transcribes the speech, with times and a subtitle file."),
+                 {},
+                 [](const QJsonObject &) {
+                     return tr("Transcribe what is said in my video. Give me the text with "
+                               "times, and an SRT subtitle file that I can open in the "
+                               "Subtitles panel of Shotcut AI.")
+                            + QLatin1Char(' ') + beginnerWay();
+                 }});
+    list.append({QStringLiteral("explain_project"),
+                 tr("Explain my project"),
+                 tr("Tells you what is in your project, without changing anything."),
+                 {},
+                 [](const QJsonObject &) {
+                     return tr("Explain to me in plain words what is in my project now: the "
+                               "clips, how long it is and what each track does. Do not change "
+                               "anything.");
+                 }});
+    list.append({QStringLiteral("review_video"),
+                 tr("Review my video"),
+                 tr("Watches your video like an editor and says what to improve."),
+                 {},
+                 [](const QJsonObject &) {
+                     return tr("Watch my video as an editor would and tell me what to improve: "
+                               "black gaps, cuts in the middle of a word, sound that is too "
+                               "loud or too quiet, clips that are too long. Do not change "
+                               "anything until I choose the fixes I want.");
+                 }});
+    list.append(
+        {QStringLiteral("prepare_for_youtube"),
+         tr("Get it ready for YouTube"),
+         tr("Checks the format, the sound and the start for YouTube."),
+         {},
+         [](const QJsonObject &) {
+             return tr("Get my video ready for YouTube (16:9, 1080p): check the format of the "
+                       "project, that the sound is about -14 LUFS and never clips, that the "
+                       "first seconds are strong and that there are no black gaps. Then tell "
+                       "me how to export it (Export, YouTube preset).")
+                    + QLatin1Char(' ') + beginnerWay();
+         }});
+    return list;
+}
+
+void AiTools::registerPrompts(Mcp::Server &server)
+{
+    for (const auto &recipe : recipes())
+        server.addPrompt(Mcp::Prompt{recipe.name,
+                                     recipe.title,
+                                     recipe.description,
+                                     recipe.arguments,
+                                     recipe.text});
 }

@@ -4,16 +4,21 @@ El código de Shotcut AI está en [github.com/Foxlith/Shotcut-AI](https://github
 
 ## 1. Con GitHub Actions (recomendado)
 
-El workflow **Build Windows (Shotcut AI)** (`.github/workflows/build-windows-shotcut-ai.yml`) compila el repositorio y genera un zip portátil.
+El workflow **Build Windows (Shotcut AI)** (`.github/workflows/build-windows-shotcut-ai.yml`) compila el repositorio y genera un **instalador** y un zip portátil.
 
 - **Cuándo se ejecuta:** en cada *push* a `master`, `claude/**` o `fase-*` (salvo cambios solo de `.md` o `tests/`). También se lanza a mano en *Actions > Build Windows (Shotcut AI) > Run workflow*, eligiendo la rama.
-- **Dónde se descarga:** en la página de la ejecución, sección *Artifacts* → `Shotcut-AI-windows-x64`. Descomprímelo en una carpeta nueva y abre `Shotcut AI.bat`.
+- **Dónde se descarga:** en la página de la ejecución, sección *Artifacts*:
+  - `Shotcut-AI-Setup`: el instalador (`Shotcut-AI-Setup.exe`), en español. No pide permisos de administrador. Pregunta si quieres un **acceso directo en el escritorio**, marcado por defecto, y añade Shotcut AI al menú Inicio.
+  - `Shotcut-AI-windows-x64`: la carpeta portátil en zip. Descomprímela en una carpeta nueva y abre `Shotcut AI.exe`, que lleva el icono de Shotcut AI y arranca `bin\shotcut.exe`.
+- **Python incluido:** el paquete trae la versión *embeddable* de Python de python.org (carpeta `python\`). Con ella funcionan el puente de Claude Desktop y el servidor de análisis sin instalar nada.
 - **Qué comprueba antes de subirlo:**
   - que todos los módulos de MLT cargan sin MSYS2;
   - que `whisper-cli.exe` arranca;
   - que Shotcut AI sigue abierto a los 60 s;
-  - el servidor MCP (`tests/live_mcp_smoke.py`);
-  - el servidor de análisis con un modelo de Whisper y una grabación de voz (`tests/live_analysis_smoke.py`).
+  - el servidor MCP, con las recetas, a través del puente y con el Python incluido (`tests/live_mcp_smoke.py`);
+  - el servidor de análisis con un modelo de Whisper y una grabación de voz, también con el Python incluido (`tests/live_analysis_smoke.py`);
+  - que `Shotcut AI.exe` abre la aplicación;
+  - que el instalador instala, crea los accesos directos del escritorio y del menú Inicio apuntando a `bin\shotcut.exe`, y que el desinstalador los quita.
 - **Tiempo:** de 15 a 25 minutos.
 
 ## 2. En tu PC con MSYS2
@@ -64,13 +69,15 @@ Son los mismos pasos que el workflow.
    mkdir -p dist/Shotcut-AI/lib/ladspa && cp deps/ladspa-swh/.libs/*.dll dist/Shotcut-AI/lib/ladspa/
    ```
 
-5. Arma la carpeta portátil, que copia melt, ffmpeg, whisper-cli, los módulos de MLT, Qt y todas las DLL:
+5. Arma la carpeta portátil. Copia melt, ffmpeg, whisper-cli, los módulos de MLT, Qt y todas las DLL, y compila `Shotcut AI.exe` (`packaging/windows/shotcut-ai-launcher.c`, con el icono):
 
    ```bash
    bash scripts/bundle-windows-msys2.sh dist/Shotcut-AI
    ```
 
-6. Abre `dist/Shotcut-AI/Shotcut AI.bat`.
+6. Opcional: Python para el puente y el análisis. Descomprime [python-3.12.10-embed-amd64.zip](https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip) en `dist/Shotcut-AI/python`.
+7. Abre `dist/Shotcut-AI/Shotcut AI.exe`.
+8. Opcional: el instalador. Con [Inno Setup 6](https://jrsoftware.org/isinfo.php), ejecuta `ISCC.exe /DAppVersion=26.11.27 packaging\windows\shotcut-ai.iss`; deja `dist\Shotcut-AI-Setup.exe`.
 
 Después de cambiar el código, basta con repetir `cmake --build build`, `cmake --install build` y el paso 5.
 

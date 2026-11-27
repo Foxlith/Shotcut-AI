@@ -314,6 +314,16 @@ int ShotcutSettings::aiServerPort() const
     return (port > 0 && port < 65536) ? port : 9999;
 }
 
+bool ShotcutSettings::aiAssistantShown() const
+{
+    return settings.value("aiServer/assistantShown", false).toBool();
+}
+
+void ShotcutSettings::setAiAssistantShown(bool shown)
+{
+    settings.setValue("aiServer/assistantShown", shown);
+}
+
 QThread::Priority ShotcutSettings::jobPriority() const
 {
     const auto priority = settings.value("jobPriority", "low").toString();

@@ -74,9 +74,9 @@ class HttpClient:
 class BridgeClient:
     """The same requests through the stdio bridge, as Claude Desktop sends them."""
 
-    def __init__(self, bridge, url):
+    def __init__(self, bridge, url, python=None):
         environment = dict(os.environ, SHOTCUT_AI_URL=url)
-        self.process = subprocess.Popen([sys.executable, bridge], stdin=subprocess.PIPE,
+        self.process = subprocess.Popen([python or sys.executable, bridge], stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, env=environment,
                                         text=True, encoding="utf-8")
         self.next_id = 0
@@ -128,6 +128,10 @@ def check(condition, message):
     print("  ok  " + message)
 
 
+REQUIRED_PROMPTS = {"make_video", "remove_silences", "cut_to_music", "transcribe_speech",
+                    "explain_project", "review_video", "prepare_for_youtube"}
+
+
 def handshake(client, label):
     result = client.request("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
                                            "clientInfo": {"name": "live_mcp_smoke", "version": "1"}})
@@ -138,6 +142,16 @@ def handshake(client, label):
     missing = REQUIRED_TOOLS - set(tools)
     check(not missing, "%s: tools/list has the %d tools (missing: %s)"
           % (label, len(REQUIRED_TOOLS), sorted(missing) or "none"))
+    # Phase 10: ready-made requests and instructions for people who do not edit video.
+    check("prompts" in result["capabilities"], "%s: the server offers prompts" % label)
+    check("plain words" in result.get("instructions", ""),
+          "%s: the instructions ask for plain words" % label)
+    prompts = {entry["name"] for entry in client.request("prompts/list")["prompts"]}
+    check(REQUIRED_PROMPTS <= prompts, "%s: prompts/list has %d prompts" % (label, len(prompts)))
+    text = client.request("prompts/get", {"name": "make_video",
+                                          "arguments": {"duration": "30 s"}})
+    text = text["messages"][0]["content"]["text"]
+    check("30 s" in text, "%s: prompts/get make_video gives the request" % label)
     return tools
 
 
@@ -209,6 +223,7 @@ def main():
     parser.add_argument("--read-only", action="store_true")
     parser.add_argument("--media", help="A media file for the editing checks.")
     parser.add_argument("--bridge", help="Also check the stdio bridge at this path.")
+    parser.add_argument("--python", help="The Python that runs the bridge (default: this one).")
     options = parser.parse_args()
     try:
         print("MCP over HTTP at %s" % options.url)
@@ -221,7 +236,7 @@ def main():
             editing_checks(client, options.media)
         if options.bridge:
             print("MCP through the stdio bridge %s" % options.bridge)
-            bridge = BridgeClient(options.bridge, options.url)
+            bridge = BridgeClient(options.bridge, options.url, options.python)
             try:
                 handshake(bridge, "bridge")
                 state, _ = tool(bridge, "get_state")

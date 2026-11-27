@@ -58,6 +58,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   docks/jobsdock.cpp docks/jobsdock.h
   docks/jobsdock.ui
   docks/keyframesdock.cpp docks/keyframesdock.h
+  docks/aiassistantdock.cpp docks/aiassistantdock.h
   docks/markersdock.cpp docks/markersdock.h
   docks/notesdock.cpp docks/notesdock.h
   docks/playlistdock.cpp docks/playlistdock.h
@@ -88,6 +89,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   jobs/whisperjob.cpp jobs/whisperjob.h
   aiagentserver.cpp aiagentserver.h
   ai/aitools.cpp ai/aitools.h
+  ai/clientsetup.cpp ai/clientsetup.h
   ai/mcpprotocol.cpp ai/mcpprotocol.h
   main.cpp
   mainwindow.cpp mainwindow.h

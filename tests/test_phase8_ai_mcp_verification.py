@@ -315,7 +315,9 @@ class TestPhase8Server(CodeTestCase):
         self.assertIn("stack->endMacro();", edit)
         # A step that changed nothing is dropped instead of cluttering History.
         self.assertIn("command->setObsolete(true); stack->undo();", edit)
-        self.assertIn("MAIN.showStatusMessage(text, 3);", edit)
+        # Phase 10: the message stays longer and says how to undo; the panel hears of it.
+        self.assertIn('MAIN.showStatusMessage(tr("%1 (Ctrl+Z to undo)").arg(text), 6);', edit)
+        self.assertIn("emit stepDone(step);", edit)
         run = block(self.tools, "Mcp::ToolResult AiTools::run(")
         self.assertIn("if (m_busy)", run)
         self.assertIn("QScopedValueRollback<bool> busy(m_busy, true);", run)

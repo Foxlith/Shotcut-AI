@@ -117,12 +117,14 @@ class Bridge:
 
     @staticmethod
     def with_list_changed(result):
-        """The bridge may announce new tools later (when Shotcut AI opens)."""
+        """The bridge may announce new tools and prompts later (when Shotcut AI opens)."""
         result = dict(result)
         capabilities = dict(result.get("capabilities") or {})
-        tools = dict(capabilities.get("tools") or {})
-        tools["listChanged"] = True
-        capabilities["tools"] = tools
+        for name in ("tools", "prompts"):
+            if name == "tools" or name in capabilities:
+                entry = dict(capabilities.get(name) or {})
+                entry["listChanged"] = True
+                capabilities[name] = entry
         result["capabilities"] = capabilities
         return result
 
@@ -130,9 +132,10 @@ class Bridge:
         requested = (self.client_initialize or {}).get("protocolVersion")
         version = requested if requested in PROTOCOL_VERSIONS else PROTOCOL_VERSIONS[0]
         return {"protocolVersion": version,
-                "capabilities": {"tools": {"listChanged": True}},
+                "capabilities": {"tools": {"listChanged": True},
+                                 "prompts": {"listChanged": True}},
                 "serverInfo": {"name": "shotcut-ai", "title": "Shotcut AI (bridge)", "version": "1"},
-                "instructions": NOT_RUNNING + " Its tools appear when it opens."}
+                "instructions": NOT_RUNNING + " Its tools and prompts appear when it opens."}
 
     def unreachable_response(self, message):
         method = message.get("method")
@@ -205,6 +208,7 @@ class Bridge:
                     continue
                 self.watching = False
                 self.write({"jsonrpc": "2.0", "method": "notifications/tools/list_changed"})
+                self.write({"jsonrpc": "2.0", "method": "notifications/prompts/list_changed"})
                 return
 
         threading.Thread(target=watch, daemon=True).start()

@@ -21,7 +21,10 @@
 #include "ai/mcpprotocol.h"
 
 #include <functional>
+#include <QList>
 #include <QObject>
+
+class QUndoCommand;
 
 /*!
   \class AiTools
@@ -36,8 +39,32 @@ class AiTools : public QObject
 {
     Q_OBJECT
 public:
+    /// A ready-made request for a common job, for people who do not edit video: an MCP
+    /// prompt, and a card of the AI Assistant panel that copies the same text.
+    struct Recipe
+    {
+        QString name;
+        QString title;
+        QString description;
+        QList<Mcp::PromptArgument> arguments;
+        /// The request, from the arguments; without them it still reads well.
+        std::function<QString(const QJsonObject &arguments)> text;
+    };
+
     explicit AiTools(QObject *parent = nullptr);
     void registerTools(Mcp::Server &server);
+    void registerPrompts(Mcp::Server &server);
+
+    /// The recipes, in the language of the user interface.
+    static QList<Recipe> recipes();
+    /// What the server tells the AI about Shotcut AI and about its user.
+    static QString instructions();
+    /// The prefix of the undo steps of the AI ("AI: ").
+    static QString stepPrefix();
+
+signals:
+    /// An edit of the AI became the undo step \a command.
+    void stepDone(const QUndoCommand *command);
 
 private:
     /// Runs \a body unless another call is running.

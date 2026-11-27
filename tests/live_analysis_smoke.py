@@ -49,8 +49,8 @@ def check(condition, message):
 
 
 class Server:
-    def __init__(self, script, environment):
-        self.process = subprocess.Popen([sys.executable, script], stdin=subprocess.PIPE,
+    def __init__(self, script, environment, python=None):
+        self.process = subprocess.Popen([python or sys.executable, script], stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, env=environment, text=True,
                                         encoding="utf-8")
         self.next_id = 0
@@ -194,6 +194,7 @@ def main():
     parser.add_argument("--model", help="Model for transcribe (default: the server's choice).")
     parser.add_argument("--speech", help="A speech recording for transcribe.")
     parser.add_argument("--expect", default="", help="Words that the speech contains.")
+    parser.add_argument("--python", help="The Python that runs the server (default: this one).")
     options = parser.parse_args()
     environment = dict(os.environ)
     temporary = tempfile.mkdtemp(prefix="shotcut-analysis-smoke-")
@@ -202,7 +203,7 @@ def main():
     folder = options.samples or os.path.join(temporary, "samples")
     try:
         print("Media analysis server %s" % options.server)
-        server = Server(options.server, environment)
+        server = Server(options.server, environment, options.python)
         try:
             init = server.request("initialize", {"protocolVersion": "2025-06-18",
                                                  "capabilities": {},

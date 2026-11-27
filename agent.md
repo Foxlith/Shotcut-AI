@@ -20,6 +20,14 @@
 - **Fase 7 (Acentos y Tema Clásico):** Completada — `--fast` sube a 735 tests (20 nuevos de Fase 7). Verificada en la app real cambiando el acento en vivo entre los 4 colores, reiniciando con el acento guardado y con el tema *Classic Fusion Dark*. Con esta fase quedan completadas todas las fases del rediseño.
 - **Fase 8 (Sistema de IA en vivo, MCP):** Completada — `--fast` sube a 754 tests (19 nuevos de Fase 8) y el CI de Linux ejecuta además las pruebas C++ (`tests/test_mcp_protocol.cpp`, 34 comprobaciones). Verificada en la app real controlándola por MCP (HTTP y puente stdio) y por WebSocket: dividir, mover, recortar, fundidos, pistas, filtros, fotogramas, deshacer y seguridad (solo local, orígenes web rechazados). Guía: `docs/ai-mcp.md`.
 - **Fase 9 (Percepción de la IA, Entrega 1 de `docs/ROADMAP_SHOTCUT_AI.md`):** Completada — `--fast` sube a 777 tests (23 nuevos) y QtTest a 36 comprobaciones. Nuevo servidor MCP `shotcut-analysis` (escenas, miniaturas, volumen, silencios, tempo y transcripción con whisper.cpp) y arreglos de las primeras pruebas de Fox con Claude Code (respuestas compactas, perfil real, rutas de apps de Microsoft Store). Guías: `docs/ai-analysis.md`, `docs/build-windows.md`.
+- **Fase 10 (Shotcut AI para quien no sabe editar, Entrega UX):** Completada — `--fast` sube a 799 tests (22 nuevos) y QtTest a 40 comprobaciones. Incluye:
+  - panel **Asistente IA**: estado de la IA con colores, *Conectar con Claude* en un clic, peticiones para copiar y lo que cambió la IA con *Deshacer este paso*;
+  - 7 recetas MCP e instrucciones para principiantes;
+  - el servidor se enciende y se apaga sin reiniciar;
+  - Python incluido;
+  - `Shotcut AI.exe` con icono e instalador con acceso directo en el escritorio.
+
+  Guía: `docs/guia-principiante.md`.
 - **Lanzador de Pruebas en Escritorio:** `C:\Users\Fox\Desktop\Probar Shotcut AI.lnk` (ejecuta con `capcut_theme.qss` y proyecto demo).
 
 ---
@@ -78,7 +86,22 @@
 ### 6. 🤖 Servidor de IA en vivo (MCP + WebSocket) — Fase 8
 - Archivos: `src/aiagentserver.cpp/.h` (transporte), `src/ai/mcpprotocol.cpp/.h` (protocolo MCP puro, probado con QtTest), `src/ai/aitools.cpp/.h` (las 33 herramientas), `scripts/shotcut_mcp_bridge.py` (puente stdio). Guía de uso: `docs/ai-mcp.md`.
 - Un solo puerto (`9999`, clave `aiServer/port`), **solo en 127.0.0.1 y ::1**: MCP en `http://127.0.0.1:9999/mcp` (Claude Code, OpenCode, Antigravity) y el WebSocket `ws://127.0.0.1:9999` de siempre (comandos `{"command": ...}` que ahora sí se ejecutan). Claude Desktop usa el puente stdio instalado en `share/shotcut/mcp/`.
-- Se crea al final del constructor de `MainWindow` si *Settings > AI Agent (MCP) > Enable AI Agent Server* está activado (clave `aiServer/enabled`, por defecto sí).
+- Se crea al final del constructor de `MainWindow` si *Settings > AI Agent (MCP) > Enable AI Agent Server* está activado (clave `aiServer/enabled`, por defecto sí). Desde la Fase 10 ese interruptor, y *Activar* del panel *Asistente IA*, lo crean o lo borran al momento (`MainWindow::setAiServerRunning()`), sin reiniciar.
+- Desde la Fase 10 también ofrece **recetas** (`prompts/list`, `prompts/get`; `AiTools::recipes()`) e **instrucciones para principiantes** (`AiTools::instructions()`). `Mcp::Server::setObserver()` le dice al panel qué cliente habla (señal `AIAgentServer::clientActivity`).
+
+### 8. 🧑‍🏫 Asistente IA para quien no sabe editar — Fase 10
+- `src/docks/aiassistantdock.cpp/.h` (`AiAssistantDock`, en *Ver*, pestaña del Inspector) tiene tres partes:
+  1. **Estado:** apagada (gris), no pudo arrancar (rojo), esperando (amarillo) o conectada a *cliente* (verde, si hubo actividad en los últimos 10 min). Botones **Conectar con Claude** (Claude Desktop / Claude Code) y **Activar**.
+  2. **Lo que cambió la IA:** los pasos `AI: …` de la pila de deshacer, con hora (señal `AiTools::stepDone`). *Deshacer/Rehacer este paso* llama a `QUndoStack::setIndex()`.
+  3. **¿Qué quieres hacer?:** tarjetas que copian el texto de las recetas, las mismas que ofrece MCP.
+- `src/ai/clientsetup.cpp/.h` (solo Qt Core, probado con QtTest) busca y fusiona `claude_desktop_config.json`, también la copia de Microsoft Store en `Packages/Claude*/LocalCache/Roaming/Claude`. Guarda antes una copia `.bak` y no toca un archivo roto. Claude Code se configura con `claude mcp add --scope user`.
+- `AIAgentServer::pythonPath()` usa `<app>/python/python.exe` (el Python *embeddable* del paquete de Windows) y, si no lo hay, `python`/`python3`.
+- Barra superior: el botón **IA** (`QToolButton#aiStatusButton`, antes de *Tareas*) muestra el color del estado y abre el panel. `adjustMainToolbar()` lo oculta si no cabe, para que *Exportar* nunca salga de la barra.
+- La primera vez (clave `aiServer/assistantShown`) el panel se abre solo. También hay *Help > AI Assistant: First Steps* (abre `docs/guia-principiante.md` en GitHub) y *Settings > AI Agent (MCP) > Show AI Assistant / Connect to Claude Desktop / Connect to Claude Code*.
+- Windows:
+  - `packaging/windows/shotcut-ai-launcher.c/.rc` → `Shotcut AI.exe`, con el icono, que arranca `bin\shotcut.exe`;
+  - `packaging/windows/shotcut-ai.iss` → `Shotcut-AI-Setup.exe` (Inno Setup, español/inglés, sin administrador, acceso directo en el escritorio marcado por defecto, menú Inicio, `AppMutex`);
+  - el instalador de Shotcut `shotcut.iss` sigue intacto.
 
 ### 7. 👂 Análisis de medios para la IA (`shotcut-analysis`) — Fase 9
 - Archivo: `scripts/shotcut_analysis.py`, instalado en `share/shotcut/mcp/` junto al puente. Es un servidor MCP por stdio con **solo la biblioteca estándar de Python** y los programas del zip (`bin/ffmpeg`, `ffprobe`, `whisper-cli`; se pueden cambiar con `SHOTCUT_FFMPEG`/`SHOTCUT_FFPROBE`/`SHOTCUT_WHISPER`). Guía: `docs/ai-analysis.md`.
@@ -92,9 +115,16 @@
 - `scripts/sc.py`: CLI para las herramientas de Shotcut AI (HTTP) o, con `--analysis`, las de este servidor.
 
 ### 6. 🧪 Infraestructura de Pruebas (E2E & Adversarial)
-- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (777 tests tras la Fase 9: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py` + 23 de `tests/test_phase9_ai_analysis_verification.py`).
+- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (799 tests tras la Fase 10: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py` + 23 de `tests/test_phase9_ai_analysis_verification.py` + 22 de `tests/test_phase10_ai_beginner_ux_verification.py`).
+- **Entorno de pruebas en un contenedor Linux limpio** (como el de Claude Code en la nube). Hacen falta:
+  - Pillow, numpy, PySide6 y pymupdf (en un *venv*), más `libegl1` y `libgl1`;
+  - `.agents/TEST_INFRA.md`, que está ignorado por git;
+  - un `powershell` de mentira en el PATH;
+  - ejecutar la batería desde una carpeta que tenga un enlace llamado literalmente `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml` apuntando a `src/qml`.
+
+  Con `gcc-mingw-w64-x86-64` instalado, la Fase 10 compila además `Shotcut AI.exe`; sin él, esa prueba se salta.
 - Prueba en vivo del servidor de análisis con los programas reales: `python tests/live_analysis_smoke.py` (genera medios de contenido conocido con `tests/media/make_samples.py`; `--speech archivo --expect texto` y `--download-model nombre` para la transcripción). El build de Windows la ejecuta con el zip, un modelo `tiny-q5_1` descargado por el servidor y la muestra `jfk.wav` de whisper.cpp. En `--fast`, ffmpeg, ffprobe y whisper-cli están simulados (`tests/media/fake_ffmpeg.py`, `fake_whisper.py`).
-- Pruebas C++ (QtTest, `-DSHOTCUT_BUILD_TESTS=ON` y `ctest`, también en el CI de Linux): `tests/test_mcp_protocol.cpp` y las dos de upstream.
+- Pruebas C++ (QtTest, `-DSHOTCUT_BUILD_TESTS=ON` y `ctest`, también en el CI de Linux): `tests/test_mcp_protocol.cpp` (protocolo, recetas, observador y `ClientSetup`) y las dos de upstream.
 - Prueba en vivo del servidor de IA con la app abierta: `python tests/live_mcp_smoke.py` (`--read-only`, `--media archivo`, `--bridge ruta`); el build de Windows la ejecuta con la app recién compilada.
 - Validador AST: Escaneo de 436 archivos QML/JS con 0 errores de sintaxis.
 - Pruebas de estrés y adversariales integradas en Tier 5.
@@ -333,11 +363,43 @@
     - `python tests/run_e2e_tests.py --fast`: **777/777 (exit code 0)** a escala 100 % y 125 %. clang-format-14 limpio.
   - **Roadmap:** marcadas 0.1, 0.2, 0.4, 0.5 y 1.1–1.4, 1.6–1.8, con notas; respondidas las preguntas abiertas que dependían del código; nuevas secciones *Entregas* y registro. Siguen abiertas la 0.3 (material real de Fox en `muestras/`, ya en `.gitignore`) y la 1.5 (medir 5 min de entrevista en el PC de Fox).
 
+- **Fase 10: Shotcut AI para quien no sabe editar — Entrega UX (`src/docks/aiassistantdock.cpp/.h`, `src/ai/clientsetup.cpp/.h`, `packaging/windows/shotcut-ai-launcher.c/.rc`, `packaging/windows/shotcut-ai.iss`, `docs/guia-principiante.md`, `tests/test_phase10_ai_beginner_ux_verification.py` (nuevos), `src/ai/mcpprotocol.cpp/.h`, `src/ai/aitools.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/CMakeLists.txt`, `translations/shotcut_es.ts`, `scripts/shotcut_mcp_bridge.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`, `tests/test_mcp_protocol.cpp`, `tests/CMakeLists.txt`, `tests/live_mcp_smoke.py`, `tests/live_analysis_smoke.py`, `tests/test_phase8_ai_mcp_verification.py`, `tests/run_e2e_tests.py`, `docs/ai-mcp.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md`, `plan.md`):** [COMPLETADO — VERIFICADO EN LA APP REAL EN LINUX; PENDIENTE DEL CI DE WINDOWS Y DE LA PRUEBA CON USUARIOS]
+  - **Contexto:** Fox pidió (27/11/2026) validar mejoras para que alguien que no sabe editar pueda hacerlo, más el icono en el ejecutable y un instalador que pregunte por el acceso directo. El zip se abría con `Shotcut AI.bat`, sin icono; `bin\shotcut.exe` ya tenía el logo nuevo.
+  - **Barreras encontradas en el código:**
+    - conectar pedía instalar Python y pegar JSON;
+    - encender el servidor pedía reiniciar;
+    - el estado solo estaba en un submenú;
+    - `prompts/list` estaba vacío;
+    - el servidor no enviaba `instructions` útiles para principiantes;
+    - lo que hacía la IA solo se veía 3 s.
+  - **Hecho:** componente 8, más:
+    - recetas e instrucciones (componente 6);
+    - el puente anuncia `prompts` y envía `notifications/prompts/list_changed` cuando Shotcut abre;
+    - el mensaje de cada paso dura 6 s e incluye «Ctrl+Z para deshacer»;
+    - 122 textos traducidos al español (los nuevos y otros de las fases 3–8 que faltaban).
+  - **Invarianza:** se conservan el submenú *AI Agent (MCP)*, el estado, *Copy MCP Configuration* (4 clientes), la línea del constructor que crea el servidor, el instalador de Shotcut y el kDockLayoutVersion (el panel nuevo no reinicia el diseño guardado). El `.bat` se sustituye por `Shotcut AI.exe`, que hace lo mismo (Matriz de Correspondencia de `plan.md`).
+  - **Verificación en la app real (Qt 6.10.2 + MLT 7.36.1, Xvfb), en inglés y en español:**
+    - el panel se abre solo la primera vez, como pestaña del Inspector;
+    - `sc.py` hizo 3 ediciones y las tres aparecieron con hora, la deshecha en gris;
+    - *Deshacer este paso* sobre el segundo paso quitó b.mp4 (comprobado con `get_timeline`);
+    - una tarjeta copió su receta;
+    - *Conectar con Claude > Claude Desktop* fusionó `~/.config/Claude/claude_desktop_config.json`: conservó `globalShortcut` y el servidor `filesystem`, añadió los dos de Shotcut AI y creó `.bak`;
+    - desactivar en el menú cerró el puerto 9999 y puso el panel en gris; *Activar* lo volvió a abrir sin reiniciar;
+    - el puente stdio ofreció `prompts` y `prompts/get make_video` devolvió la receta;
+    - `tests/live_mcp_smoke.py --media … --bridge … --python python3` pasó entero, incluidas las comprobaciones nuevas de recetas e instrucciones.
+  - **Barra superior:** a 1366 px en español con un proyecto modificado, el botón **IA** se oculta y *Exportar* sigue visible; a 1440 px se ven los dos. A 1300 px *Exportar* ya no cabía antes de esta fase (fallo previo, no del botón **IA**).
+  - **Pruebas:**
+    - `tests/test_phase10_ai_beginner_ux_verification.py` (22 tests, Tier 5): protocolo y recetas; el puente con y sin Shotcut; instrucciones; *Conectar con Claude*; panel, deshacer por paso, encendido en vivo, botón **IA**, primera vez y ayuda; invarianza de la Fase 8; lanzador (lo compila con MinGW si está), empaquetado, instalador y CI; traducciones completas con los mismos `%1`; guías y trazabilidad.
+    - QtTest: 40 comprobaciones (+4: `promptsAreReadyMadeRequests`, `observerSeesClients`, `connectsClaudeDesktop`, `quotesPythonWithSpaces`).
+    - `tests/test_phase8_ai_mcp_verification.py` cambia la comprobación del mensaje de estado (6 s, «Ctrl+Z to undo», `stepDone`).
+  - **Pendiente:** el CI de Windows (Python incluido, lanzador e instalador) y la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
+
 ---
 
 ## 🚀 Próxima Etapa: Hoja de ruta del editor de vídeo por IA
 - **Guía de trabajo:** `docs/ROADMAP_SHOTCUT_AI.md` (el roadmap de Fox), que se hace por entregas con PR:
   - **Entrega 1** (Fase 0 + Fase 1): ✅ es la Fase 9 de `plan.md`.
+  - **Entrega UX** (para quien no sabe editar): ✅ es la Fase 10 de `plan.md`.
   - **Entrega 2:**
     - exportar con perfiles YouTube 1080p/4K y borrador, con un método público en `EncodeDock` sobre su `encode()` privado y el progreso con `get_jobs`;
     - transiciones (`AddTransitionCommand`);
@@ -349,6 +411,7 @@
   - **Entrega 5:** Skill, estilos y plugin de Claude Code.
   - **Entrega 6:** evaluación.
 - **Pendiente de Fox:**
+  - instalar `Shotcut-AI-Setup.exe`, pulsar *Conectar con Claude* y hacer la **prueba con alguien que no edita** (`docs/guia-principiante.md`);
   - probar el zip de la Entrega 1 en su PC y conectar `shotcut-analysis` (*Copy MCP Configuration*);
   - medir la tarea 1.5 (entrevista de 5 min en menos de 2 min) y aportar material real en `muestras/` (tarea 0.3).
 - **Opcional para Windows:** distribuir las fuentes Geist / Geist Mono (OFL). Para igualar al instalador oficial, compilar MLT desde el código con OpenCV, libspatialaudio y movit, más bigsh0t y ntsc-rs, como hace `scripts/build-shotcut-msys2.sh`.
@@ -357,7 +420,7 @@
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 777 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 799 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).
@@ -372,4 +435,8 @@
     - las herramientas nuevas van en `TOOLS` de `scripts/shotcut_analysis.py` con un esquema cerrado, en la tabla de `docs/ai-analysis.md` y en `ANALYSIS_TOOLS` de `tests/test_phase9_ai_analysis_verification.py`;
     - el trabajo que tarde más de unos segundos va en `JOBS.start()` + `wait_for()`, y sus resultados van a la caché;
     - las respuestas de las dos IA deben ser compactas: ids de medios, sin repetir rutas, listas en lugar de objetos para datos largos.
-12. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.
+12. **Para quien no sabe editar (Fase 10):**
+    - una receta nueva va en `AiTools::recipes()`, en `REQUIRED_PROMPTS` de `tests/live_mcp_smoke.py`, en `RECIPES` de `tests/test_phase10_ai_beginner_ux_verification.py` y en la tabla *Recetas* de `docs/ai-mcp.md`. La fila se escribe `| Título (`nombre`) |`, porque las filas que empiezan con un nombre entre comillas invertidas cuentan como herramientas en la Fase 8;
+    - todo texto nuevo de `AiTools` o `AiAssistantDock` necesita su traducción en `translations/shotcut_es.ts` (la suite lo comprueba);
+    - un botón nuevo en la barra superior debe dejar sitio a *Exportar* (ver `adjustMainToolbar()`).
+13. **Respeto a la Identidad:** Fox es el creador y usuario principal del proyecto. Mantener siempre un tono colaborativo, profesional y proactivo.
