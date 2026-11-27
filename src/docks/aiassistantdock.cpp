@@ -113,8 +113,13 @@ AiAssistantDock::AiAssistantDock(QUndoStack *undoStack, QWidget *parent)
     m_connectButton->setPopupMode(QToolButton::InstantPopup);
     m_connectButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     auto connectMenu = new QMenu(m_connectButton);
-    connectMenu->addAction(tr("Claude Desktop (app)"), this, &AiAssistantDock::connectClaudeDesktop);
-    connectMenu->addAction(tr("Claude Code (terminal)"), this, &AiAssistantDock::connectClaudeCode);
+    // Most people have the app; Claude Code is for programmers.
+    connectMenu->addAction(tr("Claude Desktop (recommended)"),
+                           this,
+                           &AiAssistantDock::connectClaudeDesktop);
+    connectMenu->addAction(tr("Claude Code (for programmers)"),
+                           this,
+                           &AiAssistantDock::connectClaudeCode);
     m_connectButton->setMenu(connectMenu);
     buttons->addWidget(m_connectButton);
     m_enableButton = new QPushButton(tr("Turn On"));
@@ -340,11 +345,16 @@ void AiAssistantDock::updateStatus()
         break;
     case State::Waiting:
         color = QColor("#F5B83D");
-        detail = m_lastActivity.isValid()
-                     ? tr("Last seen at %1. Ask something in the Claude chat to continue.")
-                           .arg(QLocale().toString(m_lastActivity.time(), QLocale::ShortFormat))
-                     : tr("Click Connect to Claude once, then open Claude and ask for something "
-                          "from the list below.");
+        // Always say the next step.
+        if (m_lastActivity.isValid())
+            detail = tr("Last seen at %1. Ask something in the Claude chat to continue.")
+                         .arg(QLocale().toString(m_lastActivity.time(), QLocale::ShortFormat));
+        else if (Settings.aiClientConfigured())
+            detail = tr("Claude is set up. Close Claude completely, open it again and ask for "
+                        "something from the list below.");
+        else
+            detail = tr("Click Connect to Claude once, then open Claude and ask for something "
+                        "from the list below.");
         break;
     case State::Connected:
         color = QColor("#3DD68C");
@@ -444,6 +454,8 @@ void AiAssistantDock::connectClaudeDesktop()
         return;
     }
     LOG_INFO() << "Connected Claude Desktop in" << path;
+    Settings.setAiClientConfigured(true);
+    updateStatus();
     QString message = tr("Done! Shotcut AI is now in Claude Desktop.\n\n"
                          "1. Close Claude Desktop completely (also from the icons next to the "
                          "clock) and open it again.\n"
@@ -454,8 +466,8 @@ void AiAssistantDock::connectClaudeDesktop()
                    + tr("Claude Desktop does not seem to be installed yet: get it from "
                         "claude.ai/download. It will find Shotcut AI when it opens.");
     QMessageBox::information(this, tr("Connect to Claude Desktop"), message);
-    showNote(tr("Claude Desktop is set up. A copy of its previous settings is in %1.bak.")
-                 .arg(QDir::toNativeSeparators(path)));
+    showNote(tr("Claude Desktop is set up. Its previous settings were saved as a copy."));
+    m_note->setToolTip(QDir::toNativeSeparators(path) + QStringLiteral(".bak"));
 }
 
 void AiAssistantDock::connectClaudeCode()
@@ -497,6 +509,8 @@ void AiAssistantDock::connectClaudeCode()
     }
     QApplication::restoreOverrideCursor();
     if (failures.isEmpty()) {
+        Settings.setAiClientConfigured(true);
+        updateStatus();
         QMessageBox::information(this,
                                  tr("Connect to Claude Code"),
                                  tr("Done! Start Claude Code in a terminal (claude) and ask for "

@@ -84,4 +84,18 @@ Al final pregúntale:
 2. ¿Entendiste lo que Claude te proponía antes de editar?
 3. ¿Sabías en todo momento si la IA estaba conectada?
 
+### Primer recorrido (27/11/2026)
+
+**No es todavía la prueba con una persona.** Es un recorrido de evaluación de usabilidad hecho por Claude en la app real, en español, desde un perfil nuevo y solo con la pantalla, como lo haría alguien que nunca usó Shotcut AI. Así se resolvieron los problemas evidentes antes de la prueba con una persona.
+
+| Tarea | Pasos reales | Problema encontrado | Arreglo |
+|---|---|---|---|
+| 1. Conectar | El panel **Asistente IA** se abre solo; **Conectar con Claude** → **Claude Desktop (recomendado)** → **OK**: 3 clics y reabrir Claude | El menú obligaba a elegir entre «aplicación» y «terminal» sin decir cuál usar | Las opciones ahora dicen **Claude Desktop (recomendado)** y **Claude Code (para programadores)** |
+| 1. Conectar | Después de conectar | El panel seguía diciendo «Haz clic una vez en Conectar con Claude» | Ahora dice el siguiente paso: «Claude ya está configurado. Cierra Claude del todo, vuelve a abrirlo y pide algo de la lista de abajo» |
+| 1. Conectar | Aviso tras conectar | Mostraba la ruta completa del archivo `.bak` | Ahora dice «Sus ajustes anteriores se guardaron en una copia»; la ruta queda en la ayuda emergente |
+| 2. Primer vídeo | Claude pide la receta *Hacer un vídeo con mis clips* y edita; cada paso aparece con su hora en *Lo que cambió la IA* | En pantalla quedaban textos en inglés: *Import*, *Drag files here*, *Fit*, el Inspector… | 35 textos más traducidos al español |
+| 3. Deshacer | Elegir el paso → **Deshacer este paso**: 2 clics. El vídeo vuelve a como estaba | — | — |
+
+Lo que este recorrido **no** puede comprobar es lo que siente alguien que no edita: si entiende el plan que le propone Claude o si confía en el resultado. Para eso sigue haciendo falta la prueba con una persona.
+
 **Objetivo:** las tres tareas sin ayuda. Lo que la persona responda, y cada atasco, se anota en el registro de `docs/ROADMAP_SHOTCUT_AI.md` como tarea nueva.

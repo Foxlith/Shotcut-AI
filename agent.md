@@ -402,6 +402,15 @@
     - el instalador (`Shotcut-AI-Setup.exe`, unos 150 MB) instala para el usuario, crea los accesos directos del escritorio y del menú Inicio hacia `bin\shotcut.exe`, y el desinstalador los quita.
 
     Artefactos: `Shotcut-AI-Setup` y `Shotcut-AI-windows-x64`.
+  - **Primer recorrido de usabilidad (27/11/2026):** evaluación hecha por Claude en la app real, en español, desde un perfil nuevo; no es la prueba con una persona.
+    - Conectar: 3 clics. Deshacer: 2 clics.
+    - Se arreglaron:
+      - el menú de conexión (**Claude Desktop (recomendado)** / **Claude Code (para programadores)**);
+      - el estado tras conectar, que ahora dice el siguiente paso (clave `aiServer/clientConfigured`);
+      - el aviso con la ruta `.bak`, que ahora es una frase sencilla;
+      - 35 textos visibles más en español (*Importar*, *Arrastra archivos aquí*, *Ajustar*, el Inspector, el modo de vídeo…).
+
+    Detalle en `docs/guia-principiante.md`.
   - **Pendiente:** la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
 
 ---

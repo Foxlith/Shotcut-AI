@@ -117,6 +117,9 @@ public:
     /// Whether the AI Assistant panel already opened by itself once (first run).
     bool aiAssistantShown() const;
     void setAiAssistantShown(bool shown);
+    /// Whether Connect to Claude already set up an AI client.
+    bool aiClientConfigured() const;
+    void setAiClientConfigured(bool configured);
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;

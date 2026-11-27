@@ -184,14 +184,6 @@
         <translation>Añade Shotcut AI a Claude Desktop o a Claude Code, sin copiar nada.</translation>
     </message>
     <message>
-        <source>Claude Desktop (app)</source>
-        <translation>Claude Desktop (aplicación)</translation>
-    </message>
-    <message>
-        <source>Claude Code (terminal)</source>
-        <translation>Claude Code (terminal)</translation>
-    </message>
-    <message>
         <source>Turn On</source>
         <translation>Activar</translation>
     </message>
@@ -314,8 +306,8 @@ Usa en su lugar Ajustes &gt; AI Agent (MCP) &gt; Copiar configuración MCP &gt; 
         <translation>Parece que Claude Desktop aún no está instalado: descárgalo de claude.ai/download. Encontrará Shotcut AI cuando se abra.</translation>
     </message>
     <message>
-        <source>Claude Desktop is set up. A copy of its previous settings is in %1.bak.</source>
-        <translation>Claude Desktop está configurado. Hay una copia de sus ajustes anteriores en %1.bak.</translation>
+        <source>Claude Desktop is set up. Its previous settings were saved as a copy.</source>
+        <translation>Claude Desktop está configurado. Sus ajustes anteriores se guardaron en una copia.</translation>
     </message>
     <message>
         <source>Connect to Claude Code</source>
@@ -338,6 +330,18 @@ The commands were copied so you can run them in a terminal.</source>
 %1
 
 Se copiaron los comandos para que puedas ejecutarlos en una terminal.</translation>
+    </message>
+    <message>
+        <source>Claude Desktop (recommended)</source>
+        <translation>Claude Desktop (recomendado)</translation>
+    </message>
+    <message>
+        <source>Claude Code (for programmers)</source>
+        <translation>Claude Code (para programadores)</translation>
+    </message>
+    <message>
+        <source>Claude is set up. Close Claude completely, open it again and ask for something from the list below.</source>
+        <translation>Claude ya está configurado. Cierra Claude del todo, vuelve a abrirlo y pide algo de la lista de abajo.</translation>
     </message>
 </context>
 <context>
@@ -4423,6 +4427,106 @@ Hacer clic para cambiar</translation>
         <location filename="../src/widgets/imageproducerwidget.ui" line="264"/>
         <source>Proxy</source>
         <translation>Proxy</translation>
+    </message>
+</context>
+<context>
+    <name>InspectorFilterRow</name>
+    <message>
+        <source>Enable or disable the filter</source>
+        <translation>Activar o desactivar el filtro</translation>
+    </message>
+</context>
+<context>
+    <name>InspectorWidget</name>
+    <message>
+        <source>Select a clip in the timeline or the playlist to inspect it.</source>
+        <translation>Selecciona un clip en la línea de tiempo o en la lista de reproducción para verlo aquí.</translation>
+    </message>
+    <message>
+        <source>Transform</source>
+        <translation>Transformar</translation>
+    </message>
+    <message>
+        <source>Position</source>
+        <translation>Posición</translation>
+    </message>
+    <message>
+        <source>Horizontal offset from the center in pixels</source>
+        <translation>Desplazamiento horizontal desde el centro, en píxeles</translation>
+    </message>
+    <message>
+        <source>Vertical offset from the center in pixels</source>
+        <translation>Desplazamiento vertical desde el centro, en píxeles</translation>
+    </message>
+    <message>
+        <source>Scale</source>
+        <translation>Escala</translation>
+    </message>
+    <message>
+        <source>Rotation</source>
+        <translation>Rotación</translation>
+    </message>
+    <message>
+        <source>Opacity</source>
+        <translation>Opacidad</translation>
+    </message>
+    <message>
+        <source>Keyframed values are edited in the Filters panel.</source>
+        <translation>Los valores con fotogramas clave se editan en el panel Filtros.</translation>
+    </message>
+    <message>
+        <source>Filters</source>
+        <translation>Filtros</translation>
+    </message>
+    <message>
+        <source>Add filter</source>
+        <translation>Añadir filtro</translation>
+    </message>
+    <message>
+        <source>Choose a filter to add</source>
+        <translation>Elige un filtro para añadir</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Propiedades</translation>
+    </message>
+    <message>
+        <source>Timeline</source>
+        <translation>Línea de tiempo</translation>
+    </message>
+    <message>
+        <source>Audio track</source>
+        <translation>Pista de audio</translation>
+    </message>
+    <message>
+        <source>Video track</source>
+        <translation>Pista de vídeo</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Transición</translation>
+    </message>
+    <message>
+        <source>Audio</source>
+        <translation>Audio</translation>
+    </message>
+    <message>
+        <source>Image</source>
+        <translation>Imagen</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>Vídeo</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>Generador</translation>
+    </message>
+    <message>
+        <source>%1 (%2)
+Double-click to edit it in the Filters panel.</source>
+        <translation>%1 (%2)
+Haz doble clic para editarlo en el panel Filtros.</translation>
     </message>
 </context>
 <context>
@@ -8561,6 +8665,22 @@ Inténtelo de nuevo con una carpeta distinta.</translation>
         <source>Mute</source>
         <translation>Silenciar</translation>
     </message>
+    <message>
+        <source>%1 fps</source>
+        <translation>%1 fps</translation>
+    </message>
+    <message>
+        <source>Video mode</source>
+        <translation>Modo de vídeo</translation>
+    </message>
+    <message>
+        <source>Video mode: Automatic</source>
+        <translation>Modo de vídeo: Automático</translation>
+    </message>
+    <message>
+        <source>Fit</source>
+        <translation>Ajustar</translation>
+    </message>
 </context>
 <context>
     <name>PlaylistDock</name>
@@ -9067,6 +9187,22 @@ p, li { white-space: pre-wrap; }
         <location filename="../src/docks/playlistdock.cpp" line="2150"/>
         <source>All Files (*);;MLT XML (*.mlt)</source>
         <translation>Todos los archivos (*);;MLT XML (*.mlt)</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Importar</translation>
+    </message>
+    <message>
+        <source>Click or drop files to add them to the playlist</source>
+        <translation>Haz clic o suelta archivos para añadirlos a la lista de reproducción</translation>
+    </message>
+    <message>
+        <source>Drag files here</source>
+        <translation>Arrastra archivos aquí</translation>
+    </message>
+    <message>
+        <source>Video, audio or images</source>
+        <translation>Vídeo, audio o imágenes</translation>
     </message>
 </context>
 <context>
@@ -12170,7 +12306,7 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1211"/>
         <source>Create Transitions on Overlap</source>
-        <translation type="unfinished"></translation>
+        <translation>Crear transiciones al superponer</translation>
     </message>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1222"/>
@@ -12280,7 +12416,7 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1469"/>
         <source>Elements</source>
-        <translation type="unfinished"></translation>
+        <translation>Elementos</translation>
     </message>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1472"/>
@@ -12527,6 +12663,14 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
         <location filename="../src/docks/timelinedock.cpp" line="5086"/>
         <source>Saving audio recording...</source>
         <translation>Guardando la grabación de audio...</translation>
+    </message>
+    <message>
+        <source>Adjustment Clip</source>
+        <translation>Clip de ajuste</translation>
+    </message>
+    <message>
+        <source>You cannot make a transition with an adjustment clip.</source>
+        <translation>No se puede hacer una transición con un clip de ajuste.</translation>
     </message>
 </context>
 <context>
