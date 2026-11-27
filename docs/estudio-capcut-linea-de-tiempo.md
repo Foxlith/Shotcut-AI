@@ -38,6 +38,24 @@ Termina con lo que se llevó a Shotcut AI.
 4. **Automatiza lo pesado:** subtítulos automáticos, quitar el fondo, efectos y transiciones de un toque.
 5. **Se aprende en minutos:** quien nunca editó hace algo presentable el primer día, y el resultado se ve al instante.
 
+### Lo que dicen los estudios con usuarios reales
+
+Hay pocos estudios publicados y son pequeños: encuestas y pruebas de usabilidad con estudiantes y creadores de Indonesia y de Nigeria, de 21 a 50 personas cada uno. Aun así, son la evidencia más cercana a observar personas usando CapCut:
+
+| Estudio | Con quién | Qué encontró |
+|---|---|---|
+| [Evaluación con los atributos de usabilidad de Nielsen](https://www.researchgate.net/publication/393498698_Evaluasi_Usability_Aplikasi_CapCut_Mobile_Menggunakan_Metode_Nielsen's_Usability_Attributes_NAU) | 50 usuarios activos | Usabilidad alta. Advierte que tener muchos usuarios no prueba por sí solo que sea fácil. |
+| [Prueba de usabilidad de la interfaz y la experiencia](https://jurnal.dharmawangsa.ac.id/index.php/device/en/article/view/9085) | Usuarios encuestados | Interfaz 2,94 y experiencia 2,90 sobre 4 («buena»). Atractiva y fácil de usar, pero **para algunos la pantalla de edición está demasiado cargada**. |
+| [Satisfacción de estudiantes (modelo EUCS)](https://www.researchgate.net/publication/385396055_Analysis_Of_Prabumulih_University_Student_Satisfaction_with_the_Capcut_Application_Using_The_End_User_Computing_Satisfaction_EUCS_Method) | Estudiantes universitarios | Satisfacción alta. **La facilidad de uso no predijo la satisfacción**; sí el formato y la rapidez. |
+| [CapCut frente a KineMaster (EUCS)](https://www.researchgate.net/publication/395074090_ANALISIS_KEPUASAN_PENGGUNA_CAPCUT_DAN_KINEMASTER_MENGGUNAKAN_METODE_END-USER_COMPUTING_SATISFACTION) | Usuarios de las dos apps | KineMaster puntuó más en facilidad de uso (3,52) y rapidez (3,80). |
+| [Calidad con ISO/IEC 9126](https://www.researchgate.net/publication/399871047_ANALISIS_KUALITAS_DAN_PENERAPAN_SOFTWARE_QUALITY_ASSURANCE_PADA_APLIKASI_CAPCUT_MENGGUNAKAN_MODEL_ISOIEC_9126) | 21 personas | La usabilidad fue el aspecto mejor valorado. |
+| [Uso entre creadores de sketches en Lagos](https://www.researchgate.net/publication/410668951_THE_USAGE_OF_CAPCUT_AS_A_TOOL_OF_EDITING_IN_MODERN_SKIT_PRODUCTION_AMONG_SKIT_MAKERS_IN_LAGOS_STATE) | Creadores de contenido | Lo usan por accesible, fácil y por la variedad de funciones. |
+
+Estos estudios confirman y matizan el apartado 3:
+- **La facilidad cuenta, pero no lo explica todo.** Pesan igual o más que sea gratis, tenga muchas funciones y responda rápido.
+- **Una pantalla cargada molesta a los novatos.** Por eso en Shotcut AI las ayudas nuevas no añaden paneles: la guía del imán solo aparece al pegarse algo, la duración solo si cabe y la vista previa no tiene más que un botón.
+- **Respuesta rápida.** La vista previa al pasar el ratón responde a eso.
+
 ## 4. Qué tiene Shotcut AI y qué se añadió
 
 | CapCut | Shotcut AI antes | Fase 11 |
@@ -86,5 +104,5 @@ Pruebas automáticas: `tests/test_phase11_capcut_timeline_verification.py`.
 
 **Limitaciones del estudio:**
 - Las fuentes son guías y tutoriales de terceros; CapCut solo enseña su lista de atajos dentro de la app (icono del teclado).
-- No hay una observación propia de personas usando CapCut.
-- Lo que aquí se dice de cómo interactúa con la persona sale de esas fuentes y de comparar el diseño de las dos apps. La prueba con alguien que no edita (`docs/guia-principiante.md`) es la que debe confirmarlo en Shotcut AI.
+- No hay una observación propia de personas usando CapCut. Lo que se dice de cómo interactúa con la persona sale de esas fuentes, de comparar el diseño de las dos apps y de los estudios con usuarios del apartado 3, que son pequeños y en su mayoría no revisados por pares.
+- Para Shotcut AI, la confirmación debe venir de la prueba con alguien que no edita (`docs/guia-principiante.md`).
