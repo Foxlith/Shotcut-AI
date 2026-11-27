@@ -17,7 +17,10 @@
 
 #include "mcpprotocol.h"
 
+#include <algorithm>
 #include <cmath>
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QUrl>
 
@@ -41,18 +44,19 @@ ToolResult ToolResult::failure(const QString &message)
 
 QJsonObject ToolResult::toJson() const
 {
+    // The data goes once, as compact JSON text: some clients give the model both the text
+    // and structuredContent, which would double every answer.
     QJsonArray content;
-    QString message = text;
-    if (message.isEmpty() && !data.isEmpty())
-        message = QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Compact));
-    if (!message.isEmpty())
-        content.append(QJsonObject{{"type", "text"}, {"text", message}});
+    if (!text.isEmpty())
+        content.append(QJsonObject{{"type", "text"}, {"text", text}});
+    if (!isError && !data.isEmpty())
+        content.append(
+            QJsonObject{{"type", "text"},
+                        {"text",
+                         QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Compact))}});
     for (const auto &block : extraContent)
         content.append(block);
-    QJsonObject result{{"content", content}, {"isError", isError}};
-    if (!isError && !data.isEmpty())
-        result["structuredContent"] = data;
-    return result;
+    return QJsonObject{{"content", content}, {"isError", isError}};
 }
 
 QJsonObject Tool::toJson() const
@@ -62,6 +66,24 @@ QJsonObject Tool::toJson() const
         object["title"] = title;
     if (!annotations.isEmpty())
         object["annotations"] = annotations;
+    return object;
+}
+
+QJsonObject Prompt::toJson() const
+{
+    QJsonObject object{{"name", name}};
+    if (!title.isEmpty())
+        object["title"] = title;
+    if (!description.isEmpty())
+        object["description"] = description;
+    if (!arguments.isEmpty()) {
+        QJsonArray list;
+        for (const auto &argument : arguments)
+            list.append(QJsonObject{{"name", argument.name},
+                                    {"description", argument.description},
+                                    {"required", argument.required}});
+        object["arguments"] = list;
+    }
     return object;
 }
 
@@ -97,6 +119,72 @@ QStringList Server::toolNames() const
     for (const auto &tool : m_tools)
         names << tool.name;
     return names;
+}
+
+void Server::addPrompt(const Prompt &prompt)
+{
+    for (auto &existing : m_prompts) {
+        if (existing.name == prompt.name) {
+            existing = prompt;
+            return;
+        }
+    }
+    m_prompts.append(prompt);
+}
+
+const Prompt *Server::prompt(const QString &name) const
+{
+    for (const auto &prompt : m_prompts)
+        if (prompt.name == name)
+            return &prompt;
+    return nullptr;
+}
+
+QStringList Server::promptNames() const
+{
+    QStringList names;
+    for (const auto &prompt : m_prompts)
+        names << prompt.name;
+    return names;
+}
+
+QJsonObject Server::getPrompt(const QString &name,
+                              const QJsonObject &arguments,
+                              QString *error) const
+{
+    const Prompt *p = prompt(name);
+    if (!p) {
+        if (error)
+            *error = QStringLiteral("Unknown prompt: %1. Available prompts: %2")
+                         .arg(name, promptNames().join(", "));
+        return {};
+    }
+    QJsonObject values;
+    for (const auto &argument : p->arguments) {
+        const auto value = arguments.value(argument.name);
+        const auto text = value.isString() ? value.toString().trimmed() : QString();
+        if (argument.required && text.isEmpty()) {
+            if (error)
+                *error = QStringLiteral("The prompt %1 needs the argument %2.")
+                             .arg(name, argument.name);
+            return {};
+        }
+        if (!text.isEmpty())
+            values[argument.name] = text;
+    }
+    const auto text = p->text ? p->text(values) : p->description;
+    QJsonObject result{
+        {"messages",
+         QJsonArray{QJsonObject{{"role", "user"},
+                                {"content", QJsonObject{{"type", "text"}, {"text", text}}}}}}};
+    if (!p->description.isEmpty())
+        result["description"] = p->description;
+    return result;
+}
+
+void Server::setObserver(const std::function<void(const QString &, const QJsonObject &)> &observer)
+{
+    m_observer = observer;
 }
 
 ToolResult Server::callTool(const QString &name, const QJsonObject &arguments) const
@@ -140,9 +228,12 @@ QJsonObject Server::initializeResult(const QJsonObject &params) const
     QJsonObject serverInfo{{"name", m_name}, {"version", m_version}};
     if (!m_title.isEmpty())
         serverInfo["title"] = m_title;
+    QJsonObject capabilities{{"tools", QJsonObject{{"listChanged", false}}}};
+    if (!m_prompts.isEmpty())
+        capabilities["prompts"] = QJsonObject{{"listChanged", false}};
     QJsonObject result{{"protocolVersion",
                         negotiateVersion(params.value("protocolVersion").toString())},
-                       {"capabilities", QJsonObject{{"tools", QJsonObject{{"listChanged", false}}}}},
+                       {"capabilities", capabilities},
                        {"serverInfo", serverInfo}};
     if (!m_instructions.isEmpty())
         result["instructions"] = m_instructions;
@@ -172,6 +263,8 @@ bool Server::handleMessage(const QJsonObject &message, QJsonObject &response) co
         return true;
     }
     const QString method = methodValue.toString();
+    if (m_observer)
+        m_observer(method, message.value("params").toObject());
     // Notifications (no id), such as notifications/initialized, need no response.
     if (!hasId)
         return false;
@@ -224,7 +317,22 @@ bool Server::handleMessage(const QJsonObject &message, QJsonObject &response) co
     } else if (method == QLatin1String("resources/templates/list")) {
         result["resourceTemplates"] = QJsonArray();
     } else if (method == QLatin1String("prompts/list")) {
-        result["prompts"] = QJsonArray();
+        QJsonArray prompts;
+        for (const auto &prompt : m_prompts)
+            prompts.append(prompt.toJson());
+        result["prompts"] = prompts;
+    } else if (method == QLatin1String("prompts/get")) {
+        const QJsonValue name = params.value("name");
+        if (!name.isString()) {
+            response = errorResponse(id, InvalidParams, "Invalid params: missing prompt name");
+            return true;
+        }
+        QString error;
+        result = getPrompt(name.toString(), params.value("arguments").toObject(), &error);
+        if (!error.isEmpty()) {
+            response = errorResponse(id, InvalidParams, error);
+            return true;
+        }
     } else {
         response = errorResponse(id,
                                  MethodNotFound,
@@ -609,33 +717,96 @@ QByteArray reasonPhrase(int status)
 QString clientConfiguration(Client client,
                             quint16 port,
                             const QString &bridgePath,
+                            const QString &analysisPath,
                             const QString &python)
 {
     const auto url = QStringLiteral("http://127.0.0.1:%1/mcp").arg(port);
     QJsonObject config;
     switch (client) {
-    case Client::ClaudeCode:
-        return QStringLiteral("claude mcp add --transport http shotcut-ai %1").arg(url);
-    case Client::OpenCode:
+    case Client::ClaudeCode: {
+        // For every folder (user scope), not only the current project.
+        auto commands
+            = QStringLiteral("claude mcp add --scope user --transport http shotcut-ai %1").arg(url);
+        if (!analysisPath.isEmpty())
+            commands += QStringLiteral("\nclaude mcp add --scope user shotcut-analysis %1 \"%2\"")
+                            .arg(python.contains(QLatin1Char(' '))
+                                     ? QStringLiteral("\"%1\"").arg(python)
+                                     : python,
+                                 analysisPath);
+        return commands;
+    }
+    case Client::OpenCode: {
         // opencode.json
-        config = QJsonObject{{"$schema", "https://opencode.ai/config.json"},
-                             {"mcp",
-                              QJsonObject{{"shotcut-ai",
-                                           QJsonObject{{"type", "remote"},
-                                                       {"url", url},
-                                                       {"enabled", true}}}}}};
-        break;
-    case Client::ClaudeDesktop:
-    case Client::Antigravity: {
-        // claude_desktop_config.json and mcp_config.json start a local process: the bridge.
-        QJsonObject stdio{{"command", python}, {"args", QJsonArray{bridgePath}}};
-        if (port != 9999)
-            stdio["env"] = QJsonObject{{"SHOTCUT_AI_URL", url}};
-        config = QJsonObject{{"mcpServers", QJsonObject{{"shotcut-ai", stdio}}}};
+        QJsonObject servers{
+            {"shotcut-ai", QJsonObject{{"type", "remote"}, {"url", url}, {"enabled", true}}}};
+        if (!analysisPath.isEmpty())
+            servers["shotcut-analysis"] = QJsonObject{{"type", "local"},
+                                                      {"command", QJsonArray{python, analysisPath}},
+                                                      {"enabled", true}};
+        config = QJsonObject{{"$schema", "https://opencode.ai/config.json"}, {"mcp", servers}};
         break;
     }
+    case Client::ClaudeDesktop:
+    case Client::Antigravity:
+        // claude_desktop_config.json and mcp_config.json start local processes: the bridge
+        // and the media analysis server.
+        config = QJsonObject{{"mcpServers", stdioServers(port, bridgePath, analysisPath, python)}};
+        break;
     }
     return QString::fromUtf8(QJsonDocument(config).toJson(QJsonDocument::Indented));
+}
+
+QJsonObject stdioServers(quint16 port,
+                         const QString &bridgePath,
+                         const QString &analysisPath,
+                         const QString &python)
+{
+    QJsonObject stdio{{"command", python}, {"args", QJsonArray{bridgePath}}};
+    if (port != 9999)
+        stdio["env"] = QJsonObject{
+            {"SHOTCUT_AI_URL", QStringLiteral("http://127.0.0.1:%1/mcp").arg(port)}};
+    QJsonObject servers{{"shotcut-ai", stdio}};
+    if (!analysisPath.isEmpty())
+        servers["shotcut-analysis"] = QJsonObject{{"command", python},
+                                                  {"args", QJsonArray{analysisPath}}};
+    return servers;
+}
+
+QString unvirtualizedPath(const QString &path,
+                          const QString &roamingAppData,
+                          const QString &localAppData)
+{
+    const auto clean = QDir::cleanPath(QDir::fromNativeSeparators(path));
+    if (clean.isEmpty() || QFileInfo::exists(clean) || localAppData.isEmpty())
+        return path;
+    const auto roaming = QDir::cleanPath(QDir::fromNativeSeparators(roamingAppData));
+    const auto local = QDir::cleanPath(QDir::fromNativeSeparators(localAppData));
+    QString folder, relative;
+    if (!roaming.isEmpty() && clean.startsWith(roaming + QLatin1Char('/'), Qt::CaseInsensitive)) {
+        folder = QStringLiteral("Roaming");
+        relative = clean.mid(roaming.size() + 1);
+    } else if (clean.startsWith(local + QLatin1Char('/'), Qt::CaseInsensitive)) {
+        folder = QStringLiteral("Local");
+        relative = clean.mid(local.size() + 1);
+        if (relative.startsWith(QLatin1String("Packages/"), Qt::CaseInsensitive))
+            return path;
+    } else {
+        return path;
+    }
+    // A packaged app writes there instead: Packages/<package>/LocalCache/<folder>/<relative>.
+    QDir packages(local + QStringLiteral("/Packages"));
+    auto names = packages.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    std::stable_sort(names.begin(), names.end(), [](const QString &a, const QString &b) {
+        return a.contains(QLatin1String("Claude"), Qt::CaseInsensitive)
+               && !b.contains(QLatin1String("Claude"), Qt::CaseInsensitive);
+    });
+    for (const auto &name : names) {
+        const auto candidate = packages.filePath(name + QStringLiteral("/LocalCache/") + folder
+                                                 + QLatin1Char('/') + relative);
+        if (QFileInfo::exists(candidate))
+            return candidate;
+    }
+    return path;
 }
 
 QByteArray httpResponse(int status,

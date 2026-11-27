@@ -23,6 +23,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -37,16 +38,6 @@
 static const qsizetype kMaxBodySize = 8 * 1024 * 1024;
 static const int kIdleTimeoutMs = 15000;
 
-static const char *kInstructions
-    = "Shotcut AI is a video editor that is open on this computer: every tool acts on it "
-      "live and the user sees the result at once. Start with get_state, then get_timeline "
-      "or get_playlist. Times are seconds (or a timecode such as 00:01:02.500). Tracks are "
-      "0-based indices from the top of the timeline, or names such as \"V1\" or \"A1\"; "
-      "clips are 0-based indices within their track from get_timeline, or their uuid. Each "
-      "edit is one undoable step named \"AI: ...\" (the undo tool reverts it). Use get_frame "
-      "to look at the video after a change, and list_actions with run_action for anything "
-      "else that Shotcut can do.";
-
 AIAgentServer::AIAgentServer(quint16 port, QObject *parent)
     : QObject(parent)
     , m_port(port)
@@ -56,10 +47,21 @@ AIAgentServer::AIAgentServer(quint16 port, QObject *parent)
     , m_mcp(QStringLiteral("shotcut-ai"),
             QStringLiteral("Shotcut AI"),
             QCoreApplication::applicationVersion(),
-            QString::fromLatin1(kInstructions))
+            AiTools::instructions())
     , m_tools(new AiTools(this))
 {
     m_tools->registerTools(m_mcp);
+    m_tools->registerPrompts(m_mcp);
+    // Tell the AI Assistant panel that a client is here. The server runs on the GUI thread.
+    m_mcp.setObserver([this](const QString &method, const QJsonObject &params) {
+        if (method == QLatin1String("initialize")) {
+            const auto info = params.value("clientInfo").toObject();
+            m_clientName = info.value("title").toString(info.value("name").toString());
+        }
+        if (method.startsWith(QLatin1String("notifications/")))
+            return;
+        emit clientActivity(m_clientName, method);
+    });
 
     // The WebSocket server does not listen itself: the TCP servers below hand it the
     // connections that ask for a WebSocket.
@@ -136,14 +138,37 @@ QString AIAgentServer::bridgePath()
         QmlApplication::dataDir().absoluteFilePath("shotcut/mcp/shotcut_mcp_bridge.py"));
 }
 
-QString AIAgentServer::clientConfiguration(Mcp::Client client, quint16 port)
+QString AIAgentServer::analysisPath()
+{
+    const auto path = QmlApplication::dataDir().absoluteFilePath("shotcut/mcp/shotcut_analysis.py");
+    return QFileInfo::exists(path) ? QDir::toNativeSeparators(path) : QString();
+}
+
+QString AIAgentServer::pythonPath()
 {
 #if defined(Q_OS_WIN)
-    const auto python = QStringLiteral("python");
+    // The embeddable Python of the Windows package: <app>/python/python.exe next to bin.
+    const QDir app(QCoreApplication::applicationDirPath());
+    for (const auto &relative :
+         {QStringLiteral("../python/python.exe"), QStringLiteral("python/python.exe")}) {
+        const auto path = app.absoluteFilePath(relative);
+        if (QFileInfo::exists(path))
+            return QDir::toNativeSeparators(QDir::cleanPath(path));
+    }
+    return QStringLiteral("python");
 #else
-    const auto python = QStringLiteral("python3");
+    return QStringLiteral("python3");
 #endif
-    return Mcp::clientConfiguration(client, port, bridgePath(), python);
+}
+
+QString AIAgentServer::clientConfiguration(Mcp::Client client, quint16 port)
+{
+    return Mcp::clientConfiguration(client, port, bridgePath(), analysisPath(), pythonPath());
+}
+
+QJsonObject AIAgentServer::claudeDesktopServers(quint16 port)
+{
+    return Mcp::stdioServers(port, bridgePath(), analysisPath(), pythonPath());
 }
 
 void AIAgentServer::onNewTcpConnection()

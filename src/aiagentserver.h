@@ -52,17 +52,30 @@ public:
     QString errorString() const { return m_errorString; }
     QString mcpUrl() const;
     const Mcp::Server &mcp() const { return m_mcp; }
+    AiTools *tools() const { return m_tools; }
+    /// The name of the last AI client that talked to the server (from initialize), or an
+    /// empty string.
+    QString clientName() const { return m_clientName; }
 
     /// The tool that runs a command of the JSON WebSocket ({"command": "play", ...}).
     static QString toolForCommand(const QString &command);
 
     /// The installed stdio bridge for clients that only start local processes.
     static QString bridgePath();
+    /// The installed media analysis server (stdio), or an empty string.
+    static QString analysisPath();
+    /// The Python that runs the bridge and the analysis server: the one in the python folder
+    /// of Shotcut AI on Windows (so nothing needs installing), else python or python3.
+    static QString pythonPath();
+    /// The servers to add to the configuration of Claude Desktop.
+    static QJsonObject claudeDesktopServers(quint16 port);
     /// What to paste in the configuration of an AI client to connect it to Shotcut AI.
     static QString clientConfiguration(Mcp::Client client, quint16 port);
 
 signals:
     void closed();
+    /// An AI client sent a request (for example initialize or tools/call).
+    void clientActivity(const QString &clientName, const QString &method);
 
 private slots:
     void onNewTcpConnection();
@@ -92,6 +105,7 @@ private:
     Mcp::Server m_mcp;
     AiTools *m_tools;
     QString m_errorString;
+    QString m_clientName;
 };
 
 #endif // AIAGENTSERVER_H

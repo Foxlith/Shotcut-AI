@@ -3,10 +3,13 @@
 # (-DWINDOWS_DEPLOY=OFF) in an MSYS2 UCRT64 shell. The folder mirrors the MSYS2
 # prefix, which is the layout that MLT and Shotcut expect with NODEPLOY:
 #
-#   bin/shotcut.exe, melt.exe, ffmpeg.exe, ffprobe.exe and every DLL they need
+#   bin/shotcut.exe, melt.exe, ffmpeg.exe, ffprobe.exe, whisper-cli.exe and every DLL
+#                   they need
 #   bin/qt.conf     Qt plugins and QML modules in share/qt6
 #   lib/mlt         MLT modules          lib/frei0r-1  frei0r plugins
 #   share/mlt       MLT data             share/shotcut QML, filter sets, resources
+#   Shotcut AI.exe  starts bin/shotcut.exe and has the icon (the workflow then adds
+#                   python/, the embeddable Python of the MCP bridge and analysis server)
 set -euo pipefail
 
 DIST=${1:?usage: bundle-windows-msys2.sh <install dir>}
@@ -54,6 +57,17 @@ fi
 echo "== Grafito theme next to the program"
 cp -v "$SOURCE_DIR/capcut_theme.qss" "$DIST/bin/"
 
+echo "== Speech to text (whisper.cpp)"
+# Shotcut runs bin/whisper-cli.exe for Subtitles > Speech to Text, and so does the media
+# analysis server. ggml loads its CPU and Vulkan backends at run time, so ldd does not see
+# them; their own DLLs are found below.
+if [ -f "$PREFIX/bin/whisper-cli.exe" ]; then
+    cp -v "$PREFIX/bin/whisper-cli.exe" "$DIST/bin/"
+    for dll in "$PREFIX"/bin/*ggml-cpu*.dll "$PREFIX"/bin/*ggml-vulkan*.dll; do
+        if [ -e "$dll" ]; then cp -v "$dll" "$DIST/bin/"; fi
+    done
+fi
+
 echo "== DLLs"
 # ldd lists the whole dependency tree of each binary; keep the ones from the MSYS2
 # prefix and repeat until nothing new is copied (the copied DLLs are scanned too).
@@ -72,10 +86,15 @@ while true; do
 done
 echo "$(ls "$DIST/bin" | wc -l) files in bin"
 
-echo "== Launcher"
-cat > "$DIST/Shotcut AI.bat" <<'EOF'
-@echo off
-start "" "%~dp0bin\shotcut.exe" %*
-EOF
+echo "== Launcher with the icon of Shotcut AI"
+# "Shotcut AI.exe" starts bin\shotcut.exe; unlike a .bat file it shows the icon.
+rm -f "$DIST/Shotcut AI.bat"
+WORK=$(mktemp -d)
+windres -I "$SOURCE_DIR/packaging/windows" "$SOURCE_DIR/packaging/windows/shotcut-ai-launcher.rc" \
+    -O coff -o "$WORK/launcher.res"
+gcc -municode -mwindows -O2 -s "$SOURCE_DIR/packaging/windows/shotcut-ai-launcher.c" \
+    "$WORK/launcher.res" -o "$DIST/Shotcut AI.exe"
+rm -rf "$WORK"
+ls -l "$DIST/Shotcut AI.exe"
 
 du -sh "$DIST"

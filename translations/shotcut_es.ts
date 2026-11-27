@@ -170,6 +170,388 @@
     </message>
 </context>
 <context>
+    <name>AiAssistantDock</name>
+    <message>
+        <source>AI Assistant</source>
+        <translation>Asistente IA</translation>
+    </message>
+    <message>
+        <source>Connect to Claude</source>
+        <translation>Conectar con Claude</translation>
+    </message>
+    <message>
+        <source>Adds Shotcut AI to Claude Desktop or Claude Code, without copying anything.</source>
+        <translation>Añade Shotcut AI a Claude Desktop o a Claude Code, sin copiar nada.</translation>
+    </message>
+    <message>
+        <source>Turn On</source>
+        <translation>Activar</translation>
+    </message>
+    <message>
+        <source>Let AI apps on this computer use Shotcut AI.</source>
+        <translation>Permite que las aplicaciones de IA de este equipo usen Shotcut AI.</translation>
+    </message>
+    <message>
+        <source>What the AI changed</source>
+        <translation>Lo que cambió la IA</translation>
+    </message>
+    <message>
+        <source>Nothing yet. Every change of the AI appears here, and you can undo it with one click.</source>
+        <translation>Todavía nada. Cada cambio de la IA aparece aquí y puedes deshacerlo con un clic.</translation>
+    </message>
+    <message>
+        <source>Undo This Step</source>
+        <translation>Deshacer este paso</translation>
+    </message>
+    <message>
+        <source>Redo This Step</source>
+        <translation>Rehacer este paso</translation>
+    </message>
+    <message>
+        <source>Goes back to before this step. Later steps are undone too.</source>
+        <translation>Vuelve a como estaba antes de este paso. También se deshacen los pasos posteriores.</translation>
+    </message>
+    <message>
+        <source>Applies this step again, and the ones before it.</source>
+        <translation>Vuelve a aplicar este paso y los anteriores.</translation>
+    </message>
+    <message>
+        <source>What would you like to do?</source>
+        <translation>¿Qué quieres hacer?</translation>
+    </message>
+    <message>
+        <source>Click a request to copy it, then paste it in the Claude chat (Ctrl+V). In Claude Desktop they are also in the + button.</source>
+        <translation>Haz clic en una petición para copiarla y pégala en el chat de Claude (Ctrl+V). En Claude Desktop también están en el botón +.</translation>
+    </message>
+    <message>
+        <source>First steps guide (in Spanish)</source>
+        <translation>Guía de primeros pasos</translation>
+    </message>
+    <message>
+        <source>Copied &quot;%1&quot;. Paste it in the Claude chat with Ctrl+V.</source>
+        <translation>Copiado «%1». Pégalo en el chat de Claude con Ctrl+V.</translation>
+    </message>
+    <message>
+        <source>The AI is off</source>
+        <translation>La IA está apagada</translation>
+    </message>
+    <message>
+        <source>The AI could not start</source>
+        <translation>La IA no pudo arrancar</translation>
+    </message>
+    <message>
+        <source>Waiting for the AI</source>
+        <translation>Esperando a la IA</translation>
+    </message>
+    <message>
+        <source>Connected to the AI</source>
+        <translation>Conectada a la IA</translation>
+    </message>
+    <message>
+        <source>Connected to %1</source>
+        <translation>Conectada a %1</translation>
+    </message>
+    <message>
+        <source>Turn it on so that an AI app (such as Claude) can edit with you.</source>
+        <translation>Actívala para que una aplicación de IA (como Claude) pueda editar contigo.</translation>
+    </message>
+    <message>
+        <source>%1. Another program may be using port %2: close it, or change the port, and restart Shotcut AI.</source>
+        <translation>%1. Puede que otro programa esté usando el puerto %2: ciérralo o cambia el puerto, y reinicia Shotcut AI.</translation>
+    </message>
+    <message>
+        <source>Last seen at %1. Ask something in the Claude chat to continue.</source>
+        <translation>Último contacto a las %1. Pide algo en el chat de Claude para seguir.</translation>
+    </message>
+    <message>
+        <source>Click Connect to Claude once, then open Claude and ask for something from the list below.</source>
+        <translation>Haz clic una vez en Conectar con Claude, abre Claude y pide algo de la lista de abajo.</translation>
+    </message>
+    <message>
+        <source>The AI can see and edit your project. You can undo any change below.</source>
+        <translation>La IA puede ver y editar tu proyecto. Abajo puedes deshacer cualquier cambio.</translation>
+    </message>
+    <message>
+        <source>(undone)</source>
+        <translation>(deshecho)</translation>
+    </message>
+    <message>
+        <source>Connect to Claude Desktop</source>
+        <translation>Conectar con Claude Desktop</translation>
+    </message>
+    <message>
+        <source>Shotcut AI could not change the settings of Claude Desktop.
+
+%1
+
+Use Settings &gt; AI Agent (MCP) &gt; Copy MCP Configuration &gt; Claude Desktop instead.</source>
+        <translation>Shotcut AI no pudo cambiar los ajustes de Claude Desktop.
+
+%1
+
+Usa en su lugar Ajustes &gt; AI Agent (MCP) &gt; Copiar configuración MCP &gt; Claude Desktop.</translation>
+    </message>
+    <message>
+        <source>Done! Shotcut AI is now in Claude Desktop.
+
+1. Close Claude Desktop completely (also from the icons next to the clock) and open it again.
+2. In a new chat, click + and choose a request of Shotcut AI, or just write what you want to do with your video.</source>
+        <translation>¡Listo! Shotcut AI ya está en Claude Desktop.
+
+1. Cierra Claude Desktop del todo (también desde los iconos junto al reloj) y vuelve a abrirlo.
+2. En un chat nuevo, pulsa + y elige una petición de Shotcut AI, o simplemente escribe qué quieres hacer con tu vídeo.</translation>
+    </message>
+    <message>
+        <source>Claude Desktop does not seem to be installed yet: get it from claude.ai/download. It will find Shotcut AI when it opens.</source>
+        <translation>Parece que Claude Desktop aún no está instalado: descárgalo de claude.ai/download. Encontrará Shotcut AI cuando se abra.</translation>
+    </message>
+    <message>
+        <source>Claude Desktop is set up. Its previous settings were saved as a copy.</source>
+        <translation>Claude Desktop está configurado. Sus ajustes anteriores se guardaron en una copia.</translation>
+    </message>
+    <message>
+        <source>Connect to Claude Code</source>
+        <translation>Conectar con Claude Code</translation>
+    </message>
+    <message>
+        <source>Claude Code was not found on this computer, so the commands were copied instead. Paste them in a terminal where Claude Code works.</source>
+        <translation>No se encontró Claude Code en este equipo, así que se copiaron los comandos. Pégalos en una terminal donde funcione Claude Code.</translation>
+    </message>
+    <message>
+        <source>Done! Start Claude Code in a terminal (claude) and ask for what you want to do with your video.</source>
+        <translation>¡Listo! Abre Claude Code en una terminal (claude) y pide lo que quieras hacer con tu vídeo.</translation>
+    </message>
+    <message>
+        <source>Claude Code did not accept the setup:
+%1
+
+The commands were copied so you can run them in a terminal.</source>
+        <translation>Claude Code no aceptó la configuración:
+%1
+
+Se copiaron los comandos para que puedas ejecutarlos en una terminal.</translation>
+    </message>
+    <message>
+        <source>Claude Desktop (recommended)</source>
+        <translation>Claude Desktop (recomendado)</translation>
+    </message>
+    <message>
+        <source>Claude Code (for programmers)</source>
+        <translation>Claude Code (para programadores)</translation>
+    </message>
+    <message>
+        <source>Claude is set up. Close Claude completely, open it again and ask for something from the list below.</source>
+        <translation>Claude ya está configurado. Cierra Claude del todo, vuelve a abrirlo y pide algo de la lista de abajo.</translation>
+    </message>
+</context>
+<context>
+    <name>AiTools</name>
+    <message>
+        <source>AI: %1</source>
+        <translation>IA: %1</translation>
+    </message>
+    <message>
+        <source>%1 (Ctrl+Z to undo)</source>
+        <translation>%1 (Ctrl+Z para deshacer)</translation>
+    </message>
+    <message>
+        <source>AI: Undo %1</source>
+        <translation>IA: Deshacer %1</translation>
+    </message>
+    <message>
+        <source>AI: Redo %1</source>
+        <translation>IA: Rehacer %1</translation>
+    </message>
+    <message>
+        <source>Add to playlist</source>
+        <translation>Añadir a la lista</translation>
+    </message>
+    <message>
+        <source>Append clip</source>
+        <translation>Añadir clip al final</translation>
+    </message>
+    <message>
+        <source>Insert clip</source>
+        <translation>Insertar clip</translation>
+    </message>
+    <message>
+        <source>Overwrite clip</source>
+        <translation>Sobrescribir clip</translation>
+    </message>
+    <message>
+        <source>Split clip</source>
+        <translation>Dividir clip</translation>
+    </message>
+    <message>
+        <source>Remove clip</source>
+        <translation>Quitar clip</translation>
+    </message>
+    <message>
+        <source>Move clip</source>
+        <translation>Mover clip</translation>
+    </message>
+    <message>
+        <source>Trim clip</source>
+        <translation>Recortar clip</translation>
+    </message>
+    <message>
+        <source>Set fade</source>
+        <translation>Fundido</translation>
+    </message>
+    <message>
+        <source>Add audio track</source>
+        <translation>Añadir pista de audio</translation>
+    </message>
+    <message>
+        <source>Add video track</source>
+        <translation>Añadir pista de vídeo</translation>
+    </message>
+    <message>
+        <source>Change track</source>
+        <translation>Cambiar pista</translation>
+    </message>
+    <message>
+        <source>Add filter</source>
+        <translation>Añadir filtro</translation>
+    </message>
+    <message>
+        <source>Change filter</source>
+        <translation>Cambiar filtro</translation>
+    </message>
+    <message>
+        <source>Enable filter</source>
+        <translation>Activar filtro</translation>
+    </message>
+    <message>
+        <source>Remove filter</source>
+        <translation>Quitar filtro</translation>
+    </message>
+    <message>
+        <source>I do not know how to edit video: talk to me in plain words. First look at the material, then tell me your plan in 3 to 5 short points and wait for my OK. When you finish, tell me what changed and what I could ask next.</source>
+        <translation>No sé editar vídeo: háblame con palabras sencillas. Primero mira el material, luego cuéntame tu plan en 3 a 5 puntos cortos y espera mi OK. Al terminar, dime qué cambió y qué podría pedirte después.</translation>
+    </message>
+    <message>
+        <source>Make a video with my clips</source>
+        <translation>Hacer un vídeo con mis clips</translation>
+    </message>
+    <message>
+        <source>Picks the best moments of your clips and puts them in order.</source>
+        <translation>Elige los mejores momentos de tus clips y los pone en orden.</translation>
+    </message>
+    <message>
+        <source>The folder with the clips (empty: the clips already in the project)</source>
+        <translation>La carpeta con los clips (vacío: los clips que ya están en el proyecto)</translation>
+    </message>
+    <message>
+        <source>How long, for example 1 minute</source>
+        <translation>Cuánto dura, por ejemplo 1 minuto</translation>
+    </message>
+    <message>
+        <source>The feel, for example calm, fast or funny</source>
+        <translation>El ambiente, por ejemplo tranquilo, rápido o divertido</translation>
+    </message>
+    <message>
+        <source>Make a video of %1 with %2. Style: %3. Pick the best moments, put them in a good order and leave out what does not work (shaky, too dark, long silences).</source>
+        <translation>Haz un vídeo de %1 con %2. Estilo: %3. Elige los mejores momentos, ponlos en un buen orden y deja fuera lo que no sirva (movido, muy oscuro, silencios largos).</translation>
+    </message>
+    <message>
+        <source>about 1 minute</source>
+        <translation>1 minuto aproximadamente</translation>
+    </message>
+    <message>
+        <source>the clips in the folder %1</source>
+        <translation>los clips de la carpeta %1</translation>
+    </message>
+    <message>
+        <source>the clips in my project</source>
+        <translation>los clips de mi proyecto</translation>
+    </message>
+    <message>
+        <source>natural</source>
+        <translation>natural</translation>
+    </message>
+    <message>
+        <source>Remove silences and pauses</source>
+        <translation>Quitar silencios y pausas</translation>
+    </message>
+    <message>
+        <source>Cuts out long pauses when people speak, between words.</source>
+        <translation>Quita las pausas largas cuando alguien habla, entre palabras.</translation>
+    </message>
+    <message>
+        <source>Remove the long silences and pauses from the speech in my project. Cut between words, never in the middle of one, and keep short natural pauses.</source>
+        <translation>Quita los silencios y las pausas largas de lo que se habla en mi proyecto. Corta entre palabras, nunca a mitad de una, y deja las pausas cortas naturales.</translation>
+    </message>
+    <message>
+        <source>Add music and cut to the beat</source>
+        <translation>Poner música y cortar al ritmo</translation>
+    </message>
+    <message>
+        <source>Adds a song and makes the cuts follow its rhythm.</source>
+        <translation>Añade una canción y hace que los cortes sigan su ritmo.</translation>
+    </message>
+    <message>
+        <source>The music file (empty: the one in the project)</source>
+        <translation>El archivo de música (vacío: la que está en el proyecto)</translation>
+    </message>
+    <message>
+        <source>Add the music %1 to my video and make the cuts follow its beat. When someone speaks, the music must be quieter so the voice is clear.</source>
+        <translation>Añade la música %1 a mi vídeo y haz que los cortes sigan su ritmo. Cuando alguien hable, la música debe bajar para que la voz se entienda.</translation>
+    </message>
+    <message>
+        <source>that is in my project</source>
+        <translation>que está en mi proyecto</translation>
+    </message>
+    <message>
+        <source>Write down what is said</source>
+        <translation>Escribir lo que se dice</translation>
+    </message>
+    <message>
+        <source>Transcribes the speech, with times and a subtitle file.</source>
+        <translation>Transcribe lo que se habla, con tiempos y un archivo de subtítulos.</translation>
+    </message>
+    <message>
+        <source>Transcribe what is said in my video. Give me the text with times, and an SRT subtitle file that I can open in the Subtitles panel of Shotcut AI.</source>
+        <translation>Transcribe lo que se dice en mi vídeo. Dame el texto con los tiempos y un archivo de subtítulos SRT que pueda abrir en el panel Subtítulos de Shotcut AI.</translation>
+    </message>
+    <message>
+        <source>Explain my project</source>
+        <translation>Explicar mi proyecto</translation>
+    </message>
+    <message>
+        <source>Tells you what is in your project, without changing anything.</source>
+        <translation>Te dice qué hay en tu proyecto, sin cambiar nada.</translation>
+    </message>
+    <message>
+        <source>Explain to me in plain words what is in my project now: the clips, how long it is and what each track does. Do not change anything.</source>
+        <translation>Explícame con palabras sencillas qué hay ahora en mi proyecto: los clips, cuánto dura y para qué sirve cada pista. No cambies nada.</translation>
+    </message>
+    <message>
+        <source>Review my video</source>
+        <translation>Revisar mi vídeo</translation>
+    </message>
+    <message>
+        <source>Watches your video like an editor and says what to improve.</source>
+        <translation>Mira tu vídeo como un editor y te dice qué mejorar.</translation>
+    </message>
+    <message>
+        <source>Watch my video as an editor would and tell me what to improve: black gaps, cuts in the middle of a word, sound that is too loud or too quiet, clips that are too long. Do not change anything until I choose the fixes I want.</source>
+        <translation>Mira mi vídeo como lo haría un editor y dime qué mejorar: huecos en negro, cortes a mitad de palabra, sonido demasiado alto o bajo, clips demasiado largos. No cambies nada hasta que yo elija los arreglos que quiero.</translation>
+    </message>
+    <message>
+        <source>Get it ready for YouTube</source>
+        <translation>Prepararlo para YouTube</translation>
+    </message>
+    <message>
+        <source>Checks the format, the sound and the start for YouTube.</source>
+        <translation>Revisa el formato, el sonido y el inicio para YouTube.</translation>
+    </message>
+    <message>
+        <source>Get my video ready for YouTube (16:9, 1080p): check the format of the project, that the sound is about -14 LUFS and never clips, that the first seconds are strong and that there are no black gaps. Then tell me how to export it (Export, YouTube preset).</source>
+        <translation>Prepara mi vídeo para YouTube (16:9, 1080p): revisa el formato del proyecto, que el sonido esté en unos -14 LUFS y nunca se sature, que los primeros segundos sean fuertes y que no haya huecos en negro. Después dime cómo exportarlo (Exportar, preajuste de YouTube).</translation>
+    </message>
+</context>
+<context>
     <name>AlignAudioDialog</name>
     <message>
         <location filename="../src/dialogs/alignaudiodialog.cpp" line="234"/>
@@ -4048,6 +4430,106 @@ Hacer clic para cambiar</translation>
     </message>
 </context>
 <context>
+    <name>InspectorFilterRow</name>
+    <message>
+        <source>Enable or disable the filter</source>
+        <translation>Activar o desactivar el filtro</translation>
+    </message>
+</context>
+<context>
+    <name>InspectorWidget</name>
+    <message>
+        <source>Select a clip in the timeline or the playlist to inspect it.</source>
+        <translation>Selecciona un clip en la línea de tiempo o en la lista de reproducción para verlo aquí.</translation>
+    </message>
+    <message>
+        <source>Transform</source>
+        <translation>Transformar</translation>
+    </message>
+    <message>
+        <source>Position</source>
+        <translation>Posición</translation>
+    </message>
+    <message>
+        <source>Horizontal offset from the center in pixels</source>
+        <translation>Desplazamiento horizontal desde el centro, en píxeles</translation>
+    </message>
+    <message>
+        <source>Vertical offset from the center in pixels</source>
+        <translation>Desplazamiento vertical desde el centro, en píxeles</translation>
+    </message>
+    <message>
+        <source>Scale</source>
+        <translation>Escala</translation>
+    </message>
+    <message>
+        <source>Rotation</source>
+        <translation>Rotación</translation>
+    </message>
+    <message>
+        <source>Opacity</source>
+        <translation>Opacidad</translation>
+    </message>
+    <message>
+        <source>Keyframed values are edited in the Filters panel.</source>
+        <translation>Los valores con fotogramas clave se editan en el panel Filtros.</translation>
+    </message>
+    <message>
+        <source>Filters</source>
+        <translation>Filtros</translation>
+    </message>
+    <message>
+        <source>Add filter</source>
+        <translation>Añadir filtro</translation>
+    </message>
+    <message>
+        <source>Choose a filter to add</source>
+        <translation>Elige un filtro para añadir</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Propiedades</translation>
+    </message>
+    <message>
+        <source>Timeline</source>
+        <translation>Línea de tiempo</translation>
+    </message>
+    <message>
+        <source>Audio track</source>
+        <translation>Pista de audio</translation>
+    </message>
+    <message>
+        <source>Video track</source>
+        <translation>Pista de vídeo</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Transición</translation>
+    </message>
+    <message>
+        <source>Audio</source>
+        <translation>Audio</translation>
+    </message>
+    <message>
+        <source>Image</source>
+        <translation>Imagen</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>Vídeo</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>Generador</translation>
+    </message>
+    <message>
+        <source>%1 (%2)
+Double-click to edit it in the Filters panel.</source>
+        <translation>%1 (%2)
+Haz doble clic para editarlo en el panel Filtros.</translation>
+    </message>
+</context>
+<context>
     <name>IsingWidget</name>
     <message>
         <location filename="../src/widgets/isingwidget.ui" line="14"/>
@@ -6776,6 +7258,148 @@ Do you want to continue?</source>
         <source>Remove Layout</source>
         <translation>Eliminar disposición</translation>
     </message>
+    <message>
+        <source>No recent projects</source>
+        <translation>No hay proyectos recientes</translation>
+    </message>
+    <message>
+        <source>Jobs (%1)</source>
+        <translation>Trabajos (%1)</translation>
+    </message>
+    <message>
+        <source>%1 fps</source>
+        <translation>%1 fps</translation>
+    </message>
+    <message>
+        <source>Mono</source>
+        <translation>Mono</translation>
+    </message>
+    <message>
+        <source>Stereo</source>
+        <translation>Estéreo</translation>
+    </message>
+    <message>
+        <source>%1 channels</source>
+        <translation>%1 canales</translation>
+    </message>
+    <message>
+        <source>Modified</source>
+        <translation>Modificado</translation>
+    </message>
+    <message>
+        <source>Saved</source>
+        <translation>Guardado</translation>
+    </message>
+    <message>
+        <source>Inspector</source>
+        <translation>Inspector</translation>
+    </message>
+    <message>
+        <source>Sidebar</source>
+        <translation>Barra lateral</translation>
+    </message>
+    <message>
+        <source>Accent Color</source>
+        <translation>Color de acento</translation>
+    </message>
+    <message>
+        <source>Only the Grafito Modern theme uses an accent color.</source>
+        <translation>Solo el tema Grafito Modern usa color de acento.</translation>
+    </message>
+    <message>
+        <source>Grafito Orange</source>
+        <translation>Naranja Grafito</translation>
+    </message>
+    <message>
+        <source>Electric Blue</source>
+        <translation>Azul eléctrico</translation>
+    </message>
+    <message>
+        <source>Golden Amber</source>
+        <translation>Ámbar dorado</translation>
+    </message>
+    <message>
+        <source>Neon Lavender</source>
+        <translation>Lavanda neón</translation>
+    </message>
+    <message>
+        <source>AI Agent (MCP)</source>
+        <translation>Agente de IA (MCP)</translation>
+    </message>
+    <message>
+        <source>Enable AI Agent Server</source>
+        <translation>Activar el servidor del agente de IA</translation>
+    </message>
+    <message>
+        <source>Let AI agents on this computer control %1 (MCP and WebSocket).</source>
+        <translation>Permite que los agentes de IA de este equipo controlen %1 (MCP y WebSocket).</translation>
+    </message>
+    <message>
+        <source>Listening on %1</source>
+        <translation>Escuchando en %1</translation>
+    </message>
+    <message>
+        <source>Not running: %1</source>
+        <translation>No está en marcha: %1</translation>
+    </message>
+    <message>
+        <source>Show AI Assistant</source>
+        <translation>Mostrar el Asistente IA</translation>
+    </message>
+    <message>
+        <source>Connect to Claude Desktop</source>
+        <translation>Conectar con Claude Desktop</translation>
+    </message>
+    <message>
+        <source>Connect to Claude Code</source>
+        <translation>Conectar con Claude Code</translation>
+    </message>
+    <message>
+        <source>Copy MCP Configuration</source>
+        <translation>Copiar configuración MCP</translation>
+    </message>
+    <message>
+        <source>Copied the MCP configuration for %1.</source>
+        <translation>Se copió la configuración MCP para %1.</translation>
+    </message>
+    <message>
+        <source>The AI agent server is on: %1</source>
+        <translation>El servidor del agente de IA está activado: %1</translation>
+    </message>
+    <message>
+        <source>The AI agent server could not start: %1</source>
+        <translation>El servidor del agente de IA no pudo arrancar: %1</translation>
+    </message>
+    <message>
+        <source>The AI agent server is off.</source>
+        <translation>El servidor del agente de IA está desactivado.</translation>
+    </message>
+    <message>
+        <source>AI Assistant: First Steps</source>
+        <translation>Asistente IA: primeros pasos</translation>
+    </message>
+    <message>
+        <source>AI</source>
+        <translation>IA</translation>
+    </message>
+    <message>
+        <source>Click to open the AI Assistant.</source>
+        <translation>Haz clic para abrir el Asistente IA.</translation>
+    </message>
+    <message>
+        <source>Workspaces</source>
+        <translation>Espacios de trabajo</translation>
+    </message>
+    <message>
+        <source>Safe mode may have enabled because Shotcut crashed during startup.
+Safe mode disables external plugins.
+
+Do you want to turn off safe mode and restart now?</source>
+        <translation>Puede que el modo seguro se haya activado porque Shotcut se cerró al arrancar.
+El modo seguro desactiva los complementos externos.
+
+¿Quieres desactivar el modo seguro y reiniciar ahora?</translation>
+    </message>
 </context>
 <context>
     <name>MarkersDock</name>
@@ -8041,6 +8665,22 @@ Inténtelo de nuevo con una carpeta distinta.</translation>
         <source>Mute</source>
         <translation>Silenciar</translation>
     </message>
+    <message>
+        <source>%1 fps</source>
+        <translation>%1 fps</translation>
+    </message>
+    <message>
+        <source>Video mode</source>
+        <translation>Modo de vídeo</translation>
+    </message>
+    <message>
+        <source>Video mode: Automatic</source>
+        <translation>Modo de vídeo: Automático</translation>
+    </message>
+    <message>
+        <source>Fit</source>
+        <translation>Ajustar</translation>
+    </message>
 </context>
 <context>
     <name>PlaylistDock</name>
@@ -8547,6 +9187,22 @@ p, li { white-space: pre-wrap; }
         <location filename="../src/docks/playlistdock.cpp" line="2150"/>
         <source>All Files (*);;MLT XML (*.mlt)</source>
         <translation>Todos los archivos (*);;MLT XML (*.mlt)</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Importar</translation>
+    </message>
+    <message>
+        <source>Click or drop files to add them to the playlist</source>
+        <translation>Haz clic o suelta archivos para añadirlos a la lista de reproducción</translation>
+    </message>
+    <message>
+        <source>Drag files here</source>
+        <translation>Arrastra archivos aquí</translation>
+    </message>
+    <message>
+        <source>Video, audio or images</source>
+        <translation>Vídeo, audio o imágenes</translation>
     </message>
 </context>
 <context>
@@ -11650,7 +12306,7 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1211"/>
         <source>Create Transitions on Overlap</source>
-        <translation type="unfinished"></translation>
+        <translation>Crear transiciones al superponer</translation>
     </message>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1222"/>
@@ -11760,7 +12416,7 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1469"/>
         <source>Elements</source>
-        <translation type="unfinished"></translation>
+        <translation>Elementos</translation>
     </message>
     <message>
         <location filename="../src/docks/timelinedock.cpp" line="1472"/>
@@ -12007,6 +12663,14 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
         <location filename="../src/docks/timelinedock.cpp" line="5086"/>
         <source>Saving audio recording...</source>
         <translation>Guardando la grabación de audio...</translation>
+    </message>
+    <message>
+        <source>Adjustment Clip</source>
+        <translation>Clip de ajuste</translation>
+    </message>
+    <message>
+        <source>You cannot make a transition with an adjustment clip.</source>
+        <translation>No se puede hacer una transición con un clip de ajuste.</translation>
     </message>
 </context>
 <context>

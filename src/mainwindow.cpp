@@ -36,6 +36,7 @@
 #include "dialogs/systemsyncdialog.h"
 #include "dialogs/textviewerdialog.h"
 #include "dialogs/unlinkedfilesdialog.h"
+#include "docks/aiassistantdock.h"
 #include "docks/elementsdock.h"
 #include "docks/encodedock.h"
 #include "docks/filesdock.h"
@@ -311,6 +312,7 @@ MainWindow::MainWindow()
     // The live AI agent server (MCP and WebSocket), once every panel exists.
     if (Settings.aiServerEnabled())
         m_aiAgentServer = new AIAgentServer(Settings.aiServerPort(), this);
+    setupAiAssistant();
 
     LOG_DEBUG() << "end";
 }
@@ -668,6 +670,8 @@ void MainWindow::updateProjectInfo()
     else if (!m_currentFile.isEmpty())
         meta << tr("Saved");
     m_projectMetaLabel->setText(meta.join(QStringLiteral(" %1 ").arg(QChar(0x00B7))));
+    // A longer line can leave no room for the AI chip.
+    adjustMainToolbar();
 }
 void MainWindow::setupAndConnectDocks()
 {
@@ -1192,12 +1196,19 @@ void MainWindow::setupAndConnectDocks()
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
     addDockWidget(Qt::RightDockWidgetArea, m_jobsDock);
     addDockWidget(Qt::RightDockWidgetArea, m_historyDock);
+    // The AI Assistant (Phase 10): status of the AI, requests to copy and its steps.
+    m_aiAssistantDock = new AiAssistantDock(m_undoStack, this);
+    m_aiAssistantDock->hide();
+    ui->menuView->addAction(m_aiAssistantDock->toggleViewAction());
+
     addDockWidget(Qt::RightDockWidgetArea, m_filtersDock);
     addDockWidget(Qt::RightDockWidgetArea, m_encodeDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_aiAssistantDock);
     tabifyDockWidget(m_propertiesDock, m_jobsDock);
     tabifyDockWidget(m_jobsDock, m_historyDock);
     tabifyDockWidget(m_historyDock, m_filtersDock);
     tabifyDockWidget(m_filtersDock, m_encodeDock);
+    tabifyDockWidget(m_encodeDock, m_aiAssistantDock);
     // Scopes (created by ScopeController in the right area) stack below the Inspector.
     if (audioMeterDock)
         splitDockWidget(m_propertiesDock, audioMeterDock, Qt::Vertical);
@@ -2122,10 +2133,11 @@ void MainWindow::setupSettingsMenu()
     aiEnabled->setChecked(Settings.aiServerEnabled());
     aiEnabled->setToolTip(tr("Let AI agents on this computer control %1 (MCP and WebSocket).")
                               .arg(qApp->applicationName()));
+    m_aiEnabledAction = aiEnabled;
+    // On or off at once, without a restart (Phase 10).
     connect(aiEnabled, &QAction::toggled, this, [this](bool checked) {
         Settings.setAiServerEnabled(checked);
-        showStatusMessage(tr("Restart %1 to turn the AI agent server %2.")
-                              .arg(qApp->applicationName(), checked ? tr("on") : tr("off")));
+        setAiServerRunning(checked);
     });
     auto aiStatus = aiMenu->addAction(QString());
     aiStatus->setObjectName("actionAiServerStatus");
@@ -2135,12 +2147,23 @@ void MainWindow::setupSettingsMenu()
             aiStatus->setText(tr("Listening on %1").arg(m_aiAgentServer->mcpUrl()));
         else if (m_aiAgentServer)
             aiStatus->setText(tr("Not running: %1").arg(m_aiAgentServer->errorString()));
-        else if (Settings.aiServerEnabled())
-            aiStatus->setText(tr("Starts after a restart"));
         else
             aiStatus->setText(tr("Off"));
     });
     aiMenu->addSeparator();
+    auto showAssistant = aiMenu->addAction(tr("Show AI Assistant"));
+    showAssistant->setObjectName("actionShowAiAssistant");
+    connect(showAssistant, &QAction::triggered, this, &MainWindow::showAiAssistant);
+    auto connectDesktop = aiMenu->addAction(tr("Connect to Claude Desktop"));
+    connectDesktop->setObjectName("actionConnectClaudeDesktop");
+    connect(connectDesktop, &QAction::triggered, this, [this]() {
+        m_aiAssistantDock->connectClaudeDesktop();
+    });
+    auto connectCode = aiMenu->addAction(tr("Connect to Claude Code"));
+    connectCode->setObjectName("actionConnectClaudeCode");
+    connect(connectCode, &QAction::triggered, this, [this]() {
+        m_aiAssistantDock->connectClaudeCode();
+    });
     auto copyMenu = aiMenu->addMenu(tr("Copy MCP Configuration"));
     copyMenu->setObjectName("menuAiCopyConfiguration");
     const QList<QPair<QString, Mcp::Client>> clients
@@ -2159,6 +2182,117 @@ void MainWindow::setupSettingsMenu()
     ui->menuSettings->insertMenu(ui->menuData_Directory->menuAction(), aiMenu);
 
     LOG_DEBUG() << "end";
+}
+
+void MainWindow::setAiServerRunning(bool running)
+{
+    if (running && !m_aiAgentServer) {
+        m_aiAgentServer = new AIAgentServer(Settings.aiServerPort(), this);
+        showStatusMessage(
+            m_aiAgentServer->isListening()
+                ? tr("The AI agent server is on: %1").arg(m_aiAgentServer->mcpUrl())
+                : tr("The AI agent server could not start: %1").arg(m_aiAgentServer->errorString()));
+    } else if (!running && m_aiAgentServer) {
+        delete m_aiAgentServer;
+        m_aiAgentServer = nullptr;
+        showStatusMessage(tr("The AI agent server is off."));
+    }
+    if (m_aiEnabledAction && m_aiEnabledAction->isChecked() != running) {
+        QSignalBlocker blocker(m_aiEnabledAction);
+        m_aiEnabledAction->setChecked(running);
+    }
+    if (m_aiAssistantDock)
+        m_aiAssistantDock->setServer(m_aiAgentServer);
+}
+
+void MainWindow::setupAiAssistant()
+{
+    m_aiAssistantDock->setServer(m_aiAgentServer);
+    connect(m_aiAssistantDock, &AiAssistantDock::serverEnabledRequested, this, [this](bool on) {
+        Settings.setAiServerEnabled(on);
+        setAiServerRunning(on);
+    });
+
+    // A chip in the top bar, next to Jobs: is the AI connected? Click to open the panel.
+    m_aiStatusButton = new QToolButton(this);
+    m_aiStatusButton->setObjectName("aiStatusButton");
+    m_aiStatusButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    m_aiStatusButton->setAutoRaise(true);
+    m_aiStatusButton->setStyleSheet(Util::accentStyleSheet(QStringLiteral(
+        "QToolButton#aiStatusButton { background-color: transparent; color: #E8EAEE; border: "
+        "1px solid #2A2E37; border-radius: 8px; padding: 5px 8px; }"
+        "QToolButton#aiStatusButton:hover { background-color: #262A33; border-color: "
+        "#343944; }")));
+    connect(m_aiStatusButton, &QToolButton::clicked, this, [this]() {
+        if (m_aiAssistantDock->isVisible() && !m_aiAssistantDock->visibleRegion().isEmpty())
+            m_aiAssistantDock->hide();
+        else
+            showAiAssistant();
+    });
+    m_aiStatusAction = ui->mainToolBar->insertWidget(ui->actionJobs, m_aiStatusButton);
+    connect(m_aiAssistantDock,
+            &AiAssistantDock::stateChanged,
+            this,
+            &MainWindow::updateAiStatusButton);
+    updateAiStatusButton();
+    adjustMainToolbar();
+
+    // Help > AI Assistant: First Steps.
+    auto guide = new QAction(tr("AI Assistant: First Steps"), this);
+    guide->setObjectName("actionAiFirstSteps");
+    connect(guide, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl(AiAssistantDock::guideUrl()));
+    });
+    ui->menuHelp->insertAction(ui->actionForum, guide);
+
+    // The first time, open the panel so that people find it.
+    if (m_aiAgentServer && !Settings.aiAssistantShown()) {
+        Settings.setAiAssistantShown(true);
+        QTimer::singleShot(0, this, &MainWindow::showAiAssistant);
+    }
+}
+
+void MainWindow::showAiAssistant()
+{
+    // A hidden panel opens as a tab of the Inspector, with all its height.
+    if (!m_aiAssistantDock->isVisible() && !m_aiAssistantDock->isFloating())
+        tabifyDockWidget(m_propertiesDock, m_aiAssistantDock);
+    m_aiAssistantDock->show();
+    m_aiAssistantDock->raise();
+}
+
+void MainWindow::updateAiStatusButton()
+{
+    if (!m_aiStatusButton || !m_aiAssistantDock)
+        return;
+    QColor color("#7A808C");
+    switch (m_aiAssistantDock->state()) {
+    case AiAssistantDock::State::Connected:
+        color = QColor("#3DD68C");
+        break;
+    case AiAssistantDock::State::Waiting:
+        color = QColor("#F5B83D");
+        break;
+    case AiAssistantDock::State::Failed:
+        color = QColor("#E5484D");
+        break;
+    case AiAssistantDock::State::Off:
+        break;
+    }
+    const qreal ratio = devicePixelRatioF();
+    QPixmap pixmap(QSize(10, 10) * ratio);
+    pixmap.setDevicePixelRatio(ratio);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    painter.drawEllipse(QRectF(0.5, 0.5, 9, 9));
+    painter.end();
+    m_aiStatusButton->setIcon(QIcon(pixmap));
+    m_aiStatusButton->setText(tr("AI"));
+    m_aiStatusButton->setToolTip(m_aiAssistantDock->stateText() + QLatin1Char('\n')
+                                 + tr("Click to open the AI Assistant."));
 }
 
 void MainWindow::setupOpenOtherMenu()
@@ -7173,6 +7307,21 @@ void MainWindow::adjustMainToolbar()
     // drops the project metadata line to keep the workspace switcher centered.
     if (m_projectMetaLabel)
         m_projectMetaLabel->setVisible(this->width() >= 1200);
+    // The AI chip never pushes Export out of the top bar: it steps aside when the bar is
+    // full (the AI Assistant panel shows the same status).
+    if (m_aiStatusAction) {
+        auto bar = ui->mainToolBar;
+        const int spacing = bar->layout() ? qMax(0, bar->layout()->spacing()) : 0;
+        int needed = bar->contentsMargins().left() + bar->contentsMargins().right() + 16;
+        for (auto action : bar->actions()) {
+            if (action == m_aiStatusAction || !action->isVisible())
+                continue;
+            if (auto widget = bar->widgetForAction(action))
+                needed += qMax(0, widget->sizeHint().width()) + spacing;
+        }
+        needed += m_aiStatusButton->sizeHint().width() + spacing;
+        m_aiStatusAction->setVisible(this->width() >= needed);
+    }
 }
 
 void MainWindow::on_actionShowTextUnderIcons_toggled(bool b)

@@ -15,11 +15,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ai/clientsetup.h"
 #include "ai/mcpprotocol.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTemporaryDir>
 #include <QtTest>
 
 class TestMcpProtocol : public QObject
@@ -139,10 +141,28 @@ private slots:
         QCOMPARE(received.value("seconds").toDouble(), 2.5);
         const auto result = parse(reply.body).value("result").toObject();
         QCOMPARE(result.value("isError").toBool(), false);
-        QCOMPARE(result.value("structuredContent").toObject().value("position").toDouble(), 2.5);
-        const auto text = result.value("content").toArray().first().toObject();
+        // The data is sent once, as JSON text, not also as structuredContent.
+        QVERIFY(!result.contains("structuredContent"));
+        const auto content = result.value("content").toArray();
+        QCOMPARE(content.size(), 1);
+        const auto text = content.first().toObject();
         QCOMPARE(text.value("type").toString(), QString("text"));
         QCOMPARE(parse(text.value("text").toString().toUtf8()).value("position").toDouble(), 2.5);
+    }
+
+    void messageAndDataAreSeparateTexts()
+    {
+        auto result = Mcp::ToolResult::success(QJsonObject{{"ok", true}}, "Done.").toJson();
+        const auto content = result.value("content").toArray();
+        QCOMPARE(content.size(), 2);
+        QCOMPARE(content.at(0).toObject().value("text").toString(), QString("Done."));
+        QCOMPARE(parse(content.at(1).toObject().value("text").toString().toUtf8())
+                     .value("ok")
+                     .toBool(),
+                 true);
+        result = Mcp::ToolResult::failure("Wrong track.").toJson();
+        QCOMPARE(result.value("isError").toBool(), true);
+        QCOMPARE(result.value("content").toArray().size(), 1);
     }
 
     void invalidArgumentsAreToolErrors_data()
@@ -306,31 +326,267 @@ private slots:
 
     void clientConfigurations()
     {
-        QCOMPARE(Mcp::clientConfiguration(Mcp::Client::ClaudeCode, 9999, "", "python"),
-                 QString("claude mcp add --transport http shotcut-ai http://127.0.0.1:9999/mcp"));
+        const QString bridge = "C:\\Program Files\\Shotcut AI\\share\\shotcut\\mcp\\"
+                               "shotcut_mcp_bridge.py";
+        const QString analysis = "C:\\Program Files\\Shotcut AI\\share\\shotcut\\mcp\\"
+                                 "shotcut_analysis.py";
+        // Claude Code: one command per server, for every folder (user scope).
+        QCOMPARE(Mcp::clientConfiguration(Mcp::Client::ClaudeCode, 9999, "", "", "python"),
+                 QString("claude mcp add --scope user --transport http shotcut-ai "
+                         "http://127.0.0.1:9999/mcp"));
+        QCOMPARE(Mcp::clientConfiguration(Mcp::Client::ClaudeCode, 9999, bridge, analysis, "python")
+                     .split('\n')
+                     .last(),
+                 "claude mcp add --scope user shotcut-analysis python \"" + analysis + "\"");
 
         auto config = parse(
-            Mcp::clientConfiguration(Mcp::Client::OpenCode, 9999, "", "python").toUtf8());
+            Mcp::clientConfiguration(Mcp::Client::OpenCode, 9999, "", analysis, "python").toUtf8());
         const auto server = config.value("mcp").toObject().value("shotcut-ai").toObject();
         QCOMPARE(server.value("type").toString(), QString("remote"));
         QCOMPARE(server.value("url").toString(), QString("http://127.0.0.1:9999/mcp"));
         QVERIFY(server.value("enabled").toBool());
+        const auto local = config.value("mcp").toObject().value("shotcut-analysis").toObject();
+        QCOMPARE(local.value("type").toString(), QString("local"));
+        QCOMPARE(local.value("command").toArray(), QJsonArray({"python", analysis}));
 
-        const QString bridge = "C:\\Program Files\\Shotcut AI\\share\\shotcut\\mcp\\"
-                               "shotcut_mcp_bridge.py";
         for (auto client : {Mcp::Client::ClaudeDesktop, Mcp::Client::Antigravity}) {
-            config = parse(Mcp::clientConfiguration(client, 9999, bridge, "python").toUtf8());
-            const auto stdio = config.value("mcpServers").toObject().value("shotcut-ai").toObject();
+            config = parse(
+                Mcp::clientConfiguration(client, 9999, bridge, analysis, "python").toUtf8());
+            const auto servers = config.value("mcpServers").toObject();
+            const auto stdio = servers.value("shotcut-ai").toObject();
             QCOMPARE(stdio.value("command").toString(), QString("python"));
             QCOMPARE(stdio.value("args").toArray().first().toString(), bridge);
             QVERIFY(!stdio.contains("env"));
+            QCOMPARE(servers.value("shotcut-analysis").toObject().value("args").toArray().first(),
+                     QJsonValue(analysis));
         }
+        // Without the analysis server installed, only Shotcut AI.
+        config = parse(
+            Mcp::clientConfiguration(Mcp::Client::ClaudeDesktop, 9999, bridge, "", "python")
+                .toUtf8());
+        QCOMPARE(config.value("mcpServers").toObject().keys(), QStringList{"shotcut-ai"});
         // Another port reaches the bridge through SHOTCUT_AI_URL.
         config = parse(
-            Mcp::clientConfiguration(Mcp::Client::ClaudeDesktop, 8765, bridge, "python3").toUtf8());
+            Mcp::clientConfiguration(Mcp::Client::ClaudeDesktop, 8765, bridge, analysis, "python3")
+                .toUtf8());
         const auto stdio = config.value("mcpServers").toObject().value("shotcut-ai").toObject();
         QCOMPARE(stdio.value("env").toObject().value("SHOTCUT_AI_URL").toString(),
                  QString("http://127.0.0.1:8765/mcp"));
+    }
+
+    void findsFilesOfStoreApps()
+    {
+        // A packaged app (Claude Desktop from the Microsoft Store) writes AppData files to
+        // Packages/<package>/LocalCache; Shotcut finds them there.
+        QTemporaryDir home;
+        QVERIFY(home.isValid());
+        const auto local = home.filePath("AppData/Local");
+        const auto roaming = home.filePath("AppData/Roaming");
+        const auto cache = local + "/Packages/Claude_pzs8sxrjxfjjc/LocalCache";
+        QVERIFY(QDir().mkpath(cache + "/Roaming/Claude/out"));
+        QVERIFY(QDir().mkpath(cache + "/Local/Temp"));
+        QVERIFY(QDir().mkpath(local + "/Packages/Other.App_1/LocalCache/Roaming/Claude/out"));
+        auto touch = [](const QString &path) {
+            QFile file(path);
+            return file.open(QIODevice::WriteOnly) && file.write("x") == 1;
+        };
+        QVERIFY(touch(cache + "/Roaming/Claude/out/clip.mp4"));
+        QVERIFY(touch(cache + "/Local/Temp/voice.wav"));
+
+        const auto clip = roaming + "/Claude/out/clip.mp4";
+        QCOMPARE(Mcp::unvirtualizedPath(clip, roaming, local),
+                 cache + "/Roaming/Claude/out/clip.mp4");
+        // Windows separators work too.
+        QCOMPARE(Mcp::unvirtualizedPath(QDir::toNativeSeparators(local + "/Temp/voice.wav"),
+                                        QDir::toNativeSeparators(roaming),
+                                        QDir::toNativeSeparators(local)),
+                 cache + "/Local/Temp/voice.wav");
+        // Files that exist, files elsewhere and files no package has stay as they are.
+        QVERIFY(touch(home.filePath("real.mp4")));
+        QCOMPARE(Mcp::unvirtualizedPath(home.filePath("real.mp4"), roaming, local),
+                 home.filePath("real.mp4"));
+        QCOMPARE(Mcp::unvirtualizedPath(roaming + "/Claude/missing.mp4", roaming, local),
+                 roaming + "/Claude/missing.mp4");
+        QCOMPARE(Mcp::unvirtualizedPath("D:/Videos/missing.mp4", roaming, local),
+                 QString("D:/Videos/missing.mp4"));
+    }
+
+    void promptsAreReadyMadeRequests()
+    {
+        QJsonObject received;
+        QScopedPointer<Mcp::Server> server(makeServer(&received));
+        // Without prompts the capability is not announced.
+        auto result = parse(server->handlePost(request(1, "initialize")).body)
+                          .value("result")
+                          .toObject();
+        QVERIFY(!result.value("capabilities").toObject().contains("prompts"));
+
+        Mcp::Prompt prompt;
+        prompt.name = "make_video";
+        prompt.title = "Make a video with my clips";
+        prompt.description = "Picks the best moments.";
+        prompt.arguments = {{"folder", "The folder", true}, {"duration", "How long", false}};
+        prompt.text = [](const QJsonObject &arguments) {
+            return QString("Make a video of %1 with %2.")
+                .arg(arguments.value("duration").toString("1 minute"),
+                     arguments.value("folder").toString());
+        };
+        server->addPrompt(prompt);
+        QCOMPARE(server->promptNames(), QStringList{"make_video"});
+
+        result = parse(server->handlePost(request(2, "initialize")).body)
+                     .value("result")
+                     .toObject();
+        QVERIFY(result.value("capabilities").toObject().contains("prompts"));
+
+        const auto list = parse(server->handlePost(request(3, "prompts/list")).body)
+                              .value("result")
+                              .toObject()
+                              .value("prompts")
+                              .toArray();
+        QCOMPARE(list.size(), 1);
+        const auto listed = list.first().toObject();
+        QCOMPARE(listed.value("name").toString(), QString("make_video"));
+        QCOMPARE(listed.value("title").toString(), QString("Make a video with my clips"));
+        const auto arguments = listed.value("arguments").toArray();
+        QCOMPARE(arguments.size(), 2);
+        QCOMPARE(arguments.at(0).toObject().value("required").toBool(), true);
+        QCOMPARE(arguments.at(1).toObject().value("required").toBool(), false);
+
+        auto response = parse(server->handlePost(
+                                        request(4,
+                                                "prompts/get",
+                                                {{"name", "make_video"},
+                                                 {"arguments", QJsonObject{{"folder", " D:/trip "}}}}))
+                                  .body);
+        const auto messages = response.value("result").toObject().value("messages").toArray();
+        QCOMPARE(messages.size(), 1);
+        QCOMPARE(messages.first().toObject().value("role").toString(), QString("user"));
+        QCOMPARE(messages.first().toObject().value("content").toObject().value("text").toString(),
+                 QString("Make a video of 1 minute with D:/trip."));
+
+        // A missing required argument and an unknown prompt are errors.
+        response = parse(
+            server->handlePost(request(5, "prompts/get", {{"name", "make_video"}})).body);
+        QCOMPARE(response.value("error").toObject().value("code").toInt(),
+                 int(Mcp::InvalidParams));
+        QVERIFY(response.value("error").toObject().value("message").toString().contains("folder"));
+        response = parse(server->handlePost(request(6, "prompts/get", {{"name", "nope"}})).body);
+        QVERIFY(
+            response.value("error").toObject().value("message").toString().contains("make_video"));
+    }
+
+    void observerSeesClients()
+    {
+        QJsonObject received;
+        QScopedPointer<Mcp::Server> server(makeServer(&received));
+        QStringList methods;
+        QString client;
+        server->setObserver([&](const QString &method, const QJsonObject &params) {
+            methods << method;
+            if (method == "initialize")
+                client = params.value("clientInfo").toObject().value("name").toString();
+        });
+        server->handlePost(
+            request(1, "initialize", {{"clientInfo", QJsonObject{{"name", "claude-ai"}}}}));
+        server->handlePost(R"({"jsonrpc":"2.0","method":"notifications/initialized"})");
+        server->handlePost(request(2, "tools/call", {{"name", "seek"},
+                                                     {"arguments", QJsonObject{{"seconds", 1}}}}));
+        QCOMPARE(methods,
+                 QStringList({"initialize", "notifications/initialized", "tools/call"}));
+        QCOMPARE(client, QString("claude-ai"));
+    }
+
+    void connectsClaudeDesktop()
+    {
+        QTemporaryDir home;
+        QVERIFY(home.isValid());
+        const auto roaming = home.filePath("AppData/Roaming");
+        const auto local = home.filePath("AppData/Local");
+        const auto usual = roaming + "/Claude/claude_desktop_config.json";
+        // No Claude yet: the usual file.
+        auto candidates = ClientSetup::claudeDesktopConfigCandidates(roaming, local);
+        QCOMPARE(candidates, QStringList{usual});
+        QCOMPARE(ClientSetup::chooseConfigFile(candidates), usual);
+        // Claude from the Microsoft Store: its package folder comes first once it exists.
+        const auto package = local + "/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Roaming/Claude";
+        QVERIFY(QDir().mkpath(package));
+        QVERIFY(QDir().mkpath(local + "/Packages/Other.App_1/LocalCache/Roaming/Claude"));
+        candidates = ClientSetup::claudeDesktopConfigCandidates(QDir::toNativeSeparators(roaming),
+                                                                QDir::toNativeSeparators(local));
+        QCOMPARE(candidates, QStringList({package + "/claude_desktop_config.json", usual}));
+        QCOMPARE(ClientSetup::chooseConfigFile(candidates), package + "/claude_desktop_config.json");
+        // An existing file wins over a folder.
+        QVERIFY(QDir().mkpath(roaming + "/Claude"));
+        {
+            QFile file(usual);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write(R"({"theme": "dark", "mcpServers": {"other": {"command": "x"}}})");
+        }
+        QCOMPARE(ClientSetup::chooseConfigFile(candidates), usual);
+        QCOMPARE(ClientSetup::chooseConfigFile({}), QString());
+
+        // Merging keeps the other settings and servers, and backs the file up.
+        const auto servers = Mcp::stdioServers(9999, "C:/sc/bridge.py", "C:/sc/analysis.py", "py");
+        QString error;
+        QVERIFY2(ClientSetup::writeMcpServers(usual, servers, &error), qPrintable(error));
+        QFile file(usual);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const auto written = parse(file.readAll());
+        file.close();
+        QCOMPARE(written.value("theme").toString(), QString("dark"));
+        const auto mcpServers = written.value("mcpServers").toObject();
+        QCOMPARE(mcpServers.keys(), QStringList({"other", "shotcut-ai", "shotcut-analysis"}));
+        QCOMPARE(mcpServers.value("shotcut-ai").toObject().value("command").toString(),
+                 QString("py"));
+        QVERIFY(QFile::exists(usual + ".bak"));
+        QFile backup(usual + ".bak");
+        QVERIFY(backup.open(QIODevice::ReadOnly));
+        QVERIFY(backup.readAll().contains("\"theme\": \"dark\""));
+
+        // Again: nothing changes.
+        QByteArray output;
+        QFile again(usual);
+        QVERIFY(again.open(QIODevice::ReadOnly));
+        QCOMPARE(ClientSetup::mergeMcpServers(again.readAll(), servers, output),
+                 ClientSetup::MergeResult::Unchanged);
+
+        // A new file in a new folder.
+        const auto fresh = package + "/claude_desktop_config.json";
+        QVERIFY(ClientSetup::writeMcpServers(fresh, servers, &error));
+        QVERIFY(!QFile::exists(fresh + ".bak"));
+        QFile freshFile(fresh);
+        QVERIFY(freshFile.open(QIODevice::ReadOnly));
+        QCOMPARE(parse(freshFile.readAll()).value("mcpServers").toObject().size(), 2);
+
+        // A broken file is left alone, with an explanation.
+        const auto broken = home.filePath("broken.json");
+        {
+            QFile brokenFile(broken);
+            QVERIFY(brokenFile.open(QIODevice::WriteOnly));
+            brokenFile.write("{\"mcpServers\": {");
+        }
+        QVERIFY(!ClientSetup::writeMcpServers(broken, servers, &error));
+        QVERIFY(error.contains("left as it was"));
+        QFile brokenFile(broken);
+        QVERIFY(brokenFile.open(QIODevice::ReadOnly));
+        QCOMPARE(brokenFile.readAll(), QByteArray("{\"mcpServers\": {"));
+        QCOMPARE(ClientSetup::mergeMcpServers(R"({"mcpServers": []})", servers, output, &error),
+                 ClientSetup::MergeResult::Invalid);
+        QVERIFY(output.isEmpty());
+        QCOMPARE(ClientSetup::mergeMcpServers("", servers, output),
+                 ClientSetup::MergeResult::Changed);
+    }
+
+    void quotesPythonWithSpaces()
+    {
+        const auto commands = Mcp::clientConfiguration(Mcp::Client::ClaudeCode,
+                                                       9999,
+                                                       "b.py",
+                                                       "C:/A/analysis.py",
+                                                       "C:/Program Files/Shotcut AI/python/python.exe");
+        QVERIFY(commands.endsWith("shotcut-analysis \"C:/Program Files/Shotcut AI/python/"
+                                  "python.exe\" \"C:/A/analysis.py\""));
     }
 
     void formatsResponses()

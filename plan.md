@@ -270,6 +270,8 @@ Para garantizar que el rediseño preserve el 100 % de las capacidades profesiona
 | **Historial de Deshacer** (`HistoryUndoView`) | Pestaña "Historial" en Inspector | Tercera pestaña del Inspector derecho |
 | **¿Qué es esto? / FAQ** (`actionWhatsThis`) | Botón de Ayuda en Barra Lateral | Fijado en la base de la barra lateral izquierda de 52 px |
 | **Espacios de Trabajo / Layouts** (Logging, Editing, etc.) | Selector Segmentado en Barra Superior | Conmutador central directo entre los 6 modos de trabajo |
+| **Agente de IA (MCP)** (*Settings > AI Agent (MCP)*, Fase 8) | Mismo submenú + panel **Asistente IA** + botón **IA** de la Barra Superior (Fase 10) | Se conservan *Enable AI Agent Server*, el estado y *Copy MCP Configuration* (4 clientes); se añaden *Show AI Assistant*, *Connect to Claude Desktop* y *Connect to Claude Code*. El interruptor ya no exige reiniciar |
+| **Lanzador del zip** (`Shotcut AI.bat`) | `Shotcut AI.exe` (con icono) e instalador `Shotcut-AI-Setup.exe` | Misma función (abre `bin\shotcut.exe` con los argumentos); el instalador de Shotcut (`shotcut.iss`) sigue intacto |
 
 ---
 
@@ -511,6 +513,83 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
 
 ---
 
+### FASE 9: Percepción de la IA — Entrega 1 de `docs/ROADMAP_SHOTCUT_AI.md` (Fase 0 + Fase 1)
+- **Objetivo:** que la IA **vea y oiga el material** antes de editar (primer paso del editor de vídeo por IA descrito en `docs/ROADMAP_SHOTCUT_AI.md`) y arreglar lo que Fox encontró al conectar Claude Code a Shotcut AI.
+- **Decisiones de Fox (28/09/2026):** avanzar por entregas con PR, todo en este repositorio, todo local (sin nube ni claves) y YouTube 16:9 como primer formato.
+- **Tareas Técnicas:**
+  1. **Problemas de las primeras pruebas:**
+     - respuestas compactas: los datos van una sola vez, los archivos se nombran con ids `m1`… más una tabla `media`, y `get_timeline` acepta `track`/`detail`;
+     - el perfil sale de sus valores (`video_mode`, `adapts_to_first_clip`) en lugar de *"PAL 4:3 DV or DVD"*;
+     - se encuentran los archivos que las apps de Microsoft Store guardan en `AppData` (`Mcp::unvirtualizedPath`);
+     - los dos `shotcut.exe` son el *watchdog* de arranque y la app.
+  2. **`scripts/shotcut_analysis.py`:** servidor MCP por stdio con solo la biblioteca estándar de Python y los programas del zip. Sus 11 herramientas: `check_setup`, `probe_media`, `describe_clip`, `detect_scenes`, `contact_sheet`, `analyze_audio`, `transcribe`, `analyze_folder`, `download_model`, `get_jobs` y `cancel_job`. Tiene trabajos en segundo plano y caché por archivo.
+  3. **whisper.cpp en el zip de Windows** (`whisper-cli.exe` y los backends de ggml): vuelve *Subtitles > Speech to Text* y la IA transcribe con los mismos modelos.
+  4. *Copy MCP Configuration* configura también `shotcut-analysis` en los 4 clientes.
+  5. `scripts/sc.py` (CLI MCP), `tests/media/make_samples.py` (medios de contenido conocido), `docs/build-windows.md`, `docs/ai-analysis.md` y el roadmap en `docs/`.
+- **Archivos Probables:**
+  - `src/ai/aitools.cpp`, `src/ai/mcpprotocol.cpp/.h`, `src/aiagentserver.cpp/.h`, `src/CMakeLists.txt`
+  - `scripts/shotcut_analysis.py`, `scripts/sc.py` (nuevos), `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`
+  - `tests/test_phase9_ai_analysis_verification.py`, `tests/live_analysis_smoke.py`, `tests/media/*` (nuevos), `tests/test_mcp_protocol.cpp`, `tests/run_e2e_tests.py`
+  - `docs/ai-analysis.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md` (nuevos), `docs/ai-mcp.md`
+- **Criterios de Aceptación:**
+  - cortes de escena: el 90 % o más, con un margen de ±2 fotogramas;
+  - silencios con un margen de 0,1 s;
+  - volumen con un margen de 1 dB;
+  - tempo con un margen de ±2 BPM;
+  - transcripción con frases y palabras;
+  - todo sin instalar nada más que Python.
+- **Estado:** ✅ Completada. En pruebas encuentra los cortes en el fotograma exacto, los silencios exactos, 10,0 dB de diferencia de volumen y el tempo de 60 a 160 BPM con beats a ±10 ms. En el CI de Windows, con el whisper del zip y un modelo descargado por el propio servidor, transcribe la muestra de voz de whisper.cpp en 4,6 s para 11 s de audio. `--fast`: 777/777. Quedan abiertas del roadmap la 0.3 (material real de Fox) y la medición de la 1.5 en su PC. Detalle en `agent.md` (Fase 9).
+
+### FASE 10: Shotcut AI para quien no sabe editar — Entrega UX
+- **Objetivo:** que alguien que nunca ha editado vídeo pueda conectar la IA, pedir un vídeo y deshacer lo que no le guste, sin ayuda. Lo pidió Fox el 27/11/2026, junto con el icono en el ejecutable y un instalador que pregunte por el acceso directo en el escritorio.
+- **Barreras que había:**
+  - conectar exigía instalar Python y pegar JSON;
+  - encender el servidor pedía reiniciar;
+  - no se veía si la IA estaba conectada;
+  - nadie sabía qué pedir;
+  - la IA no sabía que hablaba con un principiante;
+  - lo que hacía la IA solo se anunciaba 3 s;
+  - el zip se abría con un `.bat` sin icono.
+- **Tareas Técnicas:**
+  1. **Recetas MCP (`prompts`)** en `Mcp::Server` (`prompts/list`, `prompts/get`, argumentos obligatorios) y 7 recetas en `AiTools::recipes()`: `make_video`, `remove_silences`, `cut_to_music`, `transcribe_speech`, `explain_project`, `review_video`, `prepare_for_youtube`. El puente también las anuncia.
+  2. **Instrucciones para principiantes** (`AiTools::instructions()`): palabras sencillas, plan y confirmación antes de cambios grandes, no borrar ni sobrescribir sin preguntar, y al final qué cambió.
+  3. **Conectar con Claude** (`src/ai/clientsetup.cpp/.h`, solo Qt Core):
+     - fusiona `mcpServers` en `claude_desktop_config.json`, también en la copia de Microsoft Store, con copia `.bak`, y deja intacto un archivo roto;
+     - en Claude Code usa `claude mcp add`;
+     - usa el Python del paquete (`AIAgentServer::pythonPath()`).
+  4. **Panel *Asistente IA*** (`src/docks/aiassistantdock.cpp/.h`):
+     - estado con colores, alimentado por la señal `clientActivity` del servidor;
+     - peticiones para copiar;
+     - *Lo que cambió la IA*, desde la pila de deshacer, con *Deshacer/Rehacer este paso* (`AiTools::stepDone`).
+  5. **En la ventana principal:**
+     - botón **IA** en la barra superior, que se oculta antes de dejar fuera a *Exportar*;
+     - el servidor se enciende y se apaga en vivo;
+     - el panel se abre solo la primera vez;
+     - *Help > AI Assistant: First Steps*.
+  6. **Windows:**
+     - `Shotcut AI.exe` con el icono (`packaging/windows/shotcut-ai-launcher.c/.rc`) en lugar del `.bat`;
+     - Python *embeddable* en `python\`;
+     - instalador Inno Setup (`packaging/windows/shotcut-ai.iss`): español, sin permisos de administrador, acceso directo en el escritorio marcado por defecto y menú Inicio;
+     - el CI comprueba el lanzador, la instalación, los accesos directos y la desinstalación.
+  7. Textos nuevos en español (`translations/shotcut_es.ts`), `docs/guia-principiante.md` con el guion de prueba con usuarios, y `docs/ai-mcp.md` y `docs/build-windows.md` actualizados.
+- **Archivos Probables:**
+  - `src/ai/mcpprotocol.cpp/.h`, `src/ai/aitools.cpp/.h`, `src/ai/clientsetup.cpp/.h` (nuevo), `src/aiagentserver.cpp/.h`
+  - `src/docks/aiassistantdock.cpp/.h` (nuevo), `src/mainwindow.cpp/.h`, `src/settings.cpp/.h`, `src/CMakeLists.txt`
+  - `scripts/shotcut_mcp_bridge.py`, `scripts/bundle-windows-msys2.sh`, `.github/workflows/build-windows-shotcut-ai.yml`
+  - `packaging/windows/shotcut-ai-launcher.c`, `shotcut-ai-launcher.rc` y `shotcut-ai.iss` (nuevos)
+  - `translations/shotcut_es.ts`
+  - `tests/test_phase10_ai_beginner_ux_verification.py` (nuevo), `tests/test_mcp_protocol.cpp`, `tests/CMakeLists.txt`, `tests/live_mcp_smoke.py`, `tests/live_analysis_smoke.py`, `tests/test_phase8_ai_mcp_verification.py`, `tests/run_e2e_tests.py`
+  - `docs/guia-principiante.md` (nuevo), `docs/ai-mcp.md`, `docs/build-windows.md`, `docs/ROADMAP_SHOTCUT_AI.md`
+- **Criterios de Aceptación:**
+  - conectar en 3 pasos o menos, sin instalar nada aparte de la app de Claude;
+  - el estado de la IA, qué pedir y lo que cambió siempre a la vista;
+  - cada paso de la IA se deshace con un clic;
+  - *Exportar* nunca queda fuera de la barra por el botón **IA**;
+  - todas las funciones de la Fase 8 se conservan.
+- **Estado:** ✅ Completada. Probada en la app real (Linux, Qt 6.10.2 + MLT 7.36.1) en inglés y en español, y en el build de Windows: Python incluido, lanzador, instalación con accesos directos y desinstalación (run 46038840297). Detalle en `agent.md` (Fase 10).
+
+---
+
 ## 🌐 Consideraciones Técnicas Transversales
 
 ### Compatibilidad Multiplataforma (Windows, macOS, Linux)
@@ -611,6 +690,18 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Menú *Settings > AI Agent (MCP)* y puente stdio para Claude Desktop.
   - [x] Configuración y guía para OpenCode, Antigravity, Claude Code y Claude Desktop (`docs/ai-mcp.md`).
   - [x] Pruebas (`--fast`: 754/754; 19 nuevos en `tests/test_phase8_ai_mcp_verification.py`) y verificación en la app real; el build de Windows ejecuta `tests/live_mcp_smoke.py`.
+- [x] **Fase 9: Percepción de la IA (Entrega 1 del roadmap)**
+  - [x] Respuestas compactas, perfil real, archivos de apps de Microsoft Store y el *watchdog* explicado (los 4 problemas de las pruebas de Fox).
+  - [x] Servidor `shotcut-analysis` (11 herramientas) con solo la biblioteca estándar y los programas del zip.
+  - [x] whisper.cpp en el zip (vuelve *Speech to Text*) y comprobación en CI con un modelo real.
+  - [x] `sc.py`, muestras de prueba, guía de compilación y guía de análisis.
+  - [x] Pruebas (`--fast`: 777/777; 23 nuevos en `tests/test_phase9_ai_analysis_verification.py`; QtTest: 36) y `tests/live_analysis_smoke.py` en Linux y en el build de Windows.
+- [x] **Fase 10: Shotcut AI para quien no sabe editar (Entrega UX)**
+  - [x] Recetas MCP e instrucciones para principiantes (servidor y puente).
+  - [x] *Conectar con Claude* en un clic (Claude Desktop con copia `.bak`, Claude Code) con el Python del paquete.
+  - [x] Panel *Asistente IA* con estado, peticiones y *Deshacer este paso*; botón **IA**; encendido en vivo; primera vez; ayuda.
+  - [x] `Shotcut AI.exe` con icono, Python incluido e instalador con acceso directo en el escritorio, comprobados en el CI.
+  - [x] Textos en español, guía para principiantes con guion de prueba con usuarios, y pruebas (`tests/test_phase10_ai_beginner_ux_verification.py`; QtTest: 40).
 
 ---
 

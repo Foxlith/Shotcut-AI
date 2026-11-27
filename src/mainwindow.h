@@ -447,7 +447,17 @@ private slots:
     void on_actionLeaveSafeMode_triggered();
 
 private:
+    /// Starts or stops the AI agent server now, without a restart.
+    void setAiServerRunning(bool running);
+    void setupAiAssistant();
+    void showAiAssistant();
+    void updateAiStatusButton();
+
     class AIAgentServer *m_aiAgentServer{nullptr};
+    class AiAssistantDock *m_aiAssistantDock{nullptr};
+    QToolButton *m_aiStatusButton{nullptr};
+    QAction *m_aiStatusAction{nullptr};
+    QAction *m_aiEnabledAction{nullptr};
 };
 
 #define MAIN MainWindow::singleton()

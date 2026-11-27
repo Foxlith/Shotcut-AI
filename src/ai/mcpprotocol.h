@@ -51,8 +51,8 @@ enum ErrorCode {
 /// The result of a tool call, sent to the client as a CallToolResult.
 struct ToolResult
 {
-    QJsonObject data;        ///< structuredContent, also sent as JSON text
-    QString text;            ///< a message for the model; the JSON of data when empty
+    QJsonObject data;        ///< sent to the client once, as compact JSON text
+    QString text;            ///< a message for the model, before the data
     QJsonArray extraContent; ///< more content blocks, such as images
     bool isError = false;
 
@@ -75,9 +75,33 @@ struct Tool
     QJsonObject toJson() const;
 };
 
+/// An argument of a prompt.
+struct PromptArgument
+{
+    QString name;
+    QString description;
+    bool required = false;
+};
+
+/// A prompt: a ready-made request that clients offer to the user (for example in the "+"
+/// menu of Claude Desktop or as a slash command of Claude Code).
+struct Prompt
+{
+    QString name;
+    QString title;
+    QString description;
+    QList<PromptArgument> arguments;
+    /// The text of the user message, from the arguments (strings).
+    std::function<QString(const QJsonObject &arguments)> text;
+
+    /// The prompt as listed by prompts/list.
+    QJsonObject toJson() const;
+};
+
 /*!
   \class Mcp::Server
-  \brief Answers MCP requests: initialize, ping, tools/list and tools/call.
+  \brief Answers MCP requests: initialize, ping, tools/list, tools/call, prompts/list and
+  prompts/get.
 */
 class Server
 {
@@ -90,6 +114,16 @@ public:
     void addTool(const Tool &tool);
     const Tool *tool(const QString &name) const;
     QStringList toolNames() const;
+
+    void addPrompt(const Prompt &prompt);
+    const Prompt *prompt(const QString &name) const;
+    QStringList promptNames() const;
+    /// The result of prompts/get, or an empty object with \a error set.
+    QJsonObject getPrompt(const QString &name, const QJsonObject &arguments, QString *error) const;
+
+    /// Called for every request and notification that the server handles, with its method
+    /// and params, for example to show that a client is connected.
+    void setObserver(const std::function<void(const QString &, const QJsonObject &)> &observer);
 
     /// Validates the arguments and calls the tool. Unknown tools and invalid arguments
     /// give an error result.
@@ -127,6 +161,8 @@ private:
     QString m_instructions;
     QList<Tool> m_tools;
     QHash<QString, int> m_toolIndex;
+    QList<Prompt> m_prompts;
+    std::function<void(const QString &, const QJsonObject &)> m_observer;
 };
 
 /// An HTTP/1.1 request, as far as the MCP endpoint needs it.
@@ -163,13 +199,29 @@ QByteArray reasonPhrase(int status);
 
 /// The AI clients whose configuration Shotcut AI can copy.
 enum class Client { ClaudeCode, ClaudeDesktop, OpenCode, Antigravity };
-/// What to paste in the configuration of an AI client: a command for Claude Code, JSON
-/// with the HTTP endpoint for OpenCode, and JSON that starts the stdio bridge with
-/// \a python for Claude Desktop and Antigravity.
+/// What to paste in the configuration of an AI client: commands for Claude Code, JSON with
+/// the HTTP endpoint for OpenCode, and JSON that starts the stdio bridge with \a python for
+/// Claude Desktop and Antigravity. Each one also starts the media analysis server at
+/// \a analysisPath with \a python, unless it is empty.
 QString clientConfiguration(Client client,
                             quint16 port,
                             const QString &bridgePath,
+                            const QString &analysisPath,
                             const QString &python);
+/// The "mcpServers" entries of Claude Desktop and Antigravity: the stdio bridge to the
+/// server at \a port and, unless \a analysisPath is empty, the media analysis server.
+QJsonObject stdioServers(quint16 port,
+                         const QString &bridgePath,
+                         const QString &analysisPath,
+                         const QString &python);
+/// Apps from the Microsoft Store (MSIX), such as Claude Desktop, save the files that they
+/// write under AppData in their package folder
+/// (<localAppData>/Packages/<package>/LocalCache/Roaming or Local), where other programs do
+/// not look. Returns that copy of \a path when \a path does not exist and a package has it
+/// (Claude packages first), else \a path.
+QString unvirtualizedPath(const QString &path,
+                          const QString &roamingAppData,
+                          const QString &localAppData);
 /// A complete response that closes the connection.
 QByteArray httpResponse(int status,
                         const QByteArray &contentType = QByteArray(),
