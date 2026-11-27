@@ -93,6 +93,8 @@ public:
     Q_INVOKABLE bool isMultitrackSelected() const { return m_selection.isMultitrackSelected; }
     Q_INVOKABLE int selectedTrack() const { return m_selection.selectedTrack; }
     Q_INVOKABLE bool isFloating() const { return QDockWidget::isFloating(); }
+    /// Whether the player is playing (the hover preview of the timeline waits for a pause).
+    Q_INVOKABLE bool isPlaying() const;
     Q_INVOKABLE static void openProperties();
     void emitSelectedChanged(const QVector<int> &roles);
     void replaceClipsWithHash(const QString &hash, Mlt::Producer &producer);

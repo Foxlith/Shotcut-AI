@@ -1158,6 +1158,23 @@ void ShotcutSettings::setTimelineDragScrub(bool b)
 }
 
 /*!
+    \qmlproperty bool Settings::timelineHoverPreview
+    \brief Whether the player shows the frame under the mouse while it moves over the
+    timeline, and goes back to the playhead when it leaves (as the preview axis of CapCut).
+*/
+
+bool ShotcutSettings::timelineHoverPreview() const
+{
+    return settings.value("timeline/hoverPreview", true).toBool();
+}
+
+void ShotcutSettings::setTimelineHoverPreview(bool b)
+{
+    settings.setValue("timeline/hoverPreview", b);
+    emit timelineHoverPreviewChanged();
+}
+
+/*!
     \qmlproperty bool Settings::timelineShowWaveforms
     \brief Whether audio waveforms are shown on timeline clips.
 */

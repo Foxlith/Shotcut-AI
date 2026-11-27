@@ -63,6 +63,35 @@ Rectangle {
     signal timelineRightClicked
     signal clipRightClicked
 
+    // Hover preview (Phase 11, the preview axis of CapCut): while the mouse moves over the
+    // timeline the player shows the frame under it; leaving gives the playhead back, and a click
+    // or an edit keeps the new position. -1 when not previewing.
+    property int hoverSavedPosition: -1
+
+    function hoverPreviewAt(x) {
+        if (!settings.timelineHoverPreview || trackHeaderRepeater.count === 0 || timeline.isPlaying())
+            return;
+        if (hoverSavedPosition < 0)
+            hoverSavedPosition = timeline.position;
+        const position = Math.max(0, Math.round((tracksFlickable.contentX + x) / multitrack.scaleFactor));
+        if (position !== timeline.position)
+            timeline.position = position;
+    }
+
+    function endHoverPreview() {
+        if (hoverSavedPosition < 0)
+            return;
+        const saved = hoverSavedPosition;
+        hoverSavedPosition = -1;
+        // Playback started while previewing: let it play on.
+        if (!timeline.isPlaying())
+            timeline.position = saved;
+    }
+
+    function commitHoverPreview() {
+        hoverSavedPosition = -1;
+    }
+
     function snapToDevicePixel(value) {
         var dpr = Screen.devicePixelRatio;
         return Math.round(value * dpr) / dpr;
@@ -516,6 +545,8 @@ Rectangle {
                 onWheel: wheel => Logic.onMouseWheel(wheel)
                 onPressed: mouse => {
                     if (mouse.y <= rulerFlickable.height || cursorBox.contains(mapToItem(cursorBox, mouse.x, mouse.y)) || (!settings.timelineRectangleSelect === !(mouse.modifiers & Qt.ShiftModifier))) {
+                        // A click moves the playhead: the hover preview stays where it is.
+                        root.commitHoverPreview();
                         timeline.position = (tracksFlickable.contentX + mouse.x) / multitrack.scaleFactor;
                         scrub = true;
                         bubbleHelp.hide();
@@ -552,6 +583,22 @@ Rectangle {
                         selectionBox.width = Math.abs(mouse.x - startX);
                         selectionBox.height = Math.abs(mouse.y - startY);
                     }
+                }
+            }
+
+            // Hover preview: hover events reach this handler also over clips, which have their
+            // own mouse areas. While a button is down (a drag or a trim) it does nothing.
+            HoverHandler {
+                id: hoverPreviewHandler
+
+                enabled: settings.timelineHoverPreview
+                onHoveredChanged: {
+                    if (!hovered)
+                        root.endHoverPreview();
+                }
+                onPointChanged: {
+                    if (hovered && point.pressedButtons === Qt.NoButton && !scrubMouseArea.containsPress && !selectionBox.visible)
+                        root.hoverPreviewAt(point.position.x);
                 }
             }
 
@@ -820,6 +867,47 @@ Rectangle {
                 }
             }
 
+            Rectangle {
+                id: hoverOrigin
+
+                // Where the playhead was before the hover preview, and goes back to.
+                visible: root.hoverSavedPosition >= 0 && root.hoverSavedPosition !== timeline.position
+                color: accentColor
+                opacity: 0.35
+                width: root.snapToDevicePixel(1)
+                height: root.height - horizontalScrollBar.height
+                x: root.snapToDevicePixel(root.hoverSavedPosition * multitrack.scaleFactor - tracksFlickable.contentX)
+                y: 0
+            }
+
+            Rectangle {
+                id: snapGuide
+
+                // Snapping (Phase 11, as in CapCut): a line where an edge snapped, while dragging
+                // or trimming. Track.js shows it; it fades when nothing snaps for a moment.
+                property real contentX: 0
+
+                function show(x) {
+                    contentX = x;
+                    visible = true;
+                    snapGuideTimer.restart();
+                }
+
+                visible: false
+                color: accentColor
+                width: root.snapToDevicePixel(1)
+                height: root.height - horizontalScrollBar.height
+                x: root.snapToDevicePixel(contentX - tracksFlickable.contentX)
+                y: 0
+
+                Timer {
+                    id: snapGuideTimer
+
+                    interval: 350
+                    onTriggered: snapGuide.visible = false
+                }
+            }
+
             Shotcut.TimelinePlayhead {
                 id: playhead
 
@@ -1058,7 +1146,9 @@ Rectangle {
 
     Connections {
         function onPositionChanged() {
-            if (!stopScrolling && settings.timelineScrolling !== Shotcut.Settings.NoScrolling) {
+            // The hover preview follows the mouse inside the view: scrolling would move the
+            // timeline under the mouse.
+            if (!stopScrolling && root.hoverSavedPosition < 0 && settings.timelineScrolling !== Shotcut.Settings.NoScrolling) {
                 let smooth = settings.timelineScrolling === Shotcut.Settings.SmoothScrolling || scrubMouseArea.containsPress || scrubMouseArea.skim;
                 Logic.scrollIfNeeded(settings.timelineScrolling === Shotcut.Settings.CenterPlayhead, smooth);
             }
@@ -1157,6 +1247,12 @@ Rectangle {
         function onScaleFactorChanged() {
             if (settings.timelineScrolling === Shotcut.Settings.CenterPlayhead)
                 Logic.scrollIfNeeded(true);
+        }
+
+        // An edit made while previewing (Ctrl+B, Q, W…) happened at the mouse: keep the
+        // playhead there.
+        function onModified() {
+            root.commitHoverPreview();
         }
 
         target: multitrack
