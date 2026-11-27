@@ -41,13 +41,14 @@ Son los mismos pasos que el workflow.
      mingw-w64-ucrt-x86_64-ffmpeg mingw-w64-ucrt-x86_64-fftw \
      mingw-w64-ucrt-x86_64-frei0r-plugins mingw-w64-ucrt-x86_64-gdk-pixbuf2 \
      mingw-w64-ucrt-x86_64-libebur128 mingw-w64-ucrt-x86_64-libsamplerate \
-     mingw-w64-ucrt-x86_64-libvorbis mingw-w64-ucrt-x86_64-pango mingw-w64-ucrt-x86_64-rnnoise \
+     mingw-w64-ucrt-x86_64-libvorbis mingw-w64-ucrt-x86_64-lilv mingw-w64-ucrt-x86_64-pango \
+     mingw-w64-ucrt-x86_64-rnnoise \
      mingw-w64-ucrt-x86_64-rtaudio mingw-w64-ucrt-x86_64-rubberband mingw-w64-ucrt-x86_64-sox \
      mingw-w64-ucrt-x86_64-vid.stab mingw-w64-ucrt-x86_64-whisper.cpp \
      mingw-w64-ucrt-x86_64-autotools perl-xml-parser perl-list-moreutils
    ```
 
-   Las bibliotecas de los módulos de MLT (`libebur128`, `rubberband`, `sox`…) son dependencias *opcionales* del paquete de MLT. Sin ellas, filtros como *Size, Position & Rotate*, *Text: Simple* o *Pitch* no aparecen.
+   Las bibliotecas de los módulos de MLT (`libebur128`, `rubberband`, `sox`…) son dependencias *opcionales* del paquete de MLT. Sin ellas, filtros como *Size, Position & Rotate*, *Text: Simple* o *Pitch* no aparecen. Desde MLT 7.42 el módulo `ladspa` (filtros LADSPA, LV2 y VST2) necesita también `lilv`.
 3. Descarga el código y compílalo:
 
    ```bash

@@ -392,6 +392,9 @@
     - `tests/test_phase10_ai_beginner_ux_verification.py` (22 tests, Tier 5): protocolo y recetas; el puente con y sin Shotcut; instrucciones; *Conectar con Claude*; panel, deshacer por paso, encendido en vivo, botón **IA**, primera vez y ayuda; invarianza de la Fase 8; lanzador (lo compila con MinGW si está), empaquetado, instalador y CI; traducciones completas con los mismos `%1`; guías y trazabilidad.
     - QtTest: 40 comprobaciones (+4: `promptsAreReadyMadeRequests`, `observerSeesClients`, `connectsClaudeDesktop`, `quotesPythonWithSpaces`).
     - `tests/test_phase8_ai_mcp_verification.py` cambia la comprobación del mensaje de estado (6 s, «Ctrl+Z to undo», `stepDone`).
+  - **Arreglos del CI (fallaban por cambios del entorno, no del código):**
+    - las imágenes nuevas de `ubuntu-latest` ya no traen el paquete `clang-format-14`: `check-code-format.yml` instala la misma versión (14.0.6) desde PyPI y la enlaza como `clang-format-14`;
+    - MSYS2 pasó a MLT 7.42, cuyo módulo `ladspa` (LADSPA, LV2 y VST2) enlaza con `lilv`, una dependencia opcional del paquete. El workflow la instala y, si otro módulo no carga, lista las DLL que le faltan.
   - **Pendiente:** el CI de Windows (Python incluido, lanzador e instalador) y la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
 
 ---

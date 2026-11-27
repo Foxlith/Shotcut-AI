@@ -45,6 +45,7 @@ jobs:
       # Text: Simple, Sepia, Loudness...), resample, rnnoise, rtaudio, rubberband (Pitch)
       # and sox do not load and their Shotcut filters disappear. whisper.cpp is the speech to
       # text of Shotcut (Subtitles > Speech to Text) and of the media analysis server.
+      # lilv: since MLT 7.42 the ladspa module (LADSPA, LV2 and VST2 filters) links to it.
       # Autotools and the Perl modules build the LADSPA plugins.
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
@@ -74,6 +75,7 @@ jobs:
             mingw-w64-ucrt-x86_64-libebur128
             mingw-w64-ucrt-x86_64-libsamplerate
             mingw-w64-ucrt-x86_64-libvorbis
+            mingw-w64-ucrt-x86_64-lilv
             mingw-w64-ucrt-x86_64-pango
             mingw-w64-ucrt-x86_64-rnnoise
             mingw-w64-ucrt-x86_64-rtaudio
@@ -158,6 +160,14 @@ jobs:
           if grep -q "failed to dlopen" dist/melt-errors.txt; then
             echo "::error::MLT modules that do not load (DLLs missing from the bundle):"
             grep -A1 "failed to dlopen" dist/melt-errors.txt
+            # Name the missing DLLs: the MSYS2 package that has them is the one to add.
+            for module in $(sed -n 's/.*failed to dlopen .*[\\/]\(libmlt[^ ]*\.dll\).*/\1/p' dist/melt-errors.txt); do
+              echo "Missing for $module:"
+              (cd dist/Shotcut-AI/bin && PATH=/c/Windows/system32:/c/Windows ldd "../lib/mlt/$module" | grep -i "not found" || true)
+              ldd "dist/Shotcut-AI/lib/mlt/$module" | awk '{print $1}' | while read -r dll; do
+                [ -e "dist/Shotcut-AI/bin/$dll" ] || [ -e "/c/Windows/System32/$dll" ] || echo "  $dll is not in bin"
+              done
+            done
             exit 1
           fi
           # Speech to text starts without MSYS2 too.
