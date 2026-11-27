@@ -80,6 +80,8 @@ Son los mismos pasos que el workflow.
 7. Abre `dist/Shotcut-AI/Shotcut AI.exe`.
 8. Opcional: el instalador. Con [Inno Setup 6](https://jrsoftware.org/isinfo.php), ejecuta `ISCC.exe /DAppVersion=26.11.27 packaging\windows\shotcut-ai.iss`; deja `dist\Shotcut-AI-Setup.exe`.
 
+Las traducciones de Shotcut (`shotcut_<idioma>.qm`) se instalan en `dist/Shotcut-AI/share/shotcut/translations`, que es donde las busca `bin/shotcut.exe`; las de Qt van en `share/qt6/translations`.
+
 Después de cambiar el código, basta con repetir `cmake --build build`, `cmake --install build` y el paso 5.
 
 ## Comprobar el resultado

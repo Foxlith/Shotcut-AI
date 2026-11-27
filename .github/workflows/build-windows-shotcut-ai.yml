@@ -124,6 +124,14 @@ jobs:
       - name: Bundle the runtime
         run: bash scripts/bundle-windows-msys2.sh dist/Shotcut-AI
 
+      - name: Check the translations
+        run: |
+          # src/main.cpp loads shotcut_<language>.qm from share/shotcut/translations (the
+          # MSYS2 layout); without them every language but English shows English.
+          dir=dist/Shotcut-AI/share/shotcut/translations
+          test -f "$dir/shotcut_es.qm" || { echo "Missing $dir/shotcut_es.qm"; exit 1; }
+          echo "$(ls "$dir"/shotcut_*.qm | wc -l) Shotcut translations in $dir"
+
       - name: Add Python for the MCP servers
         shell: pwsh
         run: |
@@ -265,6 +273,7 @@ jobs:
           if ($setup.ExitCode -ne 0) { throw "The installer failed ($($setup.ExitCode))" }
           if (-not (Test-Path "$dir\bin\shotcut.exe")) { throw "bin\shotcut.exe is not installed" }
           if (-not (Test-Path "$dir\python\python.exe")) { throw "python\python.exe is not installed" }
+          if (-not (Test-Path "$dir\share\shotcut\translations\shotcut_es.qm")) { throw "The Spanish translation is not installed" }
           $desktop = [Environment]::GetFolderPath("Desktop")
           $shortcut = Join-Path $desktop "Shotcut AI.lnk"
           if (-not (Test-Path $shortcut)) { throw "No desktop shortcut" }

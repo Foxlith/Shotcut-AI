@@ -450,6 +450,17 @@
 
     Cuatro errores introducidos a propósito hacen fallar la suite: no devolver el cabezal, ocultar la guía, cambiar la Q y desplazar la vista durante la vista previa. `--fast`: **809/809 (exit 0)** a escala 100 % y 125 %.
 
+- **Arreglo: el idioma no cambiaba en Windows (`translations/CMakeLists.txt`, `src/main.cpp`, `.github/workflows/build-windows-shotcut-ai.yml`, `tests/test_windows_translations_verification.py` (nuevo), `tests/run_e2e_tests.py`, `docs/build-windows.md`):** [CORREGIDO — PENDIENTE DE CONFIRMAR EN EL PC DE FOX]
+  - **Síntoma:** Fox eligió Español en la versión de Windows, la app se reinició y todo siguió en inglés salvo «Aceptar» y «Cancelar», que vienen de `qtbase_es.qm`.
+  - **Causas:**
+    - los `.qm` de Shotcut solo se instalaban en Linux (`if(UNIX AND NOT APPLE)`), así que el zip y el instalador no llevaban `shotcut_es.qm`;
+    - en Windows, `main.cpp` los buscaba en `bin/share/translations`, pero el paquete usa la estructura de MSYS2 (`NODEPLOY`), con los datos en `share/shotcut`.
+  - **Arreglo:**
+    - CMake instala los `.qm` en Windows: en `share/shotcut/translations` con `WINDOWS_DEPLOY=OFF` y en `share/translations` con `ON`, la estructura oficial, que no cambia;
+    - `main.cpp` busca en `../share/shotcut/translations` con `NODEPLOY`, como `QmlApplication::dataDir()`;
+    - el workflow falla si falta `shotcut_es.qm` en el zip o en la instalación.
+  - **Pruebas:** `tests/test_windows_translations_verification.py` (7 tests, Tier 5). Deshacer cualquiera de los dos arreglos la hace fallar. `--fast`: **816/816 (exit 0)**. clang-format-14 limpio.
+
 ---
 
 ## 🚀 Próxima Etapa: Hoja de ruta del editor de vídeo por IA
@@ -476,7 +487,7 @@
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 809 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 816 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).

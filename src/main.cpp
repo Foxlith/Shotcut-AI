@@ -345,10 +345,12 @@ public:
         dir.cd("Resources");
         dir.cd("shotcut");
         dir.cd("translations");
-#elif defined(Q_OS_WIN)
+#elif defined(Q_OS_WIN) && !defined(NODEPLOY)
         dir.cd("share");
         dir.cd("translations");
 #else
+        // Linux, and Windows with the MSYS2 layout (NODEPLOY): bin/../share/shotcut,
+        // the same place as QmlApplication::dataDir().
         dir.cdUp();
         dir.cd("share");
         dir.cd("shotcut");
