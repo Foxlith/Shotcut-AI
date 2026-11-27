@@ -128,6 +128,7 @@
   - ejecutar la batería desde una carpeta que tenga un enlace llamado literalmente `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml` apuntando a `src/qml`.
 
   Con `gcc-mingw-w64-x86-64` instalado, la Fase 10 compila además `Shotcut AI.exe`; sin él, esa prueba se salta.
+- **App real bajo Xvfb:** hace falta `SDL_AUDIODRIVER=dummy`. Sin servidor de sonido el reproductor no arranca, así que el visor se queda negro y en 00:00:00.000 aunque se haga clic en la regla.
 - Prueba en vivo del servidor de análisis con los programas reales: `python tests/live_analysis_smoke.py` (genera medios de contenido conocido con `tests/media/make_samples.py`; `--speech archivo --expect texto` y `--download-model nombre` para la transcripción). El build de Windows la ejecuta con el zip, un modelo `tiny-q5_1` descargado por el servidor y la muestra `jfk.wav` de whisper.cpp. En `--fast`, ffmpeg, ffprobe y whisper-cli están simulados (`tests/media/fake_ffmpeg.py`, `fake_whisper.py`).
 - Pruebas C++ (QtTest, `-DSHOTCUT_BUILD_TESTS=ON` y `ctest`, también en el CI de Linux): `tests/test_mcp_protocol.cpp` (protocolo, recetas, observador y `ClientSetup`) y las dos de upstream.
 - Prueba en vivo del servidor de IA con la app abierta: `python tests/live_mcp_smoke.py` (`--read-only`, `--media archivo`, `--bridge ruta`); el build de Windows la ejecuta con la app recién compilada.
@@ -439,7 +440,7 @@
     - al arrastrar b.mp4 cerca del final de a.mp4 se pegó en +00:03.040 y la guía apareció ahí;
     - la duración se ve en los clips.
 
-    En este entorno sin GPU el visor no cambia de fotograma ni con un clic normal en la regla. Es una limitación del entorno: la vista previa usa el mismo `timeline.position` que ese clic.
+    El visor también sigue al ratón. Con el cabezal en 00:00:05.120 mostraba el primer clip; al pasar el ratón por los 8 s mostró las barras de color del segundo (00:00:08.040, `get_state`); al salir volvió a 00:00:05.120.
   - **Pruebas:** `tests/test_phase11_capcut_timeline_verification.py` (10 tests, Tier 5):
     - los atajos (y que nadie más los use);
     - el ajuste, la acción y su sitio en la barra;
