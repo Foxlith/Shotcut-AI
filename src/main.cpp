@@ -662,7 +662,9 @@ int main(int argc, char **argv)
             });
         });
 
-        if (!a.resourceArg.isEmpty()) {
+        if (a.mainWindow->restoreAfterLanguageRestart()) {
+            // Back from a restart to apply a new language, with the same project.
+        } else if (!a.resourceArg.isEmpty()) {
             QStringList ls;
             for (auto &s : a.resourceArg)
                 ls << QFileInfo(QDir::currentPath(), s).filePath();

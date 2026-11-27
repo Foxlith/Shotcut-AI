@@ -334,6 +334,35 @@ void ShotcutSettings::setAiClientConfigured(bool configured)
     settings.setValue("aiServer/clientConfigured", configured);
 }
 
+QString ShotcutSettings::restartProject() const
+{
+    return settings.value("restart/project").toString();
+}
+
+int ShotcutSettings::restartPosition() const
+{
+    return settings.value("restart/position", 0).toInt();
+}
+
+bool ShotcutSettings::restartModified() const
+{
+    return settings.value("restart/modified", false).toBool();
+}
+
+void ShotcutSettings::setRestartSession(const QString &project, int position, bool modified)
+{
+    settings.setValue("restart/project", project);
+    settings.setValue("restart/position", position);
+    settings.setValue("restart/modified", modified);
+    settings.sync();
+}
+
+void ShotcutSettings::clearRestartSession()
+{
+    settings.remove("restart");
+    settings.sync();
+}
+
 QThread::Priority ShotcutSettings::jobPriority() const
 {
     const auto priority = settings.value("jobPriority", "low").toString();

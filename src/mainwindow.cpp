@@ -2600,15 +2600,19 @@ bool MainWindow::checkAutoSave(QString &url)
     // check whether autosave files exist:
     QSharedPointer<AutoSaveFile> stale(AutoSaveFile::getFile(url));
     if (stale) {
-        QMessageBox dialog(QMessageBox::Question,
-                           qApp->applicationName(),
-                           tr("Auto-saved files exist. Do you want to recover them now?"),
-                           QMessageBox::No | QMessageBox::Yes,
-                           this);
-        dialog.setWindowModality(QmlApplication::dialogModality());
-        dialog.setDefaultButton(QMessageBox::Yes);
-        dialog.setEscapeButton(QMessageBox::No);
-        int r = dialog.exec();
+        int r = QMessageBox::Yes;
+        if (m_recoverWithoutAsking.isEmpty() || m_recoverWithoutAsking != url) {
+            QMessageBox dialog(QMessageBox::Question,
+                               qApp->applicationName(),
+                               tr("Auto-saved files exist. Do you want to recover them now?"),
+                               QMessageBox::No | QMessageBox::Yes,
+                               this);
+            dialog.setWindowModality(QmlApplication::dialogModality());
+            dialog.setDefaultButton(QMessageBox::Yes);
+            dialog.setEscapeButton(QMessageBox::No);
+            r = dialog.exec();
+        }
+        m_recoverWithoutAsking.clear();
         if (r == QMessageBox::Yes) {
             if (!stale->open(QIODevice::ReadWrite)) {
                 LOG_WARNING() << "failed to recover autosave file" << url;
@@ -4080,7 +4084,7 @@ void MainWindow::dropEvent(QDropEvent *event)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     m_timelineDock->stopRecording();
-    if (continueJobsRunning() && continueModified()) {
+    if (continueJobsRunning() && (m_restartKeepsProject || continueModified())) {
         LOG_DEBUG() << "begin";
         JOBS.cleanup();
         if (m_exitCode != EXIT_RESET) {
@@ -5594,7 +5598,15 @@ void MainWindow::processSingleFile()
 
 void MainWindow::onLanguageTriggered(QAction *action)
 {
+    if (action->data().toString() == Settings.language())
+        return;
     Settings.setLanguage(action->data().toString());
+    // Shotcut cannot translate the windows that are already open, so it restarts at once
+    // and comes back as it was (restartForLanguage). With jobs running it asks first.
+    if (!JOBS.hasIncomplete()) {
+        restartForLanguage();
+        return;
+    }
     QMessageBox dialog(QMessageBox::Information,
                        qApp->applicationName(),
                        tr("You must restart Shotcut to switch to the new language.\n"
@@ -5608,6 +5620,77 @@ void MainWindow::onLanguageTriggered(QAction *action)
         m_exitCode = EXIT_RESTART;
         QApplication::closeAllWindows();
     }
+}
+
+void MainWindow::restartForLanguage()
+{
+    QString project = untitledFileName();
+    bool modified = isWindowModified();
+    if (modified)
+        doAutosave();
+    {
+        QMutexLocker locker(&m_autosaveMutex);
+        if (m_autosaveFile)
+            project = m_autosaveFile->managedFileName();
+        if (modified) {
+            // The unsaved changes are now in the auto-save file. Keep it for the restart:
+            // an AutoSaveFile removes its file when it is destroyed.
+            const QFileInfo saved(m_autosaveFile ? m_autosaveFile->fileName() : QString());
+            if (saved.exists() && saved.size() > 0) {
+                m_autosaveFile->close();
+                m_autosaveFile->setFileName(QString());
+                m_autosaveFile.reset();
+            } else {
+                modified = false;
+            }
+        }
+    }
+    if (isWindowModified() && !modified) {
+        // The auto-save failed: ask about the changes as when closing.
+        LOG_WARNING() << "auto-save failed before the language restart";
+        if (!continueModified())
+            return;
+    }
+    Settings.setRestartSession(project, m_player->position(), modified);
+    m_restartKeepsProject = true;
+    m_exitCode = EXIT_RESTART;
+    QApplication::closeAllWindows();
+    if (isVisible()) {
+        // Something stopped the restart: Shotcut goes on as before.
+        m_restartKeepsProject = false;
+        m_exitCode = EXIT_SUCCESS;
+        Settings.clearRestartSession();
+        QMutexLocker locker(&m_autosaveMutex);
+        if (!m_autosaveFile)
+            m_autosaveFile.reset(new AutoSaveFile(project));
+    }
+}
+
+bool MainWindow::restoreAfterLanguageRestart()
+{
+    const QString project = Settings.restartProject();
+    if (project.isEmpty())
+        return false;
+    const int position = Settings.restartPosition();
+    const bool modified = Settings.restartModified();
+    // Only once, even if the project does not open.
+    Settings.clearRestartSession();
+    LOG_INFO() << "restoring after a language restart" << project << position << modified;
+    if (modified)
+        m_recoverWithoutAsking = project;
+    if (project == untitledFileName() || modified || QFile::exists(project))
+        open(project);
+    else
+        open(untitledFileName());
+    m_recoverWithoutAsking.clear();
+    QTimer::singleShot(0, this, [this, position]() {
+        if (position > 0 && MLT.producer() && MLT.producer()->is_valid())
+            m_player->seek(position);
+        const auto language = QLocale(Settings.language()).nativeLanguageName();
+        showStatusMessage(
+            tr("Language changed to %1").arg(language.left(1).toUpper() + language.mid(1)));
+    });
+    return true;
 }
 
 void MainWindow::on_actionNearest_triggered(bool checked)

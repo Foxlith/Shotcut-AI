@@ -122,6 +122,14 @@ public:
     /// Whether Connect to Claude already set up an AI client.
     bool aiClientConfigured() const;
     void setAiClientConfigured(bool configured);
+    /// What to reopen after a restart to apply a new language: the project (its file, or
+    /// the untitled one), the playhead, and whether it had unsaved changes (they are in
+    /// the project's auto-save file). Empty when Shotcut did not restart for a language.
+    QString restartProject() const;
+    int restartPosition() const;
+    bool restartModified() const;
+    void setRestartSession(const QString &project, int position, bool modified);
+    void clearRestartSession();
     QThread::Priority jobPriority() const;
     void setJobPriority(const QString &);
     bool showTitleBars() const;

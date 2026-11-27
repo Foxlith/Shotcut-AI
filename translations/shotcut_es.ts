@@ -7107,6 +7107,11 @@ Do you want to restart now?</source>
 ¿Quiere reiniciar ahora?</translation>
     </message>
     <message>
+        <location filename="../src/mainwindow.cpp" line="4708"/>
+        <source>Language changed to %1</source>
+        <translation>Idioma cambiado a %1</translation>
+    </message>
+    <message>
         <location filename="../src/mainwindow.cpp" line="4751"/>
         <source>Failed to connect to JACK.
 Please verify that JACK is installed and running.</source>
