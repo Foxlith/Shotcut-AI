@@ -54,6 +54,20 @@ Las mismas peticiones están en el panel **Asistente IA**, en *¿Qué quieres ha
 
 La IA no borra tus archivos y pregunta antes de cambios grandes.
 
+### Retocar tú mismo, como en CapCut
+
+Si ya usaste CapCut, la línea de tiempo funciona parecido:
+
+| Quieres… | Haz esto |
+|---|---|
+| Ver un momento sin perder tu sitio | Pasa el ratón por la línea de tiempo: el visor enseña ese momento y, al salir, vuelves a donde estabas. Un clic te deja ahí. (Botón del ojo para activarlo o desactivarlo.) |
+| Cortar en el cabezal | **Ctrl+B** (o **S**) |
+| Quitar lo que hay antes o después del cabezal | **Q** (antes) o **W** (después); el hueco se cierra solo |
+| Juntar dos clips | Arrástralo cerca del otro: se pega solo y una línea naranja te muestra dónde |
+| Saber cuánto dura un clip | Míralo abajo a la derecha del clip (por ejemplo «3,2 s») |
+
+Por qué se eligieron estos gestos: [estudio-capcut-linea-de-tiempo.md](estudio-capcut-linea-de-tiempo.md).
+
 ## 5. Exportar
 
 Cuando te guste el resultado, pulsa **Exportar** (el botón naranja de arriba a la derecha), elige **YouTube** en la lista de formatos y pulsa *Exportar vídeo/audio*. También puedes pedirle a Claude: «prepara mi vídeo para YouTube».

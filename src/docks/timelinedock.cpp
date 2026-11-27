@@ -373,6 +373,7 @@ TimelineDock::TimelineDock(QWidget *parent)
     toolbar->addSeparator();
     toolbar->addAction(Actions["timelineSnapAction"]);
     toolbar->addAction(Actions["timelineScrubDragAction"]);
+    toolbar->addAction(Actions["timelineHoverPreviewAction"]);
     toolbar->addAction(Actions["timelineRippleAction"]);
     toolbar->addAction(Actions["timelineRippleAllTracksAction"]);
     toolbar->addAction(Actions["timelineRippleMarkersAction"]);
@@ -1054,7 +1055,8 @@ void TimelineDock::setupActions()
     Actions.add("timelineOverwriteAction", action);
 
     action = new QAction(tr("Split At Playhead"), this);
-    action->setShortcut(QKeySequence(Qt::Key_S));
+    // S, and Ctrl+B as in CapCut (Phase 11).
+    action->setShortcuts({QKeySequence(Qt::Key_S), QKeySequence(Qt::CTRL | Qt::Key_B)});
     icon = QIcon::fromTheme("slice", QIcon(":/icons/oxygen/32x32/actions/slice.png"));
     action->setIcon(icon);
     connect(action, &QAction::triggered, this, [&]() {
@@ -1118,7 +1120,8 @@ void TimelineDock::setupActions()
     Actions.add("timelineSplitAction", action);
 
     action = new QAction(tr("Split All Tracks At Playhead"), this);
-    action->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_S));
+    action->setShortcuts(
+        {QKeySequence(Qt::SHIFT | Qt::Key_S), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_B)});
     connect(action, &QAction::triggered, this, [&]() {
         if (!isMultitrackValid())
             return;
@@ -1323,6 +1326,23 @@ void TimelineDock::setupActions()
         action->setChecked(Settings.timelineDragScrub());
     });
     Actions.add("timelineScrubDragAction", action);
+
+    // The preview axis of CapCut (Phase 11): the player shows the frame under the mouse and
+    // goes back to the playhead when the mouse leaves the timeline; a click moves the playhead.
+    action = new QAction(tr("Hover Preview"), this);
+    action->setToolTip(tr("Show the frame under the mouse in the player. A click moves the "
+                          "playhead there."));
+    icon = QIcon::fromTheme("hover_preview", QIcon(":/icons/dark/32x32/hover_preview.png"));
+    action->setIcon(icon);
+    action->setCheckable(true);
+    action->setChecked(Settings.timelineHoverPreview());
+    connect(action, &QAction::triggered, this, [&](bool checked) {
+        Settings.setTimelineHoverPreview(checked);
+    });
+    connect(&Settings, &ShotcutSettings::timelineHoverPreviewChanged, action, [=]() {
+        action->setChecked(Settings.timelineHoverPreview());
+    });
+    Actions.add("timelineHoverPreviewAction", action);
 
     action = new QAction(tr("Ripple"), this);
     action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
@@ -1764,14 +1784,16 @@ void TimelineDock::setupActions()
     Actions.add("timelineRebuildAudioWaveformAction", action);
 
     action = new QAction(tr("Ripple Trim Clip In"), this);
-    action->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_I));
+    // Q deletes what is left of the playhead in CapCut, closing the gap: the same edit.
+    action->setShortcuts({QKeySequence(Qt::SHIFT | Qt::Key_I), QKeySequence(Qt::Key_Q)});
     connect(action, &QAction::triggered, this, [&]() {
         trimClipAtPlayhead(TimelineDock::TrimInPoint, true);
     });
     Actions.add("timelineRippleTrimClipInAction", action);
 
     action = new QAction(tr("Ripple Trim Clip Out"), this);
-    action->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_O));
+    // W deletes what is right of the playhead in CapCut.
+    action->setShortcuts({QKeySequence(Qt::SHIFT | Qt::Key_O), QKeySequence(Qt::Key_W)});
     connect(action, &QAction::triggered, this, [&]() {
         trimClipAtPlayhead(TimelineDock::TrimOutPoint, true);
     });
@@ -1869,6 +1891,11 @@ void TimelineDock::setPosition(int position)
         m_position = m_model.tractor()->get_length();
         emit positionChanged(m_position);
     }
+}
+
+bool TimelineDock::isPlaying() const
+{
+    return !MLT.isPaused();
 }
 
 Mlt::Producer TimelineDock::producerForClip(int trackIndex, int clipIndex)

@@ -271,6 +271,7 @@ Para garantizar que el rediseño preserve el 100 % de las capacidades profesiona
 | **¿Qué es esto? / FAQ** (`actionWhatsThis`) | Botón de Ayuda en Barra Lateral | Fijado en la base de la barra lateral izquierda de 52 px |
 | **Espacios de Trabajo / Layouts** (Logging, Editing, etc.) | Selector Segmentado en Barra Superior | Conmutador central directo entre los 6 modos de trabajo |
 | **Agente de IA (MCP)** (*Settings > AI Agent (MCP)*, Fase 8) | Mismo submenú + panel **Asistente IA** + botón **IA** de la Barra Superior (Fase 10) | Se conservan *Enable AI Agent Server*, el estado y *Copy MCP Configuration* (4 clientes); se añaden *Show AI Assistant*, *Connect to Claude Desktop* y *Connect to Claude Code*. El interruptor ya no exige reiniciar |
+| **Línea de tiempo** (atajos, *skimming*, imán) | Mismos sitios + gestos de CapCut (Fase 11) | Se conservan S, Shift+S, Shift+I/O y el *skimming* con Shift+Alt. Se añaden Ctrl+B, Ctrl+Shift+B, Q y W como segundos atajos; la vista previa al pasar el ratón (botón del ojo, desactivable); la guía del imán y la duración en el clip |
 | **Lanzador del zip** (`Shotcut AI.bat`) | `Shotcut AI.exe` (con icono) e instalador `Shotcut-AI-Setup.exe` | Misma función (abre `bin\shotcut.exe` con los argumentos); el instalador de Shotcut (`shotcut.iss`) sigue intacto |
 
 ---
@@ -588,6 +589,29 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - todas las funciones de la Fase 8 se conservan.
 - **Estado:** ✅ Completada. Probada en la app real (Linux, Qt 6.10.2 + MLT 7.36.1) en inglés y en español, y en el build de Windows: Python incluido, lanzador, instalación con accesos directos y desinstalación (run 46038840297). Detalle en `agent.md` (Fase 10).
 
+### FASE 11: Línea de tiempo al estilo CapCut
+- **Objetivo:** estudiar cómo se mueve la gente por la línea de tiempo de editores tan usados como CapCut, cómo interactúan con ella y por qué tienen éxito, y llevar a Shotcut AI lo que falta. Lo pidió Fox el 27/11/2026.
+- **Estudio:** `docs/estudio-capcut-linea-de-tiempo.md`, con fuentes: atajos de pocas teclas, eje de previsualización, imán visible, pista principal magnética, duración a la vista, manipulación directa, gratis y nacido en el móvil.
+- **Tareas Técnicas:**
+  1. **Atajos de CapCut como segundos atajos** (`setShortcuts()` en `src/docks/timelinedock.cpp`): Ctrl+B y Ctrl+Shift+B dividen; Q y W hacen *Ripple Trim Clip In/Out*. Se mantienen S, Shift+S y Shift+I/O.
+  2. **Vista previa al pasar el ratón:**
+     - ajuste `timeline/hoverPreview`, activado por defecto, y acción `timelineHoverPreviewAction` con el icono `hover_preview` en la barra;
+     - un `HoverHandler` en `timeline.qml` mueve el cabezal con el ratón y una línea tenue marca dónde estaba;
+     - al salir el cabezal vuelve; un clic o una edición (`multitrack.modified`) lo dejan donde está el ratón;
+     - no actúa mientras se reproduce (`TimelineDock::isPlaying()`) ni con un botón pulsado, y la vista no se desplaza mientras dura la vista previa.
+  3. **Guía del imán:** `snapAt()` en `Track.js` muestra `snapGuide` en cada punto donde algo se pega, al mover (`snapClip`) o al recortar (`snapTrimIn`/`snapTrimOut`).
+  4. **Duración en el clip** (`Clip.qml`): «3,2 s» o «1:05», con el separador decimal del idioma.
+  5. Textos en español, `docs/guia-principiante.md` (sección *Retocar tú mismo, como en CapCut*) y pruebas.
+- **No se copia la pista principal magnética:** *Ripple* ya evita los huecos y cambiarlo por pista tocaría 19 sitios.
+- **Archivos:** `src/docks/timelinedock.cpp/.h`, `src/settings.cpp/.h`, `src/qml/views/timeline/timeline.qml`, `Track.js`, `Clip.qml`, `icons/dark/32x32/hover_preview.svg/.png`, `icons/light/32x32/hover_preview.png`, `icons/resources.qrc`, `translations/shotcut_es.ts`, `docs/estudio-capcut-linea-de-tiempo.md` (nuevo), `docs/guia-principiante.md`, `tests/test_phase11_capcut_timeline_verification.py` (nuevo), `tests/run_e2e_tests.py`.
+- **Estado:** ✅ Completada. Probada en la app real en español:
+  - el cabezal siguió al ratón, volvió al salir y se quedó tras un clic;
+  - Ctrl+B dividió 6 s en 3,04 + 2,96 s, Q dejó 2,96 s desde 0 y W dejó 3,04 s;
+  - la guía del imán apareció justo en el final del otro clip, en +00:03.040;
+  - la duración se ve en los clips.
+
+  Detalle en `agent.md` (Fase 11).
+
 ---
 
 ## 🌐 Consideraciones Técnicas Transversales
@@ -702,6 +726,11 @@ Todos los controles de la aplicación deben respetar rigurosamente la matriz de 
   - [x] Panel *Asistente IA* con estado, peticiones y *Deshacer este paso*; botón **IA**; encendido en vivo; primera vez; ayuda.
   - [x] `Shotcut AI.exe` con icono, Python incluido e instalador con acceso directo en el escritorio, comprobados en el CI.
   - [x] Textos en español, guía para principiantes con guion de prueba con usuarios, y pruebas (`tests/test_phase10_ai_beginner_ux_verification.py`; QtTest: 40).
+- [x] **Fase 11: Línea de tiempo al estilo CapCut**
+  - [x] Estudio de CapCut con fuentes (`docs/estudio-capcut-linea-de-tiempo.md`).
+  - [x] Ctrl+B, Ctrl+Shift+B, Q y W como segundos atajos.
+  - [x] Vista previa al pasar el ratón (botón del ojo), guía del imán y duración en el clip.
+  - [x] Pruebas (`tests/test_phase11_capcut_timeline_verification.py`) y verificación en la app real.
 
 ---
 

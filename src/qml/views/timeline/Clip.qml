@@ -650,6 +650,32 @@ Rectangle {
         }
     }
 
+    Text {
+        id: durationLabel
+
+        // How long the clip lasts, at its bottom right as in CapCut (Phase 11): "3.2 s" (with
+        // the decimal sign of the language), or "1:05" from a minute on. Only when it fits.
+        readonly property real seconds: profile.fps > 0 ? clipDuration / profile.fps : 0
+
+        objectName: 'clipDurationLabel'
+        text: seconds < 60 ? qsTr('%1 s').arg(seconds.toLocaleString(Qt.locale(), 'f', 1)) : '%1:%2'.arg(Math.floor(seconds / 60)).arg(('0' + Math.floor(seconds % 60)).slice(-2))
+        visible: !elided && !isBlank && !isTransition && clipDuration > 0 && parent.width > implicitWidth + 24 && parent.height >= 30
+        font.pixelSize: 10
+        font.weight: Font.Medium
+        color: clipTextColor
+        style: Text.Outline
+        styleColor: Qt.rgba(0, 0, 0, 0.55)
+        rightPadding: 4
+        bottomPadding: 2
+
+        anchors {
+            bottom: parent.bottom
+            right: parent.right
+            rightMargin: parent.border.width + _rightRoundedInset
+            bottomMargin: parent.border.width
+        }
+    }
+
     ToolButton {
         id: filtersIcon
 

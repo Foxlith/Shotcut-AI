@@ -115,6 +115,7 @@
         <file>dark/32x32/ripple-marker.png</file>
         <file>dark/32x32/run-build.png</file>
         <file>dark/32x32/scrub_drag.png</file>
+        <file>dark/32x32/hover_preview.png</file>
         <file>dark/32x32/server-database.png</file>
         <file>dark/32x32/show-menu.png</file>
         <file>dark/32x32/slice.png</file>
@@ -261,6 +262,7 @@
         <file>light/32x32/ripple-marker.png</file>
         <file>light/32x32/run-build.png</file>
         <file>light/32x32/scrub_drag.png</file>
+        <file>light/32x32/hover_preview.png</file>
         <file>light/32x32/server-database.png</file>
         <file>light/32x32/show-menu.png</file>
         <file>light/32x32/slice.png</file>
@@ -631,6 +633,7 @@
         <file>dark/32x32/ripple-marker.svg</file>
         <file>dark/32x32/run-build.svg</file>
         <file>dark/32x32/scrub_drag.svg</file>
+        <file>dark/32x32/hover_preview.svg</file>
         <file>dark/32x32/slice.svg</file>
         <file>dark/32x32/snap.svg</file>
         <file>dark/32x32/split.svg</file>

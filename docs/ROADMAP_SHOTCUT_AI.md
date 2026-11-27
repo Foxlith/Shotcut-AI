@@ -195,6 +195,7 @@ usa.
 | Entrega | Tareas | Estado |
 |---|---|---|
 | **Entrega 1** | Fase 0 + Fase 1 (y los 4 problemas de la sección 2) | ✅ PR en revisión |
+| **Fase 11** | Línea de tiempo al estilo CapCut (pedida por Fox el 27/11/2026): Ctrl+B, Q y W; vista previa al pasar el ratón; guía del imán; duración en el clip. Estudio: [estudio-capcut-linea-de-tiempo.md](estudio-capcut-linea-de-tiempo.md) | ✅ Hecha |
 | **Entrega UX** | Para quien no sabe editar (pedida por Fox el 27/11/2026): panel *Asistente IA*, *Conectar con Claude* en un clic, recetas MCP, instrucciones para principiantes, Python incluido, `Shotcut AI.exe` con icono e instalador con acceso directo. Guía: [guia-principiante.md](guia-principiante.md) | ✅ Hecha (Fase 10 de `plan.md`) |
 | Entrega 2 | 3.1 exportar (YouTube 1080p/4K y borrador), 3.2 transiciones, 3.3 títulos, 3.5 volumen y normalización, 3.9 marcadores | Pendiente |
 | Entrega 3 | Fase 2: EditPlan v1, validador, `apply_edit_plan` (un *undo*), `export_edit_plan`, `dry_run` | Pendiente |

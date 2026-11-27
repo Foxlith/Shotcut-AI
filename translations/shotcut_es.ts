@@ -1715,6 +1715,13 @@ En caso afirmativo, elija un formato y a continuación haga clic en Aceptar para
     </message>
 </context>
 <context>
+    <name>Clip</name>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 s</translation>
+    </message>
+</context>
+<context>
     <name>ClockSpinner</name>
     <message>
         <location filename="../src/qml/filters/timer/ClockSpinner.qml" line="121"/>
@@ -12671,6 +12678,14 @@ Elimine el filtro de subtítulos antes de eliminar esta pista.</translation>
     <message>
         <source>You cannot make a transition with an adjustment clip.</source>
         <translation>No se puede hacer una transición con un clip de ajuste.</translation>
+    </message>
+    <message>
+        <source>Hover Preview</source>
+        <translation>Vista previa al pasar el ratón</translation>
+    </message>
+    <message>
+        <source>Show the frame under the mouse in the player. A click moves the playhead there.</source>
+        <translation>Muestra en el visor el fotograma bajo el ratón. Un clic mueve el cabezal ahí.</translation>
     </message>
 </context>
 <context>

@@ -28,6 +28,11 @@
   - `Shotcut AI.exe` con icono e instalador con acceso directo en el escritorio.
 
   Guía: `docs/guia-principiante.md`.
+- **Fase 11 (Línea de tiempo al estilo CapCut):** Completada.
+  - Estudio de CapCut con fuentes: `docs/estudio-capcut-linea-de-tiempo.md`.
+  - Ctrl+B, Ctrl+Shift+B, Q y W como segundos atajos.
+  - Vista previa al pasar el ratón (botón del ojo).
+  - Guía del imán y duración en cada clip.
 - **Lanzador de Pruebas en Escritorio:** `C:\Users\Fox\Desktop\Probar Shotcut AI.lnk` (ejecuta con `capcut_theme.qss` y proyecto demo).
 
 ---
@@ -115,7 +120,7 @@
 - `scripts/sc.py`: CLI para las herramientas de Shotcut AI (HTTP) o, con `--analysis`, las de este servidor.
 
 ### 6. 🧪 Infraestructura de Pruebas (E2E & Adversarial)
-- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (799 tests tras la Fase 10: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py` + 23 de `tests/test_phase9_ai_analysis_verification.py` + 22 de `tests/test_phase10_ai_beginner_ux_verification.py`).
+- Script maestro: `python tests/run_e2e_tests.py` y con `--fast` (809 tests tras la Fase 11: 624 previos + 23 de `tests/test_phase3_layout_verification.py` + 23 de `tests/test_phase4_viewer_verification.py` + 15 de `tests/test_phase5_timeline_verification.py` + 30 de `tests/test_phase6_media_inspector_verification.py` + 20 de `tests/test_phase7_accent_theme_verification.py` + 19 de `tests/test_phase8_ai_mcp_verification.py` + 23 de `tests/test_phase9_ai_analysis_verification.py` + 22 de `tests/test_phase10_ai_beginner_ux_verification.py` + 10 de `tests/test_phase11_capcut_timeline_verification.py`).
 - **Entorno de pruebas en un contenedor Linux limpio** (como el de Claude Code en la nube). Hacen falta:
   - Pillow, numpy, PySide6 y pymupdf (en un *venv*), más `libegl1` y `libgl1`;
   - `.agents/TEST_INFRA.md`, que está ignorado por git;
@@ -413,6 +418,37 @@
     Detalle en `docs/guia-principiante.md`.
   - **Pendiente:** la **prueba con alguien que no edita** (guion en `docs/guia-principiante.md`).
 
+- **Fase 11: Línea de tiempo al estilo CapCut (`docs/estudio-capcut-linea-de-tiempo.md`, `tests/test_phase11_capcut_timeline_verification.py`, `icons/dark/32x32/hover_preview.svg/.png`, `icons/light/32x32/hover_preview.png` (nuevos), `src/docks/timelinedock.cpp/.h`, `src/settings.cpp/.h`, `src/qml/views/timeline/timeline.qml`, `Track.js`, `Clip.qml`, `icons/resources.qrc`, `translations/shotcut_es.ts`, `docs/guia-principiante.md`, `tests/run_e2e_tests.py`, `plan.md`, `docs/ROADMAP_SHOTCUT_AI.md`):** [COMPLETADO — VERIFICADO EN LA APP REAL]
+  - **Contexto:** Fox pidió estudiar cómo se mueve la gente por la línea de tiempo de CapCut, cómo interactúa y por qué es tan usado, y llevarlo a la app.
+  - **Ya lo tenía Shotcut:** imán, *ripple*, zoom con Ctrl+rueda bajo el ratón, recortar en el cabezal (Shift+I/O), miniaturas y ondas, y *skimming* con Shift+Alt.
+  - **Añadido:**
+    - **atajos de CapCut como segundos atajos** (`setShortcuts`; `ShotcutActions::add` guarda los dos como atajos por defecto): Ctrl+B y Ctrl+Shift+B dividen; Q y W hacen *Ripple Trim Clip In/Out*;
+    - **vista previa al pasar el ratón**:
+      - ajuste `timeline/hoverPreview`, activado por defecto, y acción `timelineHoverPreviewAction` con el icono `hover_preview` entre *Scrub While Dragging* y *Ripple*;
+      - un `HoverHandler` dentro de `scrubMouseArea` (recibe el *hover* también sobre los clips) mueve `timeline.position`;
+      - `hoverSavedPosition` guarda el cabezal: vuelve al salir, `commitHoverPreview()` lo deja tras un clic en la regla o en un hueco, o tras una edición (`multitrack.modified`);
+      - nada mientras se reproduce (`TimelineDock::isPlaying()`, con `MLT.isPaused()`) ni con un botón pulsado;
+      - `onPositionChanged` no desplaza la vista mientras dura la vista previa, porque si no la línea de tiempo correría bajo el ratón;
+      - una línea tenue (`hoverOrigin`) marca dónde estaba el cabezal;
+    - **guía del imán:** `snapAt(x, valor)` en `Track.js` llama a `snapGuide.show(x)` en los 11 puntos de pegado de `snapClip`, los 8 de `snapTrimIn` y los 7 de `snapTrimOut`. La guía se oculta 350 ms después del último pegado;
+    - **duración en el clip** (`Clip.qml`, `durationLabel`): «3,2 s» con el separador del idioma, o «1:05», abajo a la derecha si cabe.
+  - **No se copia la pista principal magnética:** *Ripple* ya evita los huecos y cambiar las ediciones por pista tocaría 19 sitios (14 en C++ y 5 en QML).
+  - **Verificación en la app real (Xvfb, español):**
+    - el cabezal siguió al ratón, con la línea tenue en su sitio anterior; al salir volvió y tras un clic se quedó;
+    - Ctrl+B dividió 6 s en 3,04 + 2,96 s; Q dejó 2,96 s desde 0; W dejó 3,04 s (comprobado con `get_timeline`);
+    - al arrastrar b.mp4 cerca del final de a.mp4 se pegó en +00:03.040 y la guía apareció ahí;
+    - la duración se ve en los clips.
+
+    En este entorno sin GPU el visor no cambia de fotograma ni con un clic normal en la regla. Es una limitación del entorno: la vista previa usa el mismo `timeline.position` que ese clic.
+  - **Pruebas:** `tests/test_phase11_capcut_timeline_verification.py` (10 tests, Tier 5):
+    - los atajos (y que nadie más los use);
+    - el ajuste, la acción y su sitio en la barra;
+    - la vista previa (seguir al ratón, volver, confirmar y no desplazar);
+    - la guía en cada punto de pegado;
+    - la duración, el icono (svg, png y qrc), las traducciones, el estudio y la trazabilidad.
+
+    Cuatro errores introducidos a propósito hacen fallar la suite: no devolver el cabezal, ocultar la guía, cambiar la Q y desplazar la vista durante la vista previa. `--fast`: **809/809 (exit 0)** a escala 100 % y 125 %.
+
 ---
 
 ## 🚀 Próxima Etapa: Hoja de ruta del editor de vídeo por IA
@@ -439,7 +475,7 @@
 
 ## 🛠️ Reglas y Directrices para Agentes de IA
 
-1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 799 tests en verde (`python tests/run_e2e_tests.py --fast`).
+1. **Invarianza de Pruebas:** Cualquier cambio debe mantener los 809 tests en verde (`python tests/run_e2e_tests.py --fast`).
 2. **Consistencia Visual:** Usar siempre los tokens de diseño Grafito (Acento Naranja `#FF7A45`, fondo `#0B0C0F`, paneles `#15171C`, bordes `#22252D`).
 3. **QML en Tiempo Real:** Las modificaciones en `src/qml/` deben sincronizarse si se prueban en vivo con la instalación local en `C:\Users\Fox\AppData\Local\Programs\Shotcut\share\shotcut\qml\`.
 4. **CI del repositorio:** `check-code-format` (clang-format-14 sobre `src/`) y `Check Linux Build` deben quedar en verde. Formatear con `clang-format-14 -i -style=file <archivo>`; los bloques de QSS en línea van entre `// clang-format off` y `// clang-format on` (clang-format 14 no reconoce texto adicional tras `off`).
